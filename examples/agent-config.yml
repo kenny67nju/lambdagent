@@ -1,0 +1,77 @@
+# Agent 配置文件
+# 对应 Kubernetes ConfigMap
+
+# Agent 基本信息
+agentId: seeCoderManus
+name: SeeCoderManus
+description: 智能编程助手
+type: react
+
+# 模型配置
+model:
+  provider: dashscope
+  name: qwen3-max-2026-01-23
+  temperature: 0.7
+  maxTokens: 4096
+
+# 记忆配置
+memory:
+  strategy: redis
+  size: 20
+  ttl: 7200
+  enabled: true
+
+# 系统提示词
+systemPrompt: |
+  你是 SeeCoderManus，一个智能编程助手。
+  你能够帮助用户解决编程问题，提供代码示例，解释技术概念。
+  当遇到复杂问题时，你会使用工具来获取更多信息。
+
+# ReAct 配置
+react:
+  maxSteps: 20
+  observationEnabled: true
+  toolTimeout: 30
+  verbose: true
+
+#  mcp配置列表 专门调用seeCoder的工具
+mcp:
+  # SeeCoder MCP 工具列表
+  onlineTool:
+    example-mcp-server:
+      - everything_get_sum
+      - chat_improve_prompt
+  #本地的
+  localTools: #plugin
+    - terminate
+  # MCP 策略配置
+  policy:
+    # 模式：auto（自动）、force（强制）、intelligence（智能),disable(关闭)
+    mode: auto
+
+#外部工具
+app:
+  mcp:
+    custom:
+      nodes:
+        example-mcp-server:
+          url: https://your-mcp-endpoint.example.com
+          endpoint: /mcp/airouting
+          headers:
+            Authorization: "${MCP_AUTH_TOKEN}"
+#        map-mcp:
+#          url: https://dashscope.aliyuncs.com/api/v1/mcps/amap-maps
+#          endpoint: /mcp
+#          headers:
+#            Authorization: "sk-..."
+
+# RAG 配置
+# 运行时引擎配置 (Phase 6.5)
+runtime:
+  engine: cek          # recursive | cek | adaptive
+  costBudget: 0.06       # USD — 超过此金额自动暂停
+  maxSteps: 10000           # CEK 最大转移步数
+
+rag:
+  enabled: false
+

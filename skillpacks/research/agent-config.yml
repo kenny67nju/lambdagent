@@ -1,0 +1,218 @@
+# ════════════════════════════════════════════════════════════
+# research skill pack — 科研流程编排器
+# ════════════════════════════════════════════════════════════
+#
+# 封装 "读论文→复现→实验→记录" 为完整流程。
+# 既可以作为 Skill 被其他智能体调用，也可以独立通过 PaaS 运行。
+#
+# 用法:
+#   # 作为独立 agent 运行
+#   python3 -m agentpaas agent create --name researcher \
+#     --config lambdagent/skillpacks/research/agent-config.yml
+#   python3 -m agentpaas chat researcher
+#
+#   # 作为 Skill 被 agent67v2 调用
+#   from lambdagent.skillpacks.research import register_all
+#   register_all()
+#   # agent67v2 协调者可通过 ToolSearch 发现 research-pipeline
+
+agentId: research-skill-orchestrator
+name: researcher
+description: >
+  科研流程编排器: 读论文→复现→实验→记录。
+  4 个专业 Skill 组成的 Pipeline，可独立运行或被其他智能体调用。
+
+type: react
+
+model:
+  provider: claude-code
+  name: sonnet
+  temperature: 0.3
+  maxTokens: 4096
+
+systemPrompt: |
+  你是 researcher，一个科研流程编排器。
+
+  ## 你的流程
+  给定一个论文标题/URL/关键词，你按以下 4 步完成研究:
+
+  1. **读论文** (call_reader): 搜索论文，提取关键信息
+  2. **复现** (call_reproducer): 获取代码，运行复现
+  3. **实验** (call_experimenter): 设计扩展实验，分析结果
+  4. **记录** (call_notebook): 整理笔记，保存知识库
+
+  ## 工具调用
+  ```json
+  {"action": "call_reader", "input": {"task": "论文标题或URL"}}
+  ```
+
+  ## 规则
+  1. 严格按 读→复现→实验→记录 顺序执行
+  2. 每步完成后，将结果传递给下一步
+  3. 如果某步失败 (如找不到代码)，记录失败原因，跳过并继续
+  4. 最后 call_notebook 整理全部结果
+  5. 完成后 terminate
+
+react:
+  maxSteps: 12
+  observationEnabled: true
+  toolTimeout: 180
+  thinkTimeout: 60
+
+memory:
+  enabled: true
+  strategy: local
+  size: 30
+  ttl: 7200
+
+mcp:
+  localTools:
+    - call_reader
+    - call_reproducer
+    - call_experimenter
+    - call_notebook
+    - terminate
+  policy:
+    mode: auto
+
+guard:
+  maxOutputLength: 8000
+  retry: 1
+  fallback: last
+
+subAgents:
+  paper-reader:
+    tool: call_reader
+    description: "论文阅读: 搜索→阅读→提取关键信息"
+    tags: ["paper", "read", "search"]
+    inline:
+      type: react
+      name: paper-reader
+      model:
+        provider: claude-code
+        name: sonnet
+        temperature: 0.2
+        maxTokens: 4096
+      systemPrompt: |
+        你是 paper-reader，论文阅读专家。
+        给定论文标题/URL/关键词:
+        1. WebSearch 搜索论文
+        2. WebFetch 获取论文页面
+        3. 提取: title, authors, venue, year, abstract, problem, method, key_findings, datasets, baselines, code_url, limitations
+        输出 JSON 格式。完成后 terminate。
+      react:
+        maxSteps: 10
+        observationEnabled: true
+        toolTimeout: 45
+        thinkTimeout: 60
+      mcp:
+        localTools: [WebSearch, WebFetch, terminate]
+        policy: {mode: auto}
+      guard:
+        maxOutputLength: 5000
+        retry: 1
+        fallback: last
+
+  code-reproducer:
+    tool: call_reproducer
+    description: "代码复现: 克隆→理解→运行→对比"
+    tags: ["code", "reproduce"]
+    inline:
+      type: react
+      name: code-reproducer
+      model:
+        provider: claude-code
+        name: sonnet
+        temperature: 0.2
+        maxTokens: 4096
+      systemPrompt: |
+        你是 code-reproducer，复现专家。
+        给定论文分析结果:
+        1. 如果有 code_url，用 Bash 克隆仓库
+        2. ReadFile 阅读关键代码
+        3. Bash 安装依赖，运行复现
+        4. 对比复现结果与论文数据
+        输出 JSON: {repo_path, key_files, reproduced_results, paper_results, match_score, notes}
+        完成后 terminate。
+      react:
+        maxSteps: 20
+        observationEnabled: true
+        toolTimeout: 120
+        thinkTimeout: 60
+      mcp:
+        localTools: [Bash, ReadFile, WriteFile, EditFile, ListFiles, SearchContent, CodeSearch, RunTests, terminate]
+        policy: {mode: auto}
+      guard:
+        dangerousCommandBlock: true
+        maxOutputLength: 5000
+        retry: 1
+        fallback: last
+
+  experimenter:
+    tool: call_experimenter
+    description: "实验: 设计→执行→分析"
+    tags: ["experiment", "analysis"]
+    inline:
+      type: react
+      name: experimenter
+      model:
+        provider: claude-code
+        name: sonnet
+        temperature: 0.3
+        maxTokens: 4096
+      systemPrompt: |
+        你是 experimenter，实验专家。
+        给定复现结果:
+        1. 设计消融/对比/参数敏感性实验
+        2. WriteFile 写实验脚本
+        3. Bash 运行实验
+        4. 分析结果
+        输出 JSON: {experiment_design, experiments: [{name, description, results}], analysis, key_insights}
+        完成后 terminate。
+      react:
+        maxSteps: 25
+        observationEnabled: true
+        toolTimeout: 180
+        thinkTimeout: 60
+      mcp:
+        localTools: [Bash, ReadFile, WriteFile, EditFile, ListFiles, SearchContent, RunTests, terminate]
+        policy: {mode: auto}
+      guard:
+        dangerousCommandBlock: true
+        maxOutputLength: 8000
+        retry: 1
+        fallback: last
+
+  lab-notebook:
+    tool: call_notebook
+    description: "记录: 笔记→报告→知识库"
+    tags: ["notebook", "record", "write"]
+    inline:
+      type: react
+      name: lab-notebook
+      model:
+        provider: claude-code
+        name: sonnet
+        temperature: 0.3
+        maxTokens: 4096
+      systemPrompt: |
+        你是 lab-notebook，记录专家。
+        给定整个研究过程的结果:
+        1. 整理为结构化 Markdown 研究笔记
+        2. WriteFile 保存到 notes/ 目录
+        3. KBAdd 添加到知识库
+        4. MemoryStore 保存关键发现
+        笔记格式: 基本信息→问题→方法→复现→实验→发现→思考→标签
+        完成后 terminate。
+      react:
+        maxSteps: 10
+        observationEnabled: true
+        toolTimeout: 30
+        thinkTimeout: 60
+      mcp:
+        localTools: [WriteFile, ReadFile, DocGen, KBCreate, KBAdd, KBSearch, MemoryStore, MemoryRecall, terminate]
+        policy: {mode: auto}
+      guard:
+        maxOutputLength: 8000
+        retry: 1
+        fallback: last

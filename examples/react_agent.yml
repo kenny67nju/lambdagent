@@ -1,0 +1,70 @@
+# react_agent.yml — Example ReAct agent configuration
+#
+# Lambda semantics:
+#   agent = Memory(
+#     Y_15(lambda self. lambda state.
+#       let t = LLM(state) in
+#       CASE(classify t) [
+#         ("search",    lambda x. MCP("example-mcp-server", "everything_get_sum", x)),
+#         ("terminate", lambda x. x)   <-- base case
+#       ] >> lambda obs.
+#       IF (done obs) THEN obs ELSE self(state + obs)
+#     ),
+#     local{size=20, ttl=3600}
+#   )
+
+agentId: example-react
+name: ExampleReActAgent
+description: A research assistant that searches and synthesizes information.
+type: react
+
+model:
+  provider: dashscope
+  name: qwen3-max-2026-01-23
+  temperature: 0.7
+  maxTokens: 4096
+
+systemPrompt: |
+  You are a research assistant. When asked a question:
+  1. Think about what information you need.
+  2. Use the search tool to find relevant information.
+  3. Analyze and synthesize the findings.
+  4. When you have a comprehensive answer, use terminate to return it.
+  Always provide well-structured, detailed responses.
+
+react:
+  maxSteps: 15
+  observationEnabled: true
+  toolTimeout: 30
+  verbose: true
+
+memory:
+  enabled: true
+  strategy: local
+  size: 20
+  ttl: 3600
+
+mcp:
+  onlineTool:
+    example-mcp-server:
+      - everything_get_sum
+  localTools:
+    - terminate
+  policy:
+    mode: auto
+
+# 运行时引擎配置 (Phase 6.5)
+runtime:
+  engine: cek          # recursive | cek | adaptive
+  costBudget: 0.04       # USD — 超过此金额自动暂停
+  maxSteps: 10000           # CEK 最大转移步数
+
+app:
+  mcp:
+    custom:
+      nodes:
+        example-mcp-server:
+          url: https://your-mcp-endpoint.example.com
+          endpoint: /mcp/airouting
+          headers:
+            Authorization: "${MCP_AUTH_TOKEN}"
