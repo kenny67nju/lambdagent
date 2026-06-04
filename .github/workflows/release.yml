@@ -1,0 +1,101 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"   # e.g. v0.1.1, v0.2.0
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (must already exist on main, e.g. v0.1.1)"
+        required: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: write          # needed for creating the GitHub Release
+  # id-token: write        # uncomment when enabling PyPI Trusted Publishing
+
+jobs:
+  build:
+    name: build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: pip install --upgrade pip "setuptools>=77" wheel build twine
+
+      - name: Build distributions
+        run: python -m build
+
+      - name: Validate metadata
+        run: twine check dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 30
+
+  github-release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Extract version from tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          body: |
+            See [CHANGELOG.md](./CHANGELOG.md) for details.
+
+            **Install from this release**:
+            ```bash
+            pip install https://github.com/kenny67nju/lambdagent/releases/download/${{ steps.tag.outputs.tag }}/lambdagent-${TAG_VERSION#v}-py3-none-any.whl
+            ```
+
+  # ─── PyPI Trusted Publishing — opt-in by uncommenting + configuring ────
+  # 1. Create a "Trusted Publisher" in PyPI project settings pointing at
+  #    this repo + workflow name + environment "pypi".
+  # 2. Add an environment `pypi` in repo Settings → Environments.
+  # 3. Uncomment id-token: write at the top, then this job.
+  #
+  # pypi-publish:
+  #   name: Publish to PyPI
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   environment: pypi
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - uses: actions/download-artifact@v4
+  #       with: { name: dist, path: dist/ }
+  #     - uses: pypa/gh-action-pypi-publish@release/v1

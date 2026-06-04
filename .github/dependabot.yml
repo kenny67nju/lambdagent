@@ -1,0 +1,46 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "ci"
+      include: scope
+
+  # Python (pyproject.toml dependencies + optional extras)
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "deps"
+      include: scope
+    # Group LLM-provider and heavy optional deps so we don't get N separate PRs
+    groups:
+      llm-providers:
+        patterns:
+          - "anthropic"
+          - "openai"
+      knowledge-stack:
+        patterns:
+          - "PyPDF2"
+          - "python-docx"
+          - "markdown*"
+          - "html2text"
+      observability:
+        patterns:
+          - "opentelemetry*"
+      dev-toolchain:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "build"
+          - "twine"

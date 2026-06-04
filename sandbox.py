@@ -32,7 +32,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import resource
 import signal
 import subprocess
 import sys
@@ -42,6 +41,28 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set
+
+# POSIX-only: resource module unavailable on Windows.
+# SandboxedTool / SecureExecutor / ResourceLimiter raise NotImplementedError
+# at instantiation time on platforms without it.
+try:
+    import resource  # type: ignore[import-not-found]
+    _HAS_RESOURCE = True
+except ImportError:  # pragma: no cover — Windows path
+    resource = None  # type: ignore[assignment]
+    _HAS_RESOURCE = False
+
+# POSIX-only signals: SIGKILL is the canonical "force kill" that resource limits
+# trigger. On Windows we use TerminateProcess via subprocess.kill() instead.
+_SIGKILL = getattr(signal, "SIGKILL", None)
+
+_SANDBOX_AVAILABLE = _HAS_RESOURCE and _SIGKILL is not None
+_SANDBOX_UNAVAILABLE_MSG = (
+    "Sandbox features (SandboxedTool, SecureExecutor, ResourceLimiter) require "
+    "POSIX resource limits and signals; not available on this platform "
+    f"({platform.system()}). Run lambdagent in WSL2 or a Linux container for "
+    "sandboxed execution."
+)
 
 from .core import Term, Context, ValidationError
 
@@ -147,9 +168,16 @@ class ResourceLimiter:
 
     _subprocess_blocked = False
 
+    def __new__(cls):
+        if not _SANDBOX_AVAILABLE:
+            raise NotImplementedError(_SANDBOX_UNAVAILABLE_MSG)
+        return super().__new__(cls)
+
     @staticmethod
     def apply(policy: SandboxPolicy):
         """Apply resource limits in current process. Call after fork."""
+        if not _SANDBOX_AVAILABLE:
+            raise NotImplementedError(_SANDBOX_UNAVAILABLE_MSG)
         # CPU time limit
         if policy.cpu_time > 0:
             soft = int(policy.cpu_time)
@@ -275,6 +303,8 @@ class SandboxedTool(Term):
 
     def __init__(self, name: str, fn: Callable, policy: Optional[SandboxPolicy] = None,
                  description: str = ""):
+        if not _SANDBOX_AVAILABLE:
+            raise NotImplementedError(_SANDBOX_UNAVAILABLE_MSG)
         super().__init__(name)
         self.fn = fn
         self.policy = policy or SandboxPolicy.default()
@@ -441,6 +471,8 @@ class SecureExecutor:
     """
 
     def __init__(self, default_policy: Optional[SandboxPolicy] = None):
+        if not _SANDBOX_AVAILABLE:
+            raise NotImplementedError(_SANDBOX_UNAVAILABLE_MSG)
         self.default_policy = default_policy or SandboxPolicy.default()
         self._stats = {
             "sandboxed_calls": 0,

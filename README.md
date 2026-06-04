@@ -2,8 +2,11 @@
 
 **Lambda Calculus Agent DSL** — Every agent is a function. Every composition is function composition. Every loop is a Y combinator.
 
+[![tests](https://github.com/kenny67nju/lambdagent/actions/workflows/test.yml/badge.svg)](https://github.com/kenny67nju/lambdagent/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/kenny67nju/lambdagent/branch/main/graph/badge.svg)](https://codecov.io/gh/kenny67nju/lambdagent)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-orange.svg)](./LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 ## Overview
 
