@@ -121,3 +121,6 @@ packages = [
     "lambdagent.skillpacks",
     "lambdagent.skillpacks.research",
 ]
+
+[tool.setuptools.package-data]
+lambdagent = ["py.typed"]

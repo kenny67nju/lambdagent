@@ -106,7 +106,7 @@ def demo_self_correcting_translator():
         score_raw = judge(f"Original: {source}\nBack-translated: {back}", ctx)
         try:
             score = int(score_raw.strip())
-        except:
+        except (ValueError, IndexError):
             score = 5
         print(f"  [score] {score}/10")
 
@@ -298,7 +298,7 @@ def demo_recursive_document():
         lines = review.strip().split("\n")
         try:
             score = int(lines[0].strip().split()[0])
-        except:
+        except (ValueError, IndexError):
             score = 6
         feedback = lines[1] if len(lines) > 1 else "No specific feedback"
 
@@ -380,7 +380,7 @@ def demo_self_learning():
             actual_raw = learner(str(x), ctx)
             try:
                 actual = int(actual_raw.strip())
-            except:
+            except (ValueError, IndexError):
                 actual = -1
 
             ok = actual == expected

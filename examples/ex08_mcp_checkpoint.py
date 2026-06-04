@@ -97,7 +97,7 @@ class MockMCPHandler(BaseHTTPRequestHandler):
             try:
                 result = eval(expr, {"__builtins__": {}}, {})
                 return {"content": [{"type": "text", "text": f"{expr} = {result}"}]}
-            except:
+            except Exception:
                 return {"content": [{"type": "text", "text": f"Cannot evaluate: {expr}"}]}
         elif name == "translator":
             text = args.get("text", args.get("input", ""))
