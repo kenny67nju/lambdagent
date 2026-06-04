@@ -7,11 +7,11 @@
 
 ## Overview
 
-`lambdagent` is a Python DSL that models AI agents as Lambda calculus terms. Instead of ad-hoc agent frameworks, it provides **11 core + 5 multi-agent + 4 skill + sandbox + protocol constructs** with rigorous mathematical foundations — each one maps directly to a concept in Lambda calculus or pi-calculus.
+`lambdagent` is a Python DSL that models AI agents as Lambda calculus terms. Instead of ad-hoc agent frameworks, it provides **11 core + 5 multi-agent + 5 skill + sandbox + protocol constructs** with rigorous mathematical foundations — each one maps directly to a concept in Lambda calculus or pi-calculus.
 
 **Core insight**: An LLM-Dataset Pair (M, D) is equivalent to a λ-term. Training defines the function; inference is β-reduction.
 
-**Stats**: ~11,300 lines of Python | 81 exported symbols | 46 source files | 4 patents filed
+**Stats**: ~35,000 lines of Python | 152 exported symbols | 125 source files | 4 patents filed
 
 ```
 YAML Config ──→ from_config() ──→ Lambda Term ──→ Runtime ──→ Result
@@ -20,12 +20,16 @@ YAML Config ──→ from_config() ──→ Lambda Term ──→ Runtime ─�
 
 ## Installation
 
-```bash
-pip install lambdagent
+`lambdagent` is not yet published to PyPI. Install from source:
 
-# Or from source:
-git clone https://github.com/your-org/lambdagent.git
+```bash
+git clone https://github.com/kenny67nju/lambdagent.git
 cd lambdagent && pip install -e .
+
+# Optional LLM provider extras:
+pip install -e ".[anthropic]"   # Anthropic Claude
+pip install -e ".[openai]"      # OpenAI / DashScope (OpenAI-compatible)
+pip install -e ".[all]"         # everything
 ```
 
 **Dependencies**: `pyyaml` (required), `anthropic` / `openai` (optional, for LLM providers)
@@ -170,7 +174,7 @@ save_context(ctx, "checkpoint.json")
 
 ```python
 # Describe what you need in natural language → auto-generate YAML → compile → run
-python nl2agent.py "Build a research assistant that can search and analyze" \
+python examples/nl2agent_demo.py "Build a research assistant that can search and analyze" \
     -t "Research the latest Agent DSL frameworks"
 ```
 
@@ -234,46 +238,114 @@ python nl2agent.py "Build a research assistant that can search and analyze" \
 ## Architecture
 
 ```
-lambdagent/                  # ~11,300 lines, 46 .py files, 81 exported symbols
-├── __init__.py              # Public API — 81 symbols
+lambdagent/                  # ~35,000 lines, 125 .py files, 152 exported symbols
+│
+│   ── Core λ-calculus ─────────────────────────────────────────────
+├── __init__.py              # Public API — 152 symbols
 ├── core.py                  # Term, Context, TraceEntry (base abstractions)
 ├── primitives.py            # Lam, Compose, If, Loop, Pair, Fst, Snd, Tool
 ├── extensions.py            # Par, Route, Memory, Guard
 ├── dataset.py               # Dataset → Lam converter
+├── conversation.py          # ConversationLam — history-aware Lambda
 ├── multiagent.py            # Channel, Send, Receive, SharedMemory,
 │                            #   GroupChat, Handoff, AsyncPar
+├── async_core.py            # Async aapply() on all Term types
+├── patterns.py              # Reusable multi-agent collaboration patterns
+│
+│   ── Paper II / III: types, effects, costs, rewrites ─────────────
+├── types.py                 # LamType, Effect tags, T-Compose checking
+├── effects.py               # Paper III effect algebra (Pure/IO/LLM/STATE)
+├── handlers.py              # Algebraic effect handlers (Production/Test/Trace)
+├── cost_grade.py            # Graded types for static cost prediction
+├── cek_machine.py           # CEK abstract machine + CostVector
+├── rewrite.py               # Algebraic-law AST rewriting (optimize_agent)
+├── store_analysis.py        # Store-independence analysis (Prop 30)
+│
+│   ── Skills / MCP / A2A / RAG / Checkpoint ───────────────────────
 ├── skills.py                # Skill, SkillSignature, SkillPack,
 │                            #   SkillRegistry, SkillAgent, @skill
-├── mcp_client.py            # MCPServer, MCPTool, MCPTransport (HTTP+stdio),
-│                            #   mcp_tools(), mcp_tool()
-├── checkpoint.py            # Checkpoint, CheckpointManager,
-│                            #   save_context(), load_context()
-├── a2a.py                   # AgentCard, A2AServer, A2AClient, A2ATask,
-│                            #   skill_to_agent_card(), registry_to_agent_card()
+├── mcp_client.py            # MCPServer, MCPTool (HTTP + stdio)
+├── mcp_server.py            # Expose lambdagent as an MCP server
+├── resilient_mcp.py         # MCP with circuit breaker + retry + caching
+├── a2a.py                   # AgentCard, A2AServer, A2AClient
 ├── rag.py                   # RAGTool, AgenticRAG, SimpleVectorStore,
-│                            #   ChromaStore, Document, SearchResult, create_rag()
-├── sandbox.py               # SandboxedTool, SandboxPolicy, SecureExecutor,
-│                            #   ResourceLimiter, @sandboxed, SandboxViolation
-├── from_config.py           # YAML → Lambda compiler (v1)
-├── fromconfig/              # YAML → Lambda Term compiler (v2)
+│                            #   ChromaStore, Document, SearchResult
+├── checkpoint.py            # Checkpoint, save_context, load_context
+├── execution_checkpoint.py  # Resumable execution position
+│
+│   ── Sandbox / Isolation / Safety ────────────────────────────────
+├── sandbox.py               # SandboxedTool, SandboxPolicy, SecureExecutor
+├── isolation.py             # Git-worktree based agent file isolation
+├── tool_gateway.py          # Tool-call permission gateway
+├── validated_tool.py        # Schema-validated tool wrapper
+├── concurrent_tools.py      # Concurrency-safety declarations
+│
+│   ── Resilience / Observability / Resource control ───────────────
+├── cancellation.py          # Hierarchical cancellation tokens
+├── retry.py                 # Retry, exponential backoff, timeouts
+├── rate_limiter.py          # Token-bucket LLM rate limiting
+├── token_budget.py          # Token budget tracking + enforcement
+├── context_manager.py       # Context window compaction
+├── hooks.py                 # 3-layer hook system (registry/term/decorator)
+├── observability.py         # OpenTelemetry-style β-reduction tracing
+├── trace.py                 # Enhanced trace store + anomaly detection
+│
+│   ── YAML compiler ───────────────────────────────────────────────
+├── from_config.py           # v1 compiler (compat shim)
+├── lint.py                  # v1 lint (compat shim → fromconfig.lint)
+├── fromconfig/              # v2 compiler
 │   ├── compiler.py          #   from_config(), build_agent() — 5 agent types
 │   ├── schema.py            #   YAML schema validation
 │   ├── lint.py              #   Static analysis (L001-L016)
 │   ├── lambda_expr.py       #   Export pure Lambda notation
 │   └── errors.py            #   CompileError, SchemaError, SemanticError
+│
+│   ── Runtime ─────────────────────────────────────────────────────
 ├── agentruntime/            # Runtime: Term × Input → Result
-│   ├── executor.py          #   β-reduction engine (pattern-match on Term type)
+│   ├── executor.py          #   β-reduction engine
 │   ├── react_engine.py      #   ReAct 7-phase loop engine
-│   ├── action_parser.py     #   Extract actions from LLM output (JSON/XML/keyword)
-│   ├── llm_adapter.py       #   Multi-provider LLM (Anthropic/OpenAI/DashScope)
+│   ├── adaptive_engine.py   #   Adaptive engine selection
+│   ├── async_react_engine.py #  Async ReAct engine
+│   ├── cek_engine.py        #   CEK-machine driven engine
+│   ├── action_parser.py     #   Action extraction (JSON/XML/keyword)
+│   ├── llm_adapter.py       #   Multi-provider LLM dispatch
 │   ├── mcp_client.py        #   MCP JSON-RPC 2.0 HTTP client
-│   ├── memory_backend.py    #   Local/SQLite/Redis memory backends
+│   ├── memory_backend.py    #   Local/SQLite/Redis memory
 │   ├── trace_store.py       #   β-reduction trace recording
-│   ├── termination.py       #   Y combinator base case detection
-│   ├── config.py            #   RuntimeConfig dataclasses
+│   ├── termination.py       #   Y-combinator base-case detection
 │   └── runtime.py           #   Top-level Runtime class
+│
+│   ── LLM providers ───────────────────────────────────────────────
+├── providers/               # Pluggable LLM providers
+│   ├── anthropic_provider.py #  Anthropic Claude
+│   ├── openai_compat_provider.py # OpenAI / DashScope / Ollama
+│   ├── claude_code_provider.py #  Claude-Code CLI provider
+│   └── base.py              #   LLMProvider protocol
+│
+│   ── Built-in tools ──────────────────────────────────────────────
+├── builtin_tools/           # 30+ ready-to-use tools
+│   ├── file_tools.py        #   Read/Edit/Write/List/Search
+│   ├── shell_tools.py       #   Bash + Git
+│   ├── code_tools.py        #   CodeSearch / ProjectMap / RunTests
+│   ├── web_tools.py         #   WebSearch / WebFetch / NotebookEdit
+│   ├── knowledge_tools.py   #   Chunk/OCR/DocGen/KB management
+│   ├── qa_tools.py          #   IngestFiles / QueryKnowledge / DeepAnalysis
+│   ├── wiki_tools.py        #   WikiIngest / WikiQuery / WikiLint
+│   ├── task_manager.py      #   TaskCreate / TaskUpdate / TaskList
+│   ├── permission_ui.py     #   Interactive permission prompts
+│   ├── terminal_ui.py       #   Rich terminal rendering
+│   └── registry.py          #   BUILTIN_TOOLS master registry
+│
+│   ── Framework migration / Skill packs ──────────────────────────
+├── extractors/              # Migrate from other frameworks
+│   ├── langchain_extractor.py
+│   ├── autogen_extractor.py
+│   └── crewai_extractor.py
+├── skillpacks/              # Curated skill collections
+│   └── research/            #   Research-oriented skills
+│
 └── cli/                     # Command-line interface
-    ├── main.py              #   compile, run, repl, lint, lambda, serve
+    ├── main.py              #   compile / run / repl / lint / lambda / trace / tools / version
     └── shell_tool.py        #   Shell tool integration
 ```
 
@@ -292,8 +364,17 @@ lambdagent repl config.yml
 # Static analysis
 lambdagent lint config.yml
 
-# Export Lambda expression
+# Export pure Lambda expression
 lambdagent lambda config.yml
+
+# View / replay β-reduction trace
+lambdagent trace <run-id>
+
+# List and test built-in tools
+lambdagent tools
+
+# Print version info
+lambdagent version
 ```
 
 ## Agent Types
@@ -315,7 +396,7 @@ This project is grounded in the equivalence between LLM-Dataset Pairs and Lambda
 - **S and K Combinators**: Proven Turing-complete via SKI calculus ✓
 - **Arithmetic & Logic**: ADD, MUL, AND, OR, NOT all verified at 94-100% accuracy ✓
 
-See the `experiments/` directory in the [MDPair](https://github.com/your-org/MDPair) repo for verification code.
+See the `experiments/` directory in the [MDPair](https://github.com/kenny67nju/MDPair) repo for verification code.
 
 ## Multi-Provider LLM Support
 
@@ -346,6 +427,6 @@ Business Source License 1.1 (BUSL-1.1). Free for non-production use and for prod
   title={lambdagent: Lambda Calculus Agent DSL},
   author={Qin Liu},
   year={2026},
-  url={https://github.com/your-org/lambdagent}
+  url={https://github.com/kenny67nju/lambdagent}
 }
 ```
