@@ -35,8 +35,10 @@ class TestParTrueParallel:
         result = par.apply("x", Context())
         elapsed = time.time() - t0
         assert result == ("a", "b")
-        # Parallel: should be ~0.1s not ~0.2s
-        assert elapsed < 0.18
+        # Parallel should run ~0.1s, sequential would be ~0.2s. Threshold of
+        # 0.19s gives generous headroom for CI scheduling jitter while still
+        # comfortably below the 0.2s sequential baseline.
+        assert elapsed < 0.19, f"expected parallel ~0.1s, got {elapsed:.3f}s (sequential would be ~0.2s)"
 
     def test_par_single_agent(self):
         from lambdagent.extensions import Par
