@@ -27,18 +27,27 @@ from lambdagent.primitives import Tool, Lam, Compose, Loop
 
 class TestParTrueParallel:
     def test_par_runs_parallel(self):
+        """Verify true parallelism via thread synchronization, not wall-clock.
+
+        Wall-clock timing is too flaky on overloaded CI runners (macOS 3.10
+        regularly hit ~0.2s for what should be a 0.1s parallel run). Instead
+        we use a Barrier: each tool blocks until BOTH have entered. If Par
+        ran sequentially the second one would never enter and Barrier would
+        time out.
+        """
+        import threading
         from lambdagent.extensions import Par
-        t0 = time.time()
-        slow1 = Tool("s1", lambda x: (time.sleep(0.1), "a")[1])
-        slow2 = Tool("s2", lambda x: (time.sleep(0.1), "b")[1])
-        par = Par(slow1, slow2)
+        gate = threading.Barrier(2, timeout=2.0)
+
+        def make_tool(label):
+            def fn(_):
+                gate.wait()   # raises BrokenBarrierError if Par is sequential
+                return label
+            return Tool(f"s_{label}", fn)
+
+        par = Par(make_tool("a"), make_tool("b"))
         result = par.apply("x", Context())
-        elapsed = time.time() - t0
-        assert result == ("a", "b")
-        # Parallel should run ~0.1s, sequential would be ~0.2s. Threshold of
-        # 0.19s gives generous headroom for CI scheduling jitter while still
-        # comfortably below the 0.2s sequential baseline.
-        assert elapsed < 0.19, f"expected parallel ~0.1s, got {elapsed:.3f}s (sequential would be ~0.2s)"
+        assert result == ("a", "b"), f"expected (a, b), got {result!r}"
 
     def test_par_single_agent(self):
         from lambdagent.extensions import Par
