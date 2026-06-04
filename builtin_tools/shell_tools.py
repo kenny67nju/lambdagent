@@ -3,6 +3,12 @@ lambdagent.builtin_tools.shell_tools — Enhanced shell execution
 
 Bash     λx. exec(command)  — persistent CWD, background, timeout
 Git*     λx. git(args)      — status, diff, log, commit, branch
+
+Cross-platform note: by default ``shell=True`` routes through ``cmd.exe`` on
+Windows. ``_resolve_shell()`` prefers Git-Bash (``bash.exe``) when it's on
+PATH so user-supplied bash-style commands (``&&``, ``$VAR``, single-quote
+quoting, heredocs) keep working. Pure ``cmd``-syntax also works for users
+who explicitly want it.
 """
 from __future__ import annotations
 
@@ -12,6 +18,8 @@ import shlex
 import subprocess
 import threading
 from typing import Any, Dict, Optional
+
+from .._shell_compat import resolve_shell as _resolve_shell
 
 
 # Shared session CWD (persists across calls)
@@ -91,11 +99,14 @@ def run_bash(input_val: Any) -> str:
     env = os.environ.copy()
     env["HOME"] = os.path.expanduser("~")
 
+    shell_exec = _resolve_shell()
+
     if background:
         # Background execution
         try:
             proc = subprocess.Popen(
                 command, shell=True, cwd=working_dir, env=env,
+                executable=shell_exec,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
             return f"[BACKGROUND] PID={proc.pid}, command='{command[:60]}'"
@@ -106,6 +117,7 @@ def run_bash(input_val: Any) -> str:
     try:
         result = subprocess.run(
             command, shell=True, cwd=working_dir, env=env,
+            executable=shell_exec,
             capture_output=True, text=True, timeout=timeout,
         )
         stdout = result.stdout

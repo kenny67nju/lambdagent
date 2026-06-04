@@ -12,6 +12,8 @@ import os
 import subprocess
 from typing import Any, Dict, Optional
 
+from .._shell_compat import resolve_shell as _resolve_shell
+
 
 # ════════════════════════════════════════════════════════════
 # A11: CodeSearch — semantic code search
@@ -168,11 +170,29 @@ def _do_search(pattern: str, path: str, language: str, max_results: int) -> list
 
 
 def _find_rg() -> Optional[str]:
-    for cmd in ["rg", "/usr/local/bin/rg", "/opt/homebrew/bin/rg"]:
+    """Locate the ripgrep binary across platforms.
+
+    Order: PATH (works on Linux/macOS/Windows via shutil.which) → known
+    homebrew/macports/winget locations. Returns None if rg is unavailable;
+    callers fall back to a slower Python regex walk.
+    """
+    import shutil
+    found = shutil.which("rg")
+    if found:
+        return found
+    # Per-platform fallback locations (Brew, MacPorts, Chocolatey, scoop)
+    candidates = [
+        "/usr/local/bin/rg",            # Linux / Intel-mac Brew
+        "/opt/homebrew/bin/rg",         # Apple-silicon Brew
+        "/opt/local/bin/rg",            # MacPorts
+        "C:/ProgramData/chocolatey/bin/rg.exe",   # Chocolatey
+        "C:/tools/ripgrep/rg.exe",                # scoop default
+    ]
+    for cmd in candidates:
         try:
             subprocess.run([cmd, "--version"], capture_output=True, timeout=3)
             return cmd
-        except (FileNotFoundError, subprocess.TimeoutExpired):
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             continue
     return None
 
@@ -326,7 +346,7 @@ def run_tests(input_val: Any) -> str:
     # Execute
     try:
         result = subprocess.run(
-            cmd, shell=True, cwd=cwd,
+            cmd, shell=True, executable=_resolve_shell(), cwd=cwd,
             capture_output=True, text=True, timeout=300,
         )
         output = result.stdout

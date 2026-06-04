@@ -37,6 +37,20 @@ pip install -e ".[all]"         # everything
 
 **Dependencies**: `pyyaml` (required), `anthropic` / `openai` (optional, for LLM providers)
 
+### Platform support
+
+CI passes on **Linux, macOS, and Windows** across Python 3.10 / 3.11 / 3.12. A few caveats on Windows:
+
+| Feature | Linux / macOS | Windows |
+|---------|:-:|:-:|
+| 11 core λ-constructs + 5 multi-agent + Skills + RAG + MCP / A2A + Types / Effects / Costs | ✅ | ✅ |
+| YAML compiler, runtime, CLI | ✅ | ✅ |
+| `Bash` / `Git*` / `RunTests` built-in tools | ✅ | ✅ via Git-Bash (auto-detected); falls back to `cmd.exe` if Git for Windows is absent |
+| `ripgrep`-backed `SearchContent` / `CodeSearch` | ✅ if `rg` is installed | ✅ if `rg.exe` is on PATH; Python fallback otherwise |
+| `SandboxedTool` / `SecureExecutor` / `ResourceLimiter` | ✅ | ❌ — raises `NotImplementedError` (POSIX resource limits + `SIGKILL` are required). Run lambdagent inside **WSL2** or a Linux container if you need sandboxed execution. |
+
+For the best Windows experience, install [Git for Windows](https://git-scm.com/download/win) (provides `bash.exe`) and optionally [ripgrep](https://github.com/BurntSushi/ripgrep#installation).
+
 ## Quick Start
 
 ### Python DSL

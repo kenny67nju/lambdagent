@@ -16,6 +16,8 @@ import shlex
 import subprocess
 from typing import Optional
 
+from .._shell_compat import resolve_shell as _resolve_shell
+
 
 DANGEROUS_PATTERNS = [
     "rm -rf /",
@@ -79,6 +81,7 @@ class ShellTool:
             result = subprocess.run(
                 cmd,
                 shell=True,
+                executable=_resolve_shell(),
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
@@ -127,6 +130,7 @@ class CLIAgent:
                 proc = subprocess.run(
                     self.command,
                     shell=True,
+                    executable=_resolve_shell(),
                     input=str(input_text),
                     capture_output=True,
                     text=True,

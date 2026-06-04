@@ -357,12 +357,23 @@ def search_content(input_val: Any) -> str:
 
 
 def _find_rg() -> Optional[str]:
-    """Find ripgrep binary."""
-    for cmd in ["rg", "/usr/local/bin/rg", "/opt/homebrew/bin/rg"]:
+    """Find ripgrep binary across Linux / macOS / Windows."""
+    import shutil
+    found = shutil.which("rg")
+    if found:
+        return found
+    candidates = [
+        "/usr/local/bin/rg",
+        "/opt/homebrew/bin/rg",
+        "/opt/local/bin/rg",
+        "C:/ProgramData/chocolatey/bin/rg.exe",
+        "C:/tools/ripgrep/rg.exe",
+    ]
+    for cmd in candidates:
         try:
             subprocess.run([cmd, "--version"], capture_output=True, timeout=5)
             return cmd
-        except (FileNotFoundError, subprocess.TimeoutExpired):
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             continue
     return None
 
