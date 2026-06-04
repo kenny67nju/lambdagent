@@ -32,9 +32,65 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# LLM providers
 anthropic = ["anthropic>=0.20.0"]
 openai = ["openai>=1.0.0"]
-all = ["anthropic>=0.20.0", "openai>=1.0.0"]
+
+# RAG / vector backends
+rag = ["chromadb>=0.4.0"]
+
+# Knowledge / document ingestion (PDF, DOCX, OCR, HTML)
+knowledge = [
+    "PyPDF2>=3.0.0",
+    "python-docx>=1.0.0",
+    "markdown>=3.4.0",
+    "markdownify>=0.11.0",
+    "html2text>=2024.0.0",
+]
+ocr = ["paddleocr>=2.7.0"]
+pdfgen = ["weasyprint>=60.0"]
+
+# Sandbox / process isolation
+sandbox = ["cloudpickle>=2.2.0", "dill>=0.3.6"]
+
+# Checkpoint encryption
+checkpoint-crypto = ["cryptography>=41.0.0"]
+
+# Memory backends
+redis = ["redis>=5.0.0"]
+
+# Observability
+otel = ["opentelemetry-api>=1.20.0", "opentelemetry-sdk>=1.20.0"]
+
+# Terminal UI
+tui = ["rich>=13.0.0"]
+
+# Dev / contributor toolchain
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",
+]
+
+# Everything (no dev / no ocr — too heavy)
+all = [
+    "anthropic>=0.20.0",
+    "openai>=1.0.0",
+    "chromadb>=0.4.0",
+    "PyPDF2>=3.0.0",
+    "python-docx>=1.0.0",
+    "markdown>=3.4.0",
+    "markdownify>=0.11.0",
+    "html2text>=2024.0.0",
+    "cloudpickle>=2.2.0",
+    "dill>=0.3.6",
+    "cryptography>=41.0.0",
+    "redis>=5.0.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "rich>=13.0.0",
+]
 
 [project.scripts]
 lambdagent = "lambdagent.cli.main:main"

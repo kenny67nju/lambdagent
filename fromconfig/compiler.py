@@ -13,6 +13,7 @@ v2 Optimizations:
 """
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -416,12 +417,15 @@ def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dic
             )
             pack.add(skill)
 
-    # Register ToolSearch if available
+    # ToolSearch lives in the optional `agentexample` sibling package. When the
+    # sibling is not installed (e.g. standalone lambdagent install), skip the
+    # registration entirely so calls fail loudly with KeyError instead of
+    # silently returning a misleading "[not available]" string.
     try:
         from agentexample.agent67v2.tools.tool_search import tool_search
         tools["ToolSearch"] = lambda x: tool_search.apply(x)
     except ImportError:
-        tools["ToolSearch"] = lambda x: "[ToolSearch not available]"
+        pass
 
     # Register skill pack
     if has_skills and len(pack) > 0:
@@ -1109,6 +1113,60 @@ def _compile_mcp_caller(server_name: str, tool_name: str, cfg: Dict) -> Callable
 # Guard & Memory compilation
 # ============================================================
 
+_SAFE_FUNCS = {
+    "len": len, "str": str, "int": int, "float": float, "bool": bool,
+    "abs": abs, "min": min, "max": max, "sum": sum,
+    "all": all, "any": any, "isinstance": isinstance,
+}
+_SAFE_NODES = (
+    ast.Expression, ast.BoolOp, ast.BinOp, ast.UnaryOp, ast.Compare,
+    ast.IfExp, ast.Constant, ast.Name, ast.Load,
+    ast.Subscript, ast.Slice, ast.Index if hasattr(ast, "Index") else ast.Slice,
+    ast.List, ast.Tuple, ast.Dict, ast.Set,
+    ast.And, ast.Or, ast.Not, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod,
+    ast.Pow, ast.FloorDiv, ast.BitAnd, ast.BitOr, ast.BitXor,
+    ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Is, ast.IsNot,
+    ast.In, ast.NotIn, ast.USub, ast.UAdd, ast.Invert,
+    ast.Call,  # restricted via node walk
+)
+
+
+def _safe_eval(expr: str, x):
+    """Safely evaluate a guard validator expression.
+
+    Allowed: arithmetic, comparison, boolean, indexing, calls to whitelisted
+    builtins (len/str/int/float/bool/abs/min/max/sum/all/any/isinstance).
+    Single variable: ``x`` (the value being validated).
+    Disallowed: attribute access, lambda, comprehensions, imports, dunders.
+
+    Returns the expression's truthiness, or False on any error.
+    """
+    try:
+        tree = ast.parse(expr, mode="eval")
+        # Validate AST shape — reject anything outside the safe whitelist.
+        for node in ast.walk(tree):
+            if not isinstance(node, _SAFE_NODES):
+                return False
+            # No attribute access — blocks .__class__ / .__mro__ / .__globals__
+            if isinstance(node, ast.Attribute):
+                return False
+            # Calls must be to a whitelisted Name only (no chained calls or attrs).
+            if isinstance(node, ast.Call):
+                if not isinstance(node.func, ast.Name) or node.func.id not in _SAFE_FUNCS:
+                    return False
+            # Names must reference x or a whitelisted callable.
+            if isinstance(node, ast.Name) and node.id != "x" and node.id not in _SAFE_FUNCS:
+                return False
+        # Disable builtins explicitly in case of any miss.
+        return bool(eval(  # noqa: S307 — AST-validated above
+            compile(tree, "<guard.validator>", "eval"),
+            {"__builtins__": {}},
+            {"x": x, **_SAFE_FUNCS},
+        ))
+    except Exception:
+        return False
+
+
 def _compile_guard(agent: Term, guard_cfg: Dict) -> Term:
     """Wrap agent with Guard (dependent type: {x:T | P(x)}).
 
@@ -1122,13 +1180,10 @@ def _compile_guard(agent: Term, guard_cfg: Dict) -> Term:
     max_output_length = guard_cfg.get("maxOutputLength", 0)
 
     def validator_fn(x):
-        try:
-            # Enforce maxOutputLength: truncate if exceeded
-            if max_output_length > 0 and isinstance(x, str) and len(x) > max_output_length:
-                return False  # trigger retry or fallback
-            return bool(eval(validator_expr, {"x": x, "len": len, "str": str, "int": int, "float": float}))
-        except Exception:
-            return False
+        # Enforce maxOutputLength: truncate if exceeded
+        if max_output_length > 0 and isinstance(x, str) and len(x) > max_output_length:
+            return False  # trigger retry or fallback
+        return _safe_eval(validator_expr, x)
 
     on_fail = None
     if fallback == "empty":

@@ -56,6 +56,18 @@ class ClaudeLam(Term):
     """
     Lambda abstraction backed by Claude Code CLI with session persistence.
 
+    .. deprecated:: 0.1.0
+        Use :class:`lambdagent.providers.ClaudeCodeProvider` together with
+        :class:`lambdagent.Lam` instead. ``ClaudeLam`` will be removed in 0.3.0.
+        Migration::
+
+            # before
+            agent = ClaudeLam("name", "prompt")
+
+            # after
+            from lambdagent.providers import ClaudeCodeProvider
+            agent = Lam("name", "prompt", provider=ClaudeCodeProvider(...))
+
     Key improvement over stateless `-p`:
       Each apply() continues the same conversation session.
       Claude retains full memory of previous steps, file contents, etc.
@@ -74,6 +86,13 @@ class ClaudeLam(Term):
         on_chunk: Callable[[str], None] | None = None,
         inject_override: bool = True,
     ):
+        import warnings
+        warnings.warn(
+            "ClaudeLam is deprecated and will be removed in lambdagent 0.3.0. "
+            "Use Lam(provider=ClaudeCodeProvider(...)) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(name)
         self.prompt = prompt
         self.model = model

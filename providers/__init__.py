@@ -7,7 +7,7 @@ L02: Added ChatMessage, ChatResponse exports and create_provider() factory
 for unified multi-provider instantiation.
 """
 from .base import LLMProvider, ProviderConfig, ProviderError, Message, ChatMessage, ChatResponse
-from .claude_code import ClaudeLam  # backward compat
+from .claude_code import ClaudeLam  # deprecated, removed in 0.3.0 — use ClaudeCodeProvider
 from .claude_code_provider import ClaudeCodeProvider
 from .anthropic_provider import AnthropicProvider
 from .openai_compat_provider import OpenAICompatProvider
@@ -68,7 +68,7 @@ def create_provider(provider_name: str, **kwargs) -> LLMProvider:
 __all__ = [
     "LLMProvider", "ProviderConfig", "ProviderError", "Message",
     "ChatMessage", "ChatResponse",
-    "ClaudeLam",  # backward compat for PersonalAssistant
+    "ClaudeLam",  # deprecated, removed in 0.3.0
     "ClaudeCodeProvider",
     "AnthropicProvider",
     "OpenAICompatProvider",

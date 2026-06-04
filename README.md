@@ -416,9 +416,37 @@ Provider is auto-detected from model name. API keys are read from environment va
 - `OPENAI_API_KEY`
 - `DASHSCOPE_API_KEY`
 
+## MCP Server (use lambdagent from your AI IDE)
+
+`python -m lambdagent.mcp_server` exposes lambdagent's static analysis (lint, cost prediction, type checking, parallel safety) as MCP tools for Claude Code, Cursor, and other MCP clients.
+
+```jsonc
+// Claude Code: .claude/settings.json    |    Cursor: .cursor/mcp.json
+{
+  "mcpServers": {
+    "lambdagent": {
+      "command": "python3",
+      "args": ["-m", "lambdagent.mcp_server"]
+    }
+  }
+}
+```
+
+Exposed tools:
+
+| Tool | Description |
+|------|-------------|
+| `lint_agent_config` | 26-rule structural lint for LangChain/CrewAI/AutoGen/Dify configs |
+| `estimate_agent_cost` | Worst-case cost prediction (tokens, latency, USD, success probability) |
+| `check_agent_types` | T-Compose type checking (output(f) <: input(g)) |
+| `check_parallel_safety` | Store independence verification (Paper II Proposition 30) |
+| `monitor_agent_cost` | Runtime cost anomaly detection (actual vs predicted) |
+
 ## License
 
 Business Source License 1.1 (BUSL-1.1). Free for non-production use and for production use up to 10 users; converts to Apache 2.0 on 2031-04-05. See [LICENSE](./LICENSE).
+
+Commercial licensing inquiries: **qinliu@nju.edu.cn**.
 
 ## Citation
 
