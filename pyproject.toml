@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,18 +7,19 @@ name = "lambdagent"
 version = "0.1.0"
 description = "A Lambda Calculus Agent DSL — every agent is a function, every composition is function composition, every loop is a Y combinator."
 readme = "README.md"
-license = {text = "BUSL-1.1"}
-license-files = ["LICENSE"]
+license = "BUSL-1.1"
 requires-python = ">=3.10"
 authors = [
-    {name = "kenny67nju"},
+    {name = "Qin Liu", email = "qinliu@nju.edu.cn"},
+]
+maintainers = [
+    {name = "Qin Liu", email = "qinliu@nju.edu.cn"},
 ]
 keywords = ["agent", "lambda-calculus", "dsl", "llm", "ai"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -42,6 +43,14 @@ lambdagent = "lambdagent.cli.main:main"
 Homepage = "https://github.com/kenny67nju/lambdagent"
 Repository = "https://github.com/kenny67nju/lambdagent"
 Issues = "https://github.com/kenny67nju/lambdagent/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+filterwarnings = [
+    "ignore::DeprecationWarning:lambdagent.from_config",
+    "ignore::DeprecationWarning:lambdagent.lint",
+]
 
 [tool.setuptools]
 package-dir = {"lambdagent" = "."}

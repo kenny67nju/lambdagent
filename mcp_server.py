@@ -310,7 +310,7 @@ def handle_estimate_agent_cost(args: Dict) -> Dict:
 
 def handle_check_agent_types(args: Dict) -> Dict:
     """I01: Type-check agent pipeline."""
-    from lambdagent.types import check_compose_types
+    from lambdagent.lam_types import check_compose_types
 
     cfg = _load_config(args)
     term = _compile_term(cfg)
@@ -327,7 +327,7 @@ def handle_check_agent_types(args: Dict) -> Dict:
             f_out = getattr(stages[i], 'output_type', None)
             g_in = getattr(stages[i + 1], 'input_type', None)
             if f_out and g_in:
-                from lambdagent.types import is_subtype
+                from lambdagent.lam_types import is_subtype
                 if not is_subtype(f_out, g_in):
                     errors.append({
                         "stage": i,

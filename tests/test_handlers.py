@@ -271,7 +271,7 @@ class TestComposedAgentsWithHandler:
     def test_handler_preserves_types(self):
         """Handler switching preserves type annotations (Paper III Theorem)"""
         lam = Lam("typed", "Process input")
-        from lambdagent.types import T_STR, T_JSON
+        from lambdagent.lam_types import T_STR, T_JSON
         lam.input_type = T_STR
         lam.output_type = T_JSON({"type": "object"})
 

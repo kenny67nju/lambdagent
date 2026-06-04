@@ -198,8 +198,15 @@ class TestAutoDetect:
 
 
 # ============================================================
-# Guard Core Tests (I10)
+# Guard Core Tests (I10) — require the optional `lambdagent_guard` sibling
+# package, skipped in the standalone install.
 # ============================================================
+
+lambdagent_guard = pytest.importorskip(
+    "lambdagent_guard",
+    reason="lambdagent_guard sibling package not installed (standalone build)",
+)
+
 
 class TestGuardCore:
     def test_runtime_monitor_cost_tracking(self):

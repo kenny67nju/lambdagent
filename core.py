@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .types import LamType, AgentType
+    from .lam_types import LamType, AgentType
     from .effects import Effect, ComposedEffect
 
 
@@ -165,7 +165,7 @@ class Term(ABC):
         """Agent 的输入类型 (Paper III Definition 3)"""
         if self._input_type is not None:
             return self._input_type
-        from .types import T_ANY
+        from .lam_types import T_ANY
         return T_ANY
 
     @input_type.setter
@@ -177,7 +177,7 @@ class Term(ABC):
         """Agent 的输出类型 (Paper III Definition 3)"""
         if self._output_type is not None:
             return self._output_type
-        from .types import T_ANY
+        from .lam_types import T_ANY
         return T_ANY
 
     @output_type.setter
@@ -199,7 +199,7 @@ class Term(ABC):
     @property
     def agent_type(self) -> AgentType:
         """完整的 Agent 函数类型 τ1 →^ε τ2"""
-        from .types import AgentType
+        from .lam_types import AgentType
         eff = self.effect
         eff_str = repr(eff)
         return AgentType(self.input_type, self.output_type, effect=eff_str)
@@ -224,12 +224,12 @@ class Term(ABC):
             raise TypeError("Use instances, not classes")
 
         # Paper III T-Compose: 类型检查 (仅当两端都有非 Any 类型标注时)
-        from .types import T_ANY, is_subtype
+        from .lam_types import T_ANY, is_subtype
         f_out = self.output_type if hasattr(self, 'stages') else self.output_type
         g_in = other.input_type
         if f_out != T_ANY and g_in != T_ANY:
             if not is_subtype(f_out, g_in):
-                from .types import AgentTypeError
+                from .lam_types import AgentTypeError
                 raise AgentTypeError(
                     f"Type mismatch: {self._name} >> {other._name}",
                     source_type=f_out,

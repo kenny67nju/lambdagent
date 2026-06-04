@@ -37,7 +37,7 @@ lambdagent — 基于 Lambda 演算的 Agent DSL
 
 from .core import Term, Context, TraceEntry
 from .core import LambdagentError, UnboundVariable, RouteError, ValidationError
-from .trace import (
+from .tracing import (
     TraceStore, TraceEntry as EnhancedTraceEntry, Anomaly,
     colorize_timeline, detect_anomalies, format_anomalies,
     generate_flamegraph_html, save_flamegraph,
@@ -82,7 +82,7 @@ from .rag import (
     create_rag,
 )
 # Paper III: Type & Effect System
-from .types import (
+from .lam_types import (
     LamType, TypeTag, AgentType, AgentTypeError,
     T_ANY, T_NONE, T_STR, T_INT, T_FLOAT, T_BOOL, T_JSON, T_TUPLE, T_UNION,
     is_subtype, check_compose_types, parse_type_annotation, infer_type_from_value,

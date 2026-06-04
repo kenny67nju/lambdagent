@@ -171,7 +171,7 @@ class TestLam:
     def test_lam_has_type_properties(self):
         agent = Lam("typed", "prompt")
         # Default types are T_ANY
-        from lambdagent.types import T_ANY
+        from lambdagent.lam_types import T_ANY
         assert agent.input_type == T_ANY
         assert agent.output_type == T_ANY
 

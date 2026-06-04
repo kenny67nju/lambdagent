@@ -25,7 +25,7 @@ from typing import Any, Callable, Dict, List, Optional
 from lambdagent.core import Term, Context, LambdagentError
 from lambdagent.primitives import Lam, Compose, Loop, Tool
 from lambdagent.extensions import Par, Route, Memory, Guard
-from lambdagent.types import (
+from lambdagent.lam_types import (
     LamType, AgentType, AgentTypeError,
     T_ANY, T_STR, T_JSON,
     parse_type_annotation, check_compose_types, is_subtype,

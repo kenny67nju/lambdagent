@@ -88,7 +88,10 @@ class TestCreateProvider(unittest.TestCase):
         """create_provider('ollama') returns OpenAICompatProvider with localhost URL."""
         provider = create_provider("ollama")
         self.assertIsInstance(provider, OpenAICompatProvider)
-        self.assertIn("localhost:11434", provider.base_url)
+        self.assertTrue(
+            "localhost:11434" in provider.base_url
+            or "127.0.0.1:11434" in provider.base_url
+        )
         self.assertEqual(provider.provider_name, "ollama")
 
     def test_create_openai_provider(self):

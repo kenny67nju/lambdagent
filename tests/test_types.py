@@ -10,7 +10,7 @@ Tests cover:
 """
 
 import pytest
-from lambdagent.types import (
+from lambdagent.lam_types import (
     LamType, TypeTag, AgentType, AgentTypeError,
     T_ANY, T_NONE, T_STR, T_INT, T_FLOAT, T_BOOL, T_JSON, T_TUPLE, T_UNION,
     is_subtype, check_compose_types, parse_type_annotation, infer_type_from_value,

@@ -340,7 +340,7 @@ class Pair(Term):
         self.first = first
         self.second = second
         # Paper III: Pair 输出类型 = (output(first), output(second))
-        from .types import T_TUPLE
+        from .lam_types import T_TUPLE
         self._output_type = T_TUPLE(first.output_type, second.output_type)
 
     def apply(self, input: Any, ctx: Context | None = None) -> tuple:
