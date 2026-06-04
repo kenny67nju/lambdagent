@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/kenny67nju/lambdagent/security/advisories/new
+    about: Please use private vulnerability reporting — see SECURITY.md
+  - name: Question / discussion
+    url: https://github.com/kenny67nju/lambdagent/discussions
+    about: Use Discussions for open-ended questions
+  - name: Commercial licensing
+    url: mailto:qinliu@nju.edu.cn?subject=lambdagent%20commercial%20license
+    about: BUSL-1.1 commercial license inquiries

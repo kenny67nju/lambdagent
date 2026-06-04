@@ -448,6 +448,15 @@ Business Source License 1.1 (BUSL-1.1). Free for non-production use and for prod
 
 Commercial licensing inquiries: **qinliu@nju.edu.cn**.
 
+## Contact
+
+- 🐛 Bugs / feature requests: [Issues](https://github.com/kenny67nju/lambdagent/issues)
+- 💬 Open discussion: [Discussions](https://github.com/kenny67nju/lambdagent/discussions)
+- 🔒 Security: see [SECURITY.md](./SECURITY.md) — do **not** open a public issue
+- 🤝 Contributing: see [CONTRIBUTING.md](./CONTRIBUTING.md)
+- 📜 Changelog: see [CHANGELOG.md](./CHANGELOG.md)
+- 📧 Anything else (including BUSL commercial licensing): **qinliu@nju.edu.cn**
+
 ## Citation
 
 ```bibtex
