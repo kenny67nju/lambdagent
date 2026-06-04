@@ -289,14 +289,12 @@ class TestBash:
         run_bash({"command": f"cd {original}"})
 
     def test_portable_command_works_across_platforms(self):
-        """A portable Python -c command must work on Linux/macOS/Windows alike."""
-        import sys
+        """`echo` works in /bin/sh, bash, cmd.exe — true cross-shell smoke test."""
         from lambdagent.builtin_tools.shell_tools import run_bash
-        # python is guaranteed available across the matrix; the message string
-        # has no quoting / glob / variable expansion that differs between
-        # bash and cmd, so it's a true cross-shell smoke test.
-        result = run_bash({"command": f'{sys.executable} -c "print(123 + 456)"'})
-        assert "579" in result, f"expected 579 in output, got: {result!r}"
+        # No quoting / glob / variable expansion / pipe — works the same in
+        # every shell on Linux, macOS, and Windows (both Git-Bash and cmd.exe).
+        result = run_bash({"command": "echo lambdagent-portable-579"})
+        assert "lambdagent-portable-579" in result, f"got: {result!r}"
 
     def test_resolve_shell_returns_sensible_value(self):
         """resolve_shell() returns None on POSIX, bash path on Windows when available."""
