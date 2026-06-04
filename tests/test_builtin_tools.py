@@ -277,10 +277,14 @@ class TestBash:
         assert "TIMEOUT" in result
 
     def test_cd_persistent(self):
+        import tempfile
         from lambdagent.builtin_tools.shell_tools import run_bash, _get_cwd
         original = _get_cwd()
-        run_bash({"command": "cd /tmp"})
-        assert _get_cwd() == "/tmp" or _get_cwd() == os.path.realpath("/tmp")
+        # Use platform's actual tempdir instead of hardcoded /tmp so the test
+        # works on Windows (where /tmp doesn't exist).
+        target = tempfile.gettempdir()
+        run_bash({"command": f"cd {target}"})
+        assert _get_cwd() == target or _get_cwd() == os.path.realpath(target)
         # Restore
         run_bash({"command": f"cd {original}"})
 
