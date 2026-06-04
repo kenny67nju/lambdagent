@@ -12,7 +12,7 @@ import os
 import subprocess
 from typing import Any, Dict, Optional
 
-from .._shell_compat import resolve_shell as _resolve_shell
+from .._shell_compat import run_shell as _run_shell
 
 
 # ════════════════════════════════════════════════════════════
@@ -345,9 +345,8 @@ def run_tests(input_val: Any) -> str:
 
     # Execute
     try:
-        result = subprocess.run(
-            cmd, shell=True, executable=_resolve_shell(), cwd=cwd,
-            capture_output=True, text=True, timeout=300,
+        result = _run_shell(
+            cmd, cwd=cwd, capture_output=True, text=True, timeout=300,
         )
         output = result.stdout
         if result.stderr:

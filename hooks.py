@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from .core import Term, Context
-from ._shell_compat import resolve_shell as _resolve_shell
+from ._shell_compat import run_shell as _run_shell
 
 
 # ════════════════════════════════════════════════════════════
@@ -296,8 +296,8 @@ def compile_shell_hook(command: str, event: str) -> Callable:
         import os
         full_env = {**os.environ, **env}
         try:
-            result = subprocess.run(
-                command, shell=True, executable=_resolve_shell(), env=full_env,
+            result = _run_shell(
+                command, env=full_env,
                 capture_output=True, text=True, timeout=10,
             )
             if result.returncode != 0 and result.stderr:

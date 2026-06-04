@@ -296,11 +296,11 @@ class TestBash:
         result = run_bash({"command": "echo lambdagent-portable-579"})
         assert "lambdagent-portable-579" in result, f"got: {result!r}"
 
-    def test_resolve_shell_returns_sensible_value(self):
-        """resolve_shell() returns None on POSIX, bash path on Windows when available."""
+    def test_resolve_bash_returns_sensible_value(self):
+        """resolve_bash() returns None on POSIX, bash.exe path on Windows when available."""
         import platform
-        from lambdagent._shell_compat import resolve_shell
-        result = resolve_shell()
+        from lambdagent._shell_compat import resolve_bash
+        result = resolve_bash()
         if platform.system() == "Windows":
             # CI runner has Git-Bash; if user installs without it, result is None.
             assert result is None or result.lower().endswith("bash.exe"), result

@@ -16,7 +16,7 @@ import shlex
 import subprocess
 from typing import Optional
 
-from .._shell_compat import resolve_shell as _resolve_shell
+from .._shell_compat import run_shell as _run_shell
 
 
 DANGEROUS_PATTERNS = [
@@ -78,10 +78,8 @@ class ShellTool:
             cmd = self.command
 
         try:
-            result = subprocess.run(
+            result = _run_shell(
                 cmd,
-                shell=True,
-                executable=_resolve_shell(),
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
@@ -127,10 +125,8 @@ class CLIAgent:
         last_error = None
         for attempt in range(1 + self.retry):
             try:
-                proc = subprocess.run(
+                proc = _run_shell(
                     self.command,
-                    shell=True,
-                    executable=_resolve_shell(),
                     input=str(input_text),
                     capture_output=True,
                     text=True,

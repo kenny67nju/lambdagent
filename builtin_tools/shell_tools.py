@@ -19,7 +19,7 @@ import subprocess
 import threading
 from typing import Any, Dict, Optional
 
-from .._shell_compat import resolve_shell as _resolve_shell
+from .._shell_compat import run_shell as _run_shell, popen_shell as _popen_shell
 
 
 # Shared session CWD (persists across calls)
@@ -99,14 +99,11 @@ def run_bash(input_val: Any) -> str:
     env = os.environ.copy()
     env["HOME"] = os.path.expanduser("~")
 
-    shell_exec = _resolve_shell()
-
     if background:
         # Background execution
         try:
-            proc = subprocess.Popen(
-                command, shell=True, cwd=working_dir, env=env,
-                executable=shell_exec,
+            proc = _popen_shell(
+                command, cwd=working_dir, env=env,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
             return f"[BACKGROUND] PID={proc.pid}, command='{command[:60]}'"
@@ -115,9 +112,8 @@ def run_bash(input_val: Any) -> str:
 
     # Foreground execution
     try:
-        result = subprocess.run(
-            command, shell=True, cwd=working_dir, env=env,
-            executable=shell_exec,
+        result = _run_shell(
+            command, cwd=working_dir, env=env,
             capture_output=True, text=True, timeout=timeout,
         )
         stdout = result.stdout
