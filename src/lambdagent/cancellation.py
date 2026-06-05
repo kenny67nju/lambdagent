@@ -18,6 +18,7 @@ from lambdagent.core import LambdagentError
 # Exceptions
 # ============================================================
 
+
 class CancelledError(LambdagentError):
     """Raised when an operation is cancelled via its CancellationToken."""
 
@@ -29,6 +30,7 @@ class CancelledError(LambdagentError):
 # ============================================================
 # CancellationToken
 # ============================================================
+
 
 class CancellationToken:
     """Hierarchical, thread-safe cancellation token.
@@ -63,9 +65,7 @@ class CancellationToken:
             self._cancelled = True
             self._reason = reason
             callbacks_to_run = list(self._callbacks)
-            children_to_cancel = [
-                ref() for ref in self._children if ref() is not None
-            ]
+            children_to_cancel = [ref() for ref in self._children if ref() is not None]
 
         # Run callbacks and propagate outside the lock to avoid deadlocks.
         for cb in callbacks_to_run:
@@ -123,6 +123,7 @@ class CancellationToken:
 # ============================================================
 # NullCancellationToken
 # ============================================================
+
 
 class NullCancellationToken(CancellationToken):
     """A cancellation token that never cancels.

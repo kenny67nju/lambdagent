@@ -16,7 +16,6 @@ from .base import FrameworkExtractor, ExtractionError
 
 
 class AutoGenExtractor(FrameworkExtractor):
-
     @property
     def framework_name(self) -> str:
         return "autogen"
@@ -27,14 +26,15 @@ class AutoGenExtractor(FrameworkExtractor):
 
         # GroupChatManager
         if cls_name == "GroupChatManager" or (
-            hasattr(obj, 'groupchat') and hasattr(obj, '_oai_messages')
+            hasattr(obj, "groupchat") and hasattr(obj, "_oai_messages")
         ):
             return True
 
         # AssistantAgent / UserProxyAgent
         if cls_name in ("AssistantAgent", "UserProxyAgent") or (
-            "autogen" in module and hasattr(obj, 'llm_config') and
-            hasattr(obj, 'system_message')
+            "autogen" in module
+            and hasattr(obj, "llm_config")
+            and hasattr(obj, "system_message")
         ):
             return True
 
@@ -43,27 +43,27 @@ class AutoGenExtractor(FrameworkExtractor):
     def extract(self, obj: Any) -> Dict[str, Any]:
         cls_name = type(obj).__name__
 
-        if cls_name == "GroupChatManager" or hasattr(obj, 'groupchat'):
+        if cls_name == "GroupChatManager" or hasattr(obj, "groupchat"):
             return self._extract_group_chat_manager(obj)
 
-        if hasattr(obj, 'llm_config') and hasattr(obj, 'system_message'):
+        if hasattr(obj, "llm_config") and hasattr(obj, "system_message"):
             return self._extract_agent(obj)
 
         raise ExtractionError(f"Unsupported AutoGen object: {cls_name}")
 
     def _extract_group_chat_manager(self, manager) -> Dict:
         """GroupChatManager → type: parallel"""
-        chat = getattr(manager, 'groupchat', None)
+        chat = getattr(manager, "groupchat", None)
         if chat is None:
             raise ExtractionError("GroupChatManager has no groupchat attribute")
 
-        agents = getattr(chat, 'agents', [])
+        agents = getattr(chat, "agents", [])
         agent_configs = [self._extract_agent(a) for a in agents]
 
-        max_round = getattr(chat, 'max_round', 10) or 10
+        max_round = getattr(chat, "max_round", 10) or 10
 
         # Detect termination condition
-        termination_msg = getattr(chat, 'is_termination_msg', None)
+        termination_msg = getattr(chat, "is_termination_msg", None)
         termination_info = self._analyze_termination(termination_msg)
 
         config = {
@@ -86,27 +86,27 @@ class AutoGenExtractor(FrameworkExtractor):
 
     def _extract_agent(self, agent) -> Dict:
         """AssistantAgent/UserProxyAgent → type: react"""
-        name = getattr(agent, 'name', type(agent).__name__)
-        system_message = getattr(agent, 'system_message', '') or ''
+        name = getattr(agent, "name", type(agent).__name__)
+        system_message = getattr(agent, "system_message", "") or ""
 
         # Extract model from llm_config
-        llm_config = getattr(agent, 'llm_config', {}) or {}
+        llm_config = getattr(agent, "llm_config", {}) or {}
         model_name = "unknown"
         if isinstance(llm_config, dict):
-            config_list = llm_config.get('config_list', [])
+            config_list = llm_config.get("config_list", [])
             if config_list and isinstance(config_list, list):
-                model_name = config_list[0].get('model', 'unknown')
-            elif 'model' in llm_config:
-                model_name = llm_config['model']
+                model_name = config_list[0].get("model", "unknown")
+            elif "model" in llm_config:
+                model_name = llm_config["model"]
 
         # Extract tools/functions
-        func_map = getattr(agent, '_function_map', {}) or {}
+        func_map = getattr(agent, "_function_map", {}) or {}
         tool_names = list(func_map.keys())
 
-        max_reply = getattr(agent, 'max_consecutive_auto_reply', 10) or 10
+        max_reply = getattr(agent, "max_consecutive_auto_reply", 10) or 10
 
         # Detect if this is a code-executing agent
-        code_config = getattr(agent, 'code_execution_config', None)
+        code_config = getattr(agent, "code_execution_config", None)
         is_code_agent = code_config is not None and code_config is not False
 
         config = {
@@ -144,6 +144,7 @@ class AutoGenExtractor(FrameworkExtractor):
         source = ""
         try:
             import inspect
+
             source = inspect.getsource(termination_fn)
         except Exception:
             pass

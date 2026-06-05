@@ -6,6 +6,7 @@ with mock providers, context compaction, and history reset.
 
 All tests use mocks — no real API calls, no anthropic/openai SDK imports.
 """
+
 from __future__ import annotations
 
 import unittest
@@ -14,8 +15,11 @@ from typing import List, Dict
 
 # Import the types and factory
 from lambdagent.providers.base import (
-    LLMProvider, ProviderConfig, ProviderError,
-    ChatMessage, ChatResponse,
+    LLMProvider,
+    ProviderConfig,
+    ProviderError,
+    ChatMessage,
+    ChatResponse,
 )
 from lambdagent.providers import create_provider
 from lambdagent.providers.anthropic_provider import AnthropicProvider
@@ -27,6 +31,7 @@ from lambdagent.core import Context
 # ============================================================
 # Mock provider for testing ConversationLam
 # ============================================================
+
 
 class MockProvider(LLMProvider):
     """Test double that returns canned responses without any API calls."""
@@ -42,9 +47,13 @@ class MockProvider(LLMProvider):
         self._call_count += 1
         return self._responses[idx]
 
-    def chat_typed(self, messages: List[ChatMessage],
-                   model: str = "", temperature: float = 0.0,
-                   max_tokens: int = 4096) -> ChatResponse:
+    def chat_typed(
+        self,
+        messages: List[ChatMessage],
+        model: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
+    ) -> ChatResponse:
         idx = min(self._call_count, len(self._responses) - 1)
         self._call_count += 1
         return ChatResponse(
@@ -67,6 +76,7 @@ class MockProvider(LLMProvider):
 # ============================================================
 # Test 1-4: create_provider factory
 # ============================================================
+
 
 class TestCreateProvider(unittest.TestCase):
     """Test create_provider() returns correct provider types."""
@@ -118,6 +128,7 @@ class TestCreateProvider(unittest.TestCase):
 # Test 5: ChatMessage and ChatResponse creation
 # ============================================================
 
+
 class TestDataclasses(unittest.TestCase):
     """Test ChatMessage and ChatResponse can be created and used."""
 
@@ -132,8 +143,13 @@ class TestDataclasses(unittest.TestCase):
             self.assertEqual(msg.role, role)
 
     def test_chat_response_creation(self):
-        resp = ChatResponse(text="hi", input_tokens=10, output_tokens=5,
-                            model="test-model", finish_reason="stop")
+        resp = ChatResponse(
+            text="hi",
+            input_tokens=10,
+            output_tokens=5,
+            model="test-model",
+            finish_reason="stop",
+        )
         self.assertEqual(resp.text, "hi")
         self.assertEqual(resp.input_tokens, 10)
         self.assertEqual(resp.output_tokens, 5)
@@ -151,6 +167,7 @@ class TestDataclasses(unittest.TestCase):
 # ============================================================
 # Test 6-9: ConversationLam with mock provider
 # ============================================================
+
 
 class TestConversationLam(unittest.TestCase):
     """Test ConversationLam instantiation, apply, compact, and reset."""
@@ -298,6 +315,7 @@ class TestConversationLam(unittest.TestCase):
 # ============================================================
 # Test: LLMProvider base class default implementations
 # ============================================================
+
 
 class TestLLMProviderDefaults(unittest.TestCase):
     """Test that LLMProvider base class provides working defaults."""

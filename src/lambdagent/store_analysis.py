@@ -22,6 +22,7 @@ from .core import Term, LambdagentError
 # 异常
 # ============================================================
 
+
 class StoreConflictError(LambdagentError):
     """
     存储冲突错误 — Paper II Proposition 30 违反。
@@ -30,8 +31,7 @@ class StoreConflictError(LambdagentError):
     依赖于调度策略，不满足合流性。
     """
 
-    def __init__(self, agent_a: str, agent_b: str,
-                 conflicting_keys: FrozenSet[str]):
+    def __init__(self, agent_a: str, agent_b: str, conflicting_keys: FrozenSet[str]):
         self.agent_a = agent_a
         self.agent_b = agent_b
         self.conflicting_keys = conflicting_keys
@@ -48,6 +48,7 @@ class StoreConflictError(LambdagentError):
 # ============================================================
 # 写入集合分析: writes(term)
 # ============================================================
+
 
 def writes(term: Term) -> FrozenSet[str]:
     """
@@ -76,7 +77,7 @@ def writes(term: Term) -> FrozenSet[str]:
 
     if isinstance(term, (Lam, Tool, Fst, Snd)):
         # 纯函数或外部调用 — 不写入 Lambda 存储（除非有显式标注）
-        if hasattr(term, '_writes'):
+        if hasattr(term, "_writes"):
             return frozenset(term._writes)
         return frozenset()
 
@@ -119,6 +120,7 @@ def writes(term: Term) -> FrozenSet[str]:
         # 多智能体扩展: 尝试分析
         try:
             from .multiagent import AsyncPar, _SharedMemoryAgent, GroupChat, Handoff
+
             if isinstance(term, AsyncPar):
                 for agent in term.agents:
                     result.update(writes(agent))
@@ -138,7 +140,7 @@ def writes(term: Term) -> FrozenSet[str]:
             pass
 
     # 检查是否有显式 _writes 标注
-    if hasattr(term, '_writes'):
+    if hasattr(term, "_writes"):
         result.update(term._writes)
 
     return frozenset(result)
@@ -179,7 +181,7 @@ def reads(term: Term) -> FrozenSet[str]:
         result.update(reads(term.agent))
 
     # 检查显式 _reads 标注
-    if hasattr(term, '_reads'):
+    if hasattr(term, "_reads"):
         result.update(term._reads)
 
     return frozenset(result)
@@ -188,6 +190,7 @@ def reads(term: Term) -> FrozenSet[str]:
 # ============================================================
 # 存储独立性检查 (Paper II Proposition 30)
 # ============================================================
+
 
 def check_store_independence(terms: List[Term]) -> None:
     """

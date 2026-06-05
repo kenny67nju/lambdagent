@@ -6,6 +6,7 @@ OCRTool        λx. ocr(file_path) → extracted text
 DocGen         λx. generate(source_md, format, output_path)
 KBManager      λx. manage(action, kb_name, ...)
 """
+
 from __future__ import annotations
 
 import json
@@ -21,12 +22,14 @@ from typing import Any, Dict, List, Optional
 # A34: ChunkSplitter
 # ════════════════════════════════════════════════════════════
 
+
 class ChunkSplitter:
     """Split long documents into retrieval-friendly chunks."""
 
     @staticmethod
-    def split(text: str, strategy: str = "paragraph", chunk_size: int = 500,
-              overlap: int = 50) -> List[str]:
+    def split(
+        text: str, strategy: str = "paragraph", chunk_size: int = 500, overlap: int = 50
+    ) -> List[str]:
         """Split text into chunks.
 
         Strategies:
@@ -46,7 +49,7 @@ class ChunkSplitter:
 
     @staticmethod
     def _split_paragraph(text: str, max_size: int) -> List[str]:
-        paragraphs = re.split(r'\n\s*\n', text.strip())
+        paragraphs = re.split(r"\n\s*\n", text.strip())
         chunks = []
         current = ""
         for p in paragraphs:
@@ -64,7 +67,7 @@ class ChunkSplitter:
 
     @staticmethod
     def _split_heading(text: str) -> List[str]:
-        sections = re.split(r'(?=^#{1,3}\s)', text, flags=re.MULTILINE)
+        sections = re.split(r"(?=^#{1,3}\s)", text, flags=re.MULTILINE)
         chunks = [s.strip() for s in sections if s.strip()]
         return chunks if chunks else [text.strip()]
 
@@ -82,7 +85,7 @@ class ChunkSplitter:
 
     @staticmethod
     def _split_sentence(text: str, max_size: int, overlap: int) -> List[str]:
-        sentences = re.split(r'(?<=[.!?。！？\n])\s+', text)
+        sentences = re.split(r"(?<=[.!?。！？\n])\s+", text)
         chunks = []
         current = ""
         for s in sentences:
@@ -90,7 +93,7 @@ class ChunkSplitter:
                 chunks.append(current.strip())
                 # Keep overlap
                 words = current.split()
-                overlap_text = " ".join(words[-overlap//4:]) if overlap > 0 else ""
+                overlap_text = " ".join(words[-overlap // 4 :]) if overlap > 0 else ""
                 current = overlap_text + " " + s if overlap_text else s
             else:
                 current = current + " " + s if current else s
@@ -115,29 +118,37 @@ def chunk_split(input_val: Any) -> str:
     chunk_size = params.get("chunk_size", 500)
     overlap = params.get("overlap", 50)
     chunks = ChunkSplitter.split(text, strategy, chunk_size, overlap)
-    return json.dumps({
-        "chunks": len(chunks),
-        "strategy": strategy,
-        "preview": [c[:100] + "..." if len(c) > 100 else c for c in chunks[:5]],
-        "total_chars": sum(len(c) for c in chunks),
-    }, ensure_ascii=False, indent=2)
+    return json.dumps(
+        {
+            "chunks": len(chunks),
+            "strategy": strategy,
+            "preview": [c[:100] + "..." if len(c) > 100 else c for c in chunks[:5]],
+            "total_chars": sum(len(c) for c in chunks),
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 # ════════════════════════════════════════════════════════════
 # A35: OCRTool
 # ════════════════════════════════════════════════════════════
 
+
 def _detect_ocr_backend() -> str:
     """Detect available OCR backend."""
     # PaddleOCR
     try:
         import paddleocr
+
         return "paddle"
     except ImportError:
         pass
     # Tesseract
     try:
-        result = subprocess.run(["tesseract", "--version"], capture_output=True, timeout=5)
+        result = subprocess.run(
+            ["tesseract", "--version"], capture_output=True, timeout=5
+        )
         if result.returncode == 0:
             return "tesseract"
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -170,7 +181,9 @@ def ocr_extract(input_val: Any) -> str:
             if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".gif"):
                 result = subprocess.run(
                     ["tesseract", file_path, "stdout", "-l", language],
-                    capture_output=True, text=True, timeout=30,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 if result.returncode == 0:
                     return result.stdout.strip() or "[EMPTY] No text extracted"
@@ -186,6 +199,7 @@ def ocr_extract(input_val: Any) -> str:
 def _ocr_paddle(file_path: str, language: str) -> str:
     try:
         from paddleocr import PaddleOCR
+
         lang = "ch" if "chi" in language else "en"
         ocr = PaddleOCR(use_angle_cls=True, lang=lang, show_log=False)
         results = ocr.ocr(file_path, cls=True)
@@ -195,7 +209,11 @@ def _ocr_paddle(file_path: str, language: str) -> str:
                 if page:
                     for line in page:
                         if line and len(line) >= 2:
-                            text = line[1][0] if isinstance(line[1], (list, tuple)) else str(line[1])
+                            text = (
+                                line[1][0]
+                                if isinstance(line[1], (list, tuple))
+                                else str(line[1])
+                            )
                             lines.append(text)
         return "\n".join(lines) if lines else "[EMPTY] No text extracted"
     except Exception as e:
@@ -206,7 +224,9 @@ def _ocr_tesseract(file_path: str, language: str) -> str:
     try:
         result = subprocess.run(
             ["tesseract", file_path, "stdout", "-l", language],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         if result.returncode == 0:
             text = result.stdout.strip()
@@ -221,6 +241,7 @@ def _ocr_tesseract(file_path: str, language: str) -> str:
 # ════════════════════════════════════════════════════════════
 # A36: DocGen — Document generation
 # ════════════════════════════════════════════════════════════
+
 
 def doc_generate(input_val: Any) -> str:
     """Generate PDF/Word/HTML from Markdown source."""
@@ -262,6 +283,7 @@ def _gen_html(md_text: str, output: str) -> str:
     # Try markdown lib
     try:
         import markdown
+
         html = markdown.markdown(md_text, extensions=["tables", "fenced_code"])
     except ImportError:
         # Minimal conversion
@@ -293,6 +315,7 @@ def _gen_pdf(md_text: str, output: str) -> str:
     # Strategy 1: weasyprint
     try:
         import weasyprint
+
         html_result = _gen_html(md_text, output + ".tmp.html")
         weasyprint.HTML(filename=output + ".tmp.html").write_pdf(output)
         os.unlink(output + ".tmp.html")
@@ -303,12 +326,17 @@ def _gen_pdf(md_text: str, output: str) -> str:
     # Strategy 2: pandoc via bash
     try:
         import tempfile
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8"
+        ) as f:
             f.write(md_text)
             tmp_md = f.name
         result = subprocess.run(
             ["pandoc", tmp_md, "-o", output, "--pdf-engine=xelatex"],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         os.unlink(tmp_md)
         if result.returncode == 0:
@@ -327,6 +355,7 @@ def _gen_docx(md_text: str, output: str) -> str:
     """Markdown → Word."""
     try:
         from docx import Document as DocxDocument
+
         doc = DocxDocument()
         for line in md_text.split("\n"):
             line = line.rstrip()
@@ -363,11 +392,16 @@ def kb_manage(input_val: Any) -> str:
     if action == "create":
         return _kb_create(params.get("name", ""), params.get("description", ""))
     elif action == "add":
-        return _kb_add(params.get("name", ""), params.get("file_path", ""),
-                       params.get("pattern", ""), params.get("chunk", True))
+        return _kb_add(
+            params.get("name", ""),
+            params.get("file_path", ""),
+            params.get("pattern", ""),
+            params.get("chunk", True),
+        )
     elif action == "search":
-        return _kb_search(params.get("name", ""), params.get("query", ""),
-                          params.get("top_k", 5))
+        return _kb_search(
+            params.get("name", ""), params.get("query", ""), params.get("top_k", 5)
+        )
     elif action == "list":
         return _kb_list()
     elif action == "delete":
@@ -375,7 +409,9 @@ def kb_manage(input_val: Any) -> str:
     elif action == "info":
         return _kb_info(params.get("name", ""))
     else:
-        return f"[ERROR] Unknown action: {action}. Use: create/add/search/list/delete/info"
+        return (
+            f"[ERROR] Unknown action: {action}. Use: create/add/search/list/delete/info"
+        )
 
 
 def _kb_create(name: str, description: str) -> str:
@@ -385,7 +421,12 @@ def _kb_create(name: str, description: str) -> str:
     if os.path.exists(kb_dir):
         return f"[ERROR] Knowledge base '{name}' already exists"
     os.makedirs(kb_dir, exist_ok=True)
-    meta = {"name": name, "description": description, "documents": [], "total_chunks": 0}
+    meta = {
+        "name": name,
+        "description": description,
+        "documents": [],
+        "total_chunks": 0,
+    }
     with open(os.path.join(kb_dir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
     return f"[OK] Knowledge base '{name}' created at {kb_dir}"
@@ -408,9 +449,13 @@ def _kb_add(name: str, file_path: str, pattern: str, chunk: bool) -> str:
         file_path = os.path.expanduser(file_path)
         if os.path.isdir(file_path):
             import glob
+
             pat = pattern or "**/*.*"
-            files_to_add = [f for f in glob.glob(os.path.join(file_path, pat), recursive=True)
-                           if os.path.isfile(f)]
+            files_to_add = [
+                f
+                for f in glob.glob(os.path.join(file_path, pat), recursive=True)
+                if os.path.isfile(f)
+            ]
         elif os.path.isfile(file_path):
             files_to_add = [file_path]
         else:
@@ -420,7 +465,10 @@ def _kb_add(name: str, file_path: str, pattern: str, chunk: bool) -> str:
 
     # Load or create store
     import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
     from lambdagent.rag import SimpleVectorStore
 
     store_path = os.path.join(kb_dir, "store.json")
@@ -431,8 +479,15 @@ def _kb_add(name: str, file_path: str, pattern: str, chunk: bool) -> str:
         with open(store_path, "r") as f:
             store_data = json.load(f)
         from lambdagent.rag import Document
+
         for d in store_data.get("documents", []):
-            store.documents.append(Document(content=d["content"], metadata=d.get("metadata", {}), doc_id=d.get("doc_id", "")))
+            store.documents.append(
+                Document(
+                    content=d["content"],
+                    metadata=d.get("metadata", {}),
+                    doc_id=d.get("doc_id", ""),
+                )
+            )
 
     added = 0
     for fp in files_to_add:
@@ -486,7 +541,13 @@ def _kb_search(name: str, query: str, top_k: int) -> str:
     with open(store_path, "r") as f:
         store_data = json.load(f)
     for d in store_data.get("documents", []):
-        store.documents.append(Document(content=d["content"], metadata=d.get("metadata", {}), doc_id=d.get("doc_id", "")))
+        store.documents.append(
+            Document(
+                content=d["content"],
+                metadata=d.get("metadata", {}),
+                doc_id=d.get("doc_id", ""),
+            )
+        )
 
     results = store.search(query, top_k=top_k)
     if not results:
@@ -510,7 +571,9 @@ def _kb_list() -> str:
         if os.path.exists(meta_path):
             with open(meta_path) as f:
                 meta = json.load(f)
-            kbs.append(f"  {name}: {meta.get('total_chunks', 0)} chunks, {len(meta.get('documents', []))} files — {meta.get('description', '')}")
+            kbs.append(
+                f"  {name}: {meta.get('total_chunks', 0)} chunks, {len(meta.get('documents', []))} files — {meta.get('description', '')}"
+            )
     if not kbs:
         return "[EMPTY] No knowledge bases found"
     return "Knowledge bases:\n" + "\n".join(kbs)
@@ -523,6 +586,7 @@ def _kb_delete(name: str) -> str:
     if not os.path.exists(kb_dir):
         return f"[ERROR] Knowledge base '{name}' not found"
     import shutil
+
     shutil.rmtree(kb_dir)
     return f"[OK] Knowledge base '{name}' deleted"
 
@@ -549,6 +613,7 @@ def _kb_info(name: str) -> str:
 # ════════════════════════════════════════════════════════════
 # Shared
 # ════════════════════════════════════════════════════════════
+
 
 def _parse(input_val: Any) -> dict:
     if isinstance(input_val, dict):

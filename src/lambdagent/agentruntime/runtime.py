@@ -6,6 +6,7 @@ Phase 6.5: Updated to support dual engine switching via `engine_mode` param.
   - "cek": Agent CEK Machine (step-by-step, pause/resume)
   - "adaptive": Auto-select based on term complexity
 """
+
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -23,6 +24,7 @@ from .cek_engine import CEKEngine
 @dataclass
 class RuntimeResult:
     """Result of a runtime execution."""
+
     result: str
     trace: List[TraceRecord] = field(default_factory=list)
     stats: Optional[TraceStats] = None
@@ -31,8 +33,9 @@ class RuntimeResult:
     engine_result: Optional[EngineResult] = None
 
 
-def _create_engine(engine_mode: str, config: RuntimeConfig | None = None,
-                   **engine_opts):
+def _create_engine(
+    engine_mode: str, config: RuntimeConfig | None = None, **engine_opts
+):
     """Factory: create engine by mode string."""
     if engine_mode == "cek":
         return CEKEngine(
@@ -42,6 +45,7 @@ def _create_engine(engine_mode: str, config: RuntimeConfig | None = None,
         )
     elif engine_mode == "adaptive":
         from .adaptive_engine import AdaptiveEngine
+
         return AdaptiveEngine(config=config, **engine_opts)
     else:
         # Default: recursive
@@ -62,8 +66,9 @@ class Runtime:
     Phase 6.5: Supports engine switching via engine_mode param.
     """
 
-    def __init__(self, config: RuntimeConfig, engine_mode: str = "recursive",
-                 **engine_opts):
+    def __init__(
+        self, config: RuntimeConfig, engine_mode: str = "recursive", **engine_opts
+    ):
         self.config = config
         self.engine_mode = engine_mode
         self.engine = _create_engine(engine_mode, config, **engine_opts)
@@ -78,7 +83,9 @@ class Runtime:
         engine_result = self.engine.execute(term, input_val, ctx, **opts)
 
         # Extract legacy trace format for backward compatibility
-        trace_records = self.executor.trace.get_all() if hasattr(self.executor, 'trace') else []
+        trace_records = (
+            self.executor.trace.get_all() if hasattr(self.executor, "trace") else []
+        )
         # If engine populated ctx.trace, build legacy records from that
         if not trace_records and ctx.trace:
             trace_records = [
@@ -100,8 +107,12 @@ class Runtime:
             total_steps=engine_result.steps,
             total_tokens=engine_result.cost.tokens,
             total_time_ms=sum(r.duration_ms for r in engine_result.trace),
-            llm_calls=sum(1 for r in engine_result.trace if r.action in ("llm_call", "llm")),
-            tool_calls=sum(1 for r in engine_result.trace if r.action in ("tool_call", "tool")),
+            llm_calls=sum(
+                1 for r in engine_result.trace if r.action in ("llm_call", "llm")
+            ),
+            tool_calls=sum(
+                1 for r in engine_result.trace if r.action in ("tool_call", "tool")
+            ),
         )
 
         return RuntimeResult(
@@ -135,6 +146,7 @@ class Runtime:
         # 2. Check YAML for runtime.engine if not overridden
         if engine_mode is None:
             import yaml
+
             with open(config_path) as f:
                 raw = yaml.safe_load(f)
             runtime_cfg = (raw or {}).get("runtime", {})
@@ -148,8 +160,7 @@ class Runtime:
         term = from_config(config_path, **overrides)
 
         # 4. Init runtime with selected engine
-        runtime = Runtime(config, engine_mode=engine_mode or "recursive",
-                          **engine_opts)
+        runtime = Runtime(config, engine_mode=engine_mode or "recursive", **engine_opts)
 
         # 5. Execute
         return runtime.run(term, input_val)

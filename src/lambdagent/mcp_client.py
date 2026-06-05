@@ -39,18 +39,22 @@ from .core import Term, Context, LambdagentError
 # 异常
 # ════════════════════════════════════════════════════════════
 
+
 class MCPError(LambdagentError):
     """MCP 协议错误"""
+
     pass
 
 
 class MCPConnectionError(MCPError):
     """MCP 连接失败"""
+
     pass
 
 
 class MCPToolError(MCPError):
     """MCP 工具调用失败"""
+
     pass
 
 
@@ -58,9 +62,11 @@ class MCPToolError(MCPError):
 # MCP JSON-RPC 通信层
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class MCPResponse:
     """MCP JSON-RPC 响应"""
+
     id: str
     result: Any = None
     error: Optional[Dict] = None
@@ -90,8 +96,9 @@ class MCPHttpTransport(MCPTransport):
     JSON-RPC 2.0 over HTTP POST.
     """
 
-    def __init__(self, url: str, headers: Optional[Dict[str, str]] = None,
-                 timeout: float = 30.0):
+    def __init__(
+        self, url: str, headers: Optional[Dict[str, str]] = None, timeout: float = 30.0
+    ):
         self.url = url.rstrip("/")
         self.headers = headers or {}
         self.timeout = timeout
@@ -117,7 +124,9 @@ class MCPHttpTransport(MCPTransport):
             headers["Mcp-Session-Id"] = self._session_id
 
         body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(self.url, data=body, headers=headers, method="POST")
+        req = urllib.request.Request(
+            self.url, data=body, headers=headers, method="POST"
+        )
 
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
@@ -163,8 +172,13 @@ class MCPStdioTransport(MCPTransport):
     对应 lambdagent CLI 协议: stdin=输入, stdout=输出, stderr=日志。
     """
 
-    def __init__(self, command: str, args: Optional[List[str]] = None,
-                 env: Optional[Dict[str, str]] = None, timeout: float = 30.0):
+    def __init__(
+        self,
+        command: str,
+        args: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
+        timeout: float = 30.0,
+    ):
         self.command = command
         self.args = args or []
         self.env = env
@@ -229,9 +243,11 @@ class MCPStdioTransport(MCPTransport):
 # MCPServer: MCP 服务器连接
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class MCPToolInfo:
     """MCP 工具元信息"""
+
     name: str
     description: str = ""
     input_schema: Optional[Dict] = None
@@ -262,15 +278,25 @@ class MCPServer:
         self._initialized = False
 
     @classmethod
-    def http(cls, url: str, headers: Optional[Dict] = None,
-             timeout: float = 30.0, name: str = "") -> MCPServer:
+    def http(
+        cls,
+        url: str,
+        headers: Optional[Dict] = None,
+        timeout: float = 30.0,
+        name: str = "",
+    ) -> MCPServer:
         """连接远程 MCP Server (HTTP)"""
         transport = MCPHttpTransport(url, headers=headers, timeout=timeout)
         return cls(transport, name=name or url.split("/")[-1])
 
     @classmethod
-    def stdio(cls, command: str, args: Optional[List[str]] = None,
-              env: Optional[Dict] = None, name: str = "") -> MCPServer:
+    def stdio(
+        cls,
+        command: str,
+        args: Optional[List[str]] = None,
+        env: Optional[Dict] = None,
+        name: str = "",
+    ) -> MCPServer:
         """连接本地 MCP Server (stdio)"""
         transport = MCPStdioTransport(command, args=args, env=env)
         return cls(transport, name=name or command)
@@ -281,18 +307,19 @@ class MCPServer:
 
         发送 initialize 请求，协商协议版本和能力。
         """
-        resp = self.transport.send("initialize", {
-            "protocolVersion": "2025-11-25",
-            "capabilities": {},
-            "clientInfo": {
-                "name": "lambdagent",
-                "version": "1.0.0",
+        resp = self.transport.send(
+            "initialize",
+            {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {},
+                "clientInfo": {
+                    "name": "lambdagent",
+                    "version": "1.0.0",
+                },
             },
-        })
+        )
         if not resp.ok:
-            raise MCPConnectionError(
-                f"MCP initialize failed: {resp.error}"
-            )
+            raise MCPConnectionError(f"MCP initialize failed: {resp.error}")
         self._initialized = True
 
         # 发送 initialized 通知
@@ -318,11 +345,13 @@ class MCPServer:
 
         tools = []
         for t in (resp.result or {}).get("tools", []):
-            tools.append(MCPToolInfo(
-                name=t.get("name", ""),
-                description=t.get("description", ""),
-                input_schema=t.get("inputSchema"),
-            ))
+            tools.append(
+                MCPToolInfo(
+                    name=t.get("name", ""),
+                    description=t.get("description", ""),
+                    input_schema=t.get("inputSchema"),
+                )
+            )
         self._tools_cache = tools
         return tools
 
@@ -334,14 +363,15 @@ class MCPServer:
 
         返回工具的文本输出。
         """
-        resp = self.transport.send("tools/call", {
-            "name": tool_name,
-            "arguments": arguments or {},
-        })
+        resp = self.transport.send(
+            "tools/call",
+            {
+                "name": tool_name,
+                "arguments": arguments or {},
+            },
+        )
         if not resp.ok:
-            raise MCPToolError(
-                f"MCP tool '{tool_name}' failed: {resp.error}"
-            )
+            raise MCPToolError(f"MCP tool '{tool_name}' failed: {resp.error}")
 
         # 提取文本内容
         result = resp.result or {}
@@ -423,6 +453,7 @@ class MCPServer:
 # MCPTool: MCP 工具的 lambdagent Term 封装
 # ════════════════════════════════════════════════════════════
 
+
 class MCPTool(Term):
     """
     MCP 工具封装为 lambdagent Term。
@@ -436,9 +467,15 @@ class MCPTool(Term):
         - 字典   → 直接作为 arguments
     """
 
-    def __init__(self, server: MCPServer, tool_name: str,
-                 description: str = "", input_schema: Optional[Dict] = None,
-                 retry: int = 0, timeout: float = 30.0):
+    def __init__(
+        self,
+        server: MCPServer,
+        tool_name: str,
+        description: str = "",
+        input_schema: Optional[Dict] = None,
+        retry: int = 0,
+        timeout: float = 30.0,
+    ):
         super().__init__(f"MCP:{tool_name}")
         self.server = server
         self.tool_name = tool_name
@@ -468,8 +505,13 @@ class MCPTool(Term):
             try:
                 result = self.server.call_tool(self.tool_name, arguments)
                 elapsed = (time.time() - t0) * 1000
-                ctx.log(f"MCP:{self.tool_name}", self._trace_id,
-                        str(input)[:100], str(result)[:100], elapsed)
+                ctx.log(
+                    f"MCP:{self.tool_name}",
+                    self._trace_id,
+                    str(input)[:100],
+                    str(result)[:100],
+                    elapsed,
+                )
                 return result
             except MCPToolError as e:
                 last_error = e
@@ -510,6 +552,7 @@ class MCPTool(Term):
 # ════════════════════════════════════════════════════════════
 # 便利函数
 # ════════════════════════════════════════════════════════════
+
 
 def mcp_tools(url: str, headers: Optional[Dict] = None) -> List[MCPTool]:
     """

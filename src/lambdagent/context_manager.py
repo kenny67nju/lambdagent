@@ -4,6 +4,7 @@ lambdagent.context_manager — Context window management
 Prevents unbounded state growth in ReAct loops by compacting
 old steps into summaries while preserving recent context.
 """
+
 from __future__ import annotations
 from typing import List, Optional, Tuple
 
@@ -11,8 +12,12 @@ from typing import List, Optional, Tuple
 class ContextManager:
     """Manages context window size for ReAct loops."""
 
-    def __init__(self, max_tokens: int = 100000, compact_threshold: float = 0.8,
-                 keep_recent: int = 3):
+    def __init__(
+        self,
+        max_tokens: int = 100000,
+        compact_threshold: float = 0.8,
+        keep_recent: int = 3,
+    ):
         self.max_tokens = max_tokens
         self.compact_threshold = compact_threshold
         self.keep_recent = keep_recent
@@ -41,8 +46,8 @@ class ContextManager:
         if len(steps) <= self.keep_recent:
             return state
 
-        old_steps = steps[:-self.keep_recent]
-        recent_steps = steps[-self.keep_recent:]
+        old_steps = steps[: -self.keep_recent]
+        recent_steps = steps[-self.keep_recent :]
 
         # Summarize old steps (extract action + key observation)
         summary_lines = ["[Previous Steps Summary]"]
@@ -78,8 +83,8 @@ class ContextManager:
         if len(steps) <= self.keep_recent:
             return state
 
-        old_steps = steps[:-self.keep_recent]
-        recent_steps = steps[-self.keep_recent:]
+        old_steps = steps[: -self.keep_recent]
+        recent_steps = steps[-self.keep_recent :]
 
         old_text = "\n\n".join(old_steps)
         summary = await llm_fn(

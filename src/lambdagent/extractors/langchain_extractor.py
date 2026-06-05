@@ -18,7 +18,6 @@ from .base import FrameworkExtractor, ExtractionError
 
 
 class LangChainExtractor(FrameworkExtractor):
-
     @property
     def framework_name(self) -> str:
         return "langchain"
@@ -30,21 +29,21 @@ class LangChainExtractor(FrameworkExtractor):
 
         # AgentExecutor
         if cls_name == "AgentExecutor" or (
-            hasattr(obj, 'agent') and hasattr(obj, 'tools') and
-            hasattr(obj, 'max_iterations')
+            hasattr(obj, "agent")
+            and hasattr(obj, "tools")
+            and hasattr(obj, "max_iterations")
         ):
             return True
 
         # RunnableSequence (LCEL)
         if cls_name == "RunnableSequence" or (
-            "langchain" in module and hasattr(obj, 'first') and hasattr(obj, 'last')
+            "langchain" in module and hasattr(obj, "first") and hasattr(obj, "last")
         ):
             return True
 
         # LLMChain
         if cls_name == "LLMChain" or (
-            hasattr(obj, 'llm') and hasattr(obj, 'prompt') and
-            not hasattr(obj, 'tools')
+            hasattr(obj, "llm") and hasattr(obj, "prompt") and not hasattr(obj, "tools")
         ):
             return True
 
@@ -54,16 +53,16 @@ class LangChainExtractor(FrameworkExtractor):
         cls_name = type(obj).__name__
 
         if cls_name == "AgentExecutor" or (
-            hasattr(obj, 'agent') and hasattr(obj, 'tools')
+            hasattr(obj, "agent") and hasattr(obj, "tools")
         ):
             return self._extract_agent_executor(obj)
 
         if cls_name == "RunnableSequence" or (
-            hasattr(obj, 'first') and hasattr(obj, 'last')
+            hasattr(obj, "first") and hasattr(obj, "last")
         ):
             return self._extract_runnable_sequence(obj)
 
-        if hasattr(obj, 'llm') and hasattr(obj, 'prompt'):
+        if hasattr(obj, "llm") and hasattr(obj, "prompt"):
             return self._extract_llm_chain(obj)
 
         raise ExtractionError(f"Unsupported LangChain object: {cls_name}")
@@ -71,37 +70,42 @@ class LangChainExtractor(FrameworkExtractor):
     def _extract_agent_executor(self, executor) -> Dict:
         """AgentExecutor → type: react"""
         # Extract model info
-        llm = self._safe_getattr(executor, 'agent', 'llm_chain', 'llm') or \
-              self._safe_getattr(executor, 'agent', 'llm')
+        llm = self._safe_getattr(
+            executor, "agent", "llm_chain", "llm"
+        ) or self._safe_getattr(executor, "agent", "llm")
         model_name = (
-            getattr(llm, 'model_name', None) or
-            getattr(llm, 'model', None) or
-            "unknown"
-        ) if llm else "unknown"
-        temperature = getattr(llm, 'temperature', 0.0) if llm else 0.0
+            (
+                getattr(llm, "model_name", None)
+                or getattr(llm, "model", None)
+                or "unknown"
+            )
+            if llm
+            else "unknown"
+        )
+        temperature = getattr(llm, "temperature", 0.0) if llm else 0.0
 
         # Extract tools
-        tools = getattr(executor, 'tools', [])
-        tool_names = [getattr(t, 'name', str(t)) for t in tools]
+        tools = getattr(executor, "tools", [])
+        tool_names = [getattr(t, "name", str(t)) for t in tools]
 
         # Check for terminate equivalent
         has_terminate = any(
-            n in ('terminate', 'final_answer', 'human', '_Exception')
+            n in ("terminate", "final_answer", "human", "_Exception")
             for n in tool_names
         )
 
         # Extract prompt
         prompt = ""
-        chain = self._safe_getattr(executor, 'agent', 'llm_chain')
-        if chain and hasattr(chain, 'prompt'):
-            prompt = getattr(chain.prompt, 'template', str(chain.prompt))
+        chain = self._safe_getattr(executor, "agent", "llm_chain")
+        if chain and hasattr(chain, "prompt"):
+            prompt = getattr(chain.prompt, "template", str(chain.prompt))
 
         # Detect provider
         provider = self._detect_provider(llm, model_name)
 
         return {
             "agentId": f"langchain-{type(executor).__name__}",
-            "name": getattr(executor, 'name', None) or "LangChain Agent",
+            "name": getattr(executor, "name", None) or "LangChain Agent",
             "type": "react",
             "model": {
                 "provider": provider,
@@ -110,7 +114,7 @@ class LangChainExtractor(FrameworkExtractor):
             },
             "systemPrompt": str(prompt)[:5000] if prompt else "",
             "react": {
-                "maxSteps": getattr(executor, 'max_iterations', 15) or 15,
+                "maxSteps": getattr(executor, "max_iterations", 15) or 15,
             },
             "mcp": {
                 "localTools": tool_names + (["terminate"] if has_terminate else []),
@@ -122,12 +126,12 @@ class LangChainExtractor(FrameworkExtractor):
     def _extract_runnable_sequence(self, seq) -> Dict:
         """RunnableSequence → type: chain"""
         steps = []
-        if hasattr(seq, 'first'):
+        if hasattr(seq, "first"):
             steps.append(self._step_info(seq.first))
-        if hasattr(seq, 'middle'):
+        if hasattr(seq, "middle"):
             for s in seq.middle:
                 steps.append(self._step_info(s))
-        if hasattr(seq, 'last'):
+        if hasattr(seq, "last"):
             steps.append(self._step_info(seq.last))
 
         return {
@@ -141,12 +145,12 @@ class LangChainExtractor(FrameworkExtractor):
 
     def _extract_llm_chain(self, chain) -> Dict:
         """LLMChain → type: simple"""
-        llm = getattr(chain, 'llm', None)
-        model_name = getattr(llm, 'model_name', 'unknown') if llm else "unknown"
+        llm = getattr(chain, "llm", None)
+        model_name = getattr(llm, "model_name", "unknown") if llm else "unknown"
 
         prompt = ""
-        if hasattr(chain, 'prompt'):
-            prompt = getattr(chain.prompt, 'template', str(chain.prompt))
+        if hasattr(chain, "prompt"):
+            prompt = getattr(chain.prompt, "template", str(chain.prompt))
 
         return {
             "agentId": "langchain-simple",
@@ -162,9 +166,9 @@ class LangChainExtractor(FrameworkExtractor):
     def _step_info(self, step) -> Dict:
         """Extract basic info from a chain step."""
         return {
-            "name": getattr(step, 'name', type(step).__name__),
+            "name": getattr(step, "name", type(step).__name__),
             "type": "simple",
-            "systemPrompt": str(getattr(step, 'template', ''))[:1000],
+            "systemPrompt": str(getattr(step, "template", ""))[:1000],
         }
 
     def _detect_provider(self, llm, model_name: str) -> str:

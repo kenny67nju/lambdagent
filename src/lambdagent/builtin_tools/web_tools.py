@@ -5,6 +5,7 @@ NotebookEdit  λx. edit_notebook(path, cell, action, content)
 WebSearch     λx. search(query)
 WebFetch      λx. fetch(url) → markdown
 """
+
 from __future__ import annotations
 
 import json
@@ -20,24 +21,40 @@ from typing import Any, Dict, Optional
 # A18: NotebookEdit
 # ════════════════════════════════════════════════════════════
 
+
 class NotebookEditSchema:
-    def __init__(self, path: str, cell_index: int = -1, action: str = "replace",
-                 content: str = "", cell_type: str = "code"):
+    def __init__(
+        self,
+        path: str,
+        cell_index: int = -1,
+        action: str = "replace",
+        content: str = "",
+        cell_type: str = "code",
+    ):
         if not path:
             raise ValueError("path is required")
         if action not in ("replace", "insert", "delete", "append"):
-            raise ValueError(f"action must be replace/insert/delete/append, got '{action}'")
+            raise ValueError(
+                f"action must be replace/insert/delete/append, got '{action}'"
+            )
         if not os.path.isabs(path):
             path = os.path.abspath(path)
         self.path = path
         self.cell_index = cell_index
         self.action = action
         self.content = content
-        self.cell_type = cell_type if cell_type in ("code", "markdown", "raw") else "code"
+        self.cell_type = (
+            cell_type if cell_type in ("code", "markdown", "raw") else "code"
+        )
 
     def dict(self):
-        return {"path": self.path, "cell_index": self.cell_index,
-                "action": self.action, "content": self.content, "cell_type": self.cell_type}
+        return {
+            "path": self.path,
+            "cell_index": self.cell_index,
+            "action": self.action,
+            "content": self.content,
+            "cell_type": self.cell_type,
+        }
 
 
 def notebook_edit(input_val: Any) -> str:
@@ -69,7 +86,7 @@ def notebook_edit(input_val: Any) -> str:
 
     if cell_index < 0 or cell_index >= len(cells):
         if action != "insert" or cell_index != len(cells):
-            return f"[ERROR] cell_index {cell_index} out of range (0-{len(cells)-1})"
+            return f"[ERROR] cell_index {cell_index} out of range (0-{len(cells) - 1})"
 
     if action == "replace":
         cells[cell_index] = _make_cell(content, cell_type)
@@ -89,7 +106,9 @@ def notebook_edit(input_val: Any) -> str:
         nb["cells"] = cells
         _save_notebook(path, nb)
         deleted_type = deleted.get("cell_type", "?")
-        return f"[OK] Deleted cell {cell_index} ({deleted_type}, now {len(cells)} cells)"
+        return (
+            f"[OK] Deleted cell {cell_index} ({deleted_type}, now {len(cells)} cells)"
+        )
 
     return f"[ERROR] Unknown action: {action}"
 
@@ -98,7 +117,9 @@ def _make_cell(content: str, cell_type: str) -> dict:
     """Create a notebook cell dict."""
     source = content.split("\n") if content else [""]
     # Ensure each line except last ends with \n
-    source = [line + "\n" if i < len(source) - 1 else line for i, line in enumerate(source)]
+    source = [
+        line + "\n" if i < len(source) - 1 else line for i, line in enumerate(source)
+    ]
     cell = {
         "cell_type": cell_type,
         "source": source,
@@ -121,6 +142,7 @@ def _save_notebook(path: str, nb: dict):
 # A19: WebSearch
 # ════════════════════════════════════════════════════════════
 
+
 class WebSearchSchema:
     def __init__(self, query: str, max_results: int = 5):
         if not query:
@@ -142,9 +164,9 @@ def web_search(input_val: Any) -> str:
         # Use DuckDuckGo HTML search (no API key needed)
         encoded = urllib.request.quote(query)
         url = f"https://html.duckduckgo.com/html/?q={encoded}"
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; lambdagent/1.0)"
-        })
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0 (compatible; lambdagent/1.0)"}
+        )
         with urllib.request.urlopen(req, timeout=10) as resp:
             html = resp.read().decode("utf-8", errors="ignore")
 
@@ -182,10 +204,10 @@ def _parse_ddg_html(html: str, max_results: int) -> list:
 
     for i, (url, title) in enumerate(matches[:max_results]):
         # Clean HTML tags
-        title = re.sub(r'<[^>]+>', '', title).strip()
+        title = re.sub(r"<[^>]+>", "", title).strip()
         # Decode URL (DuckDuckGo wraps in redirect)
         if "uddg=" in url:
-            url_match = re.search(r'uddg=([^&]+)', url)
+            url_match = re.search(r"uddg=([^&]+)", url)
             if url_match:
                 url = urllib.request.unquote(url_match.group(1))
         elif url.startswith("//"):
@@ -193,7 +215,7 @@ def _parse_ddg_html(html: str, max_results: int) -> list:
 
         snippet = ""
         if i < len(snippets):
-            snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip()
+            snippet = re.sub(r"<[^>]+>", "", snippets[i]).strip()
 
         results.append({"title": title, "url": url, "snippet": snippet})
 
@@ -203,6 +225,7 @@ def _parse_ddg_html(html: str, max_results: int) -> list:
 # ════════════════════════════════════════════════════════════
 # A20: WebFetch
 # ════════════════════════════════════════════════════════════
+
 
 class WebFetchSchema:
     def __init__(self, url: str, max_length: int = 5000, selector: str = ""):
@@ -215,7 +238,11 @@ class WebFetchSchema:
         self.selector = selector
 
     def dict(self):
-        return {"url": self.url, "max_length": self.max_length, "selector": self.selector}
+        return {
+            "url": self.url,
+            "max_length": self.max_length,
+            "selector": self.selector,
+        }
 
 
 def web_fetch(input_val: Any) -> str:
@@ -225,10 +252,13 @@ def web_fetch(input_val: Any) -> str:
     max_length = params.get("max_length", 5000)
 
     try:
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; lambdagent/1.0)",
-            "Accept": "text/html,application/xhtml+xml,text/plain,application/json",
-        })
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (compatible; lambdagent/1.0)",
+                "Accept": "text/html,application/xhtml+xml,text/plain,application/json",
+            },
+        )
         with urllib.request.urlopen(req, timeout=15) as resp:
             content_type = resp.headers.get("Content-Type", "")
             raw = resp.read()
@@ -269,6 +299,7 @@ def _html_to_text(html: str) -> str:
     # Try markdownify if available
     try:
         import markdownify
+
         return markdownify.markdownify(html, strip=["img", "script", "style"])
     except ImportError:
         pass
@@ -276,6 +307,7 @@ def _html_to_text(html: str) -> str:
     # Try html2text if available
     try:
         import html2text
+
         h = html2text.HTML2Text()
         h.ignore_links = False
         h.ignore_images = True
@@ -285,26 +317,34 @@ def _html_to_text(html: str) -> str:
 
     # Fallback: regex-based stripping
     # Remove script/style blocks
-    text = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(
+        r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE
+    )
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
     # Convert common tags
-    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'<p[^>]*>', '\n\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'<h[1-6][^>]*>(.*?)</h[1-6]>', r'\n\n## \1\n', text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r'<li[^>]*>', '\n- ', text, flags=re.IGNORECASE)
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<p[^>]*>", "\n\n", text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"<h[1-6][^>]*>(.*?)</h[1-6]>",
+        r"\n\n## \1\n",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    text = re.sub(r"<li[^>]*>", "\n- ", text, flags=re.IGNORECASE)
     # Strip remaining tags
-    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r"<[^>]+>", "", text)
     # Decode entities
-    text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-    text = text.replace('&quot;', '"').replace('&#39;', "'").replace('&nbsp;', ' ')
+    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    text = text.replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
     # Clean whitespace
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
 # ════════════════════════════════════════════════════════════
 # Shared
 # ════════════════════════════════════════════════════════════
+
 
 def _parse_input(input_val: Any, schema_cls) -> dict:
     if isinstance(input_val, dict):
@@ -316,7 +356,11 @@ def _parse_input(input_val: Any, schema_cls) -> dict:
             # Heuristic: if it looks like a URL, treat as url; if looks like a query, treat as query
             if input_val.startswith(("http://", "https://")):
                 data = {"url": input_val}
-            elif "/" in input_val or "." in input_val.split()[-1] if input_val.split() else False:
+            elif (
+                "/" in input_val or "." in input_val.split()[-1]
+                if input_val.split()
+                else False
+            ):
                 data = {"path": input_val}
             else:
                 data = {"query": input_val}

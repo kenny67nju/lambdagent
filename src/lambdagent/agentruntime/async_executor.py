@@ -4,6 +4,7 @@ agentruntime.async_executor — Async beta-reduction engine
 Async version of Executor. Uses aapply() on all Term types,
 supports CancellationToken and configurable timeouts.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,7 +45,7 @@ class AsyncExecutor:
         self.trace = TraceStore()
         self.hooks = hooks or HookRegistry()
         self._step_counter = 0
-        self._default_timeout = getattr(config, 'timeout', 120)
+        self._default_timeout = getattr(config, "timeout", 120)
 
     async def reduce(
         self,
@@ -130,16 +131,25 @@ class AsyncExecutor:
 
     # ── Type-specific async reducers ──
 
-    async def _reduce_lam(self, lam: Lam, input_val: Any, ctx: Context,
-                          cancel: CancellationToken, timeout: float) -> Any:
+    async def _reduce_lam(
+        self,
+        lam: Lam,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
         # Hook Layer 3: pre_llm
         await self.hooks.afire("pre_llm", term=lam, input=input_val, ctx=ctx)
 
         t0 = time.time()
         response = await asyncio.wait_for(
             self.llm.acall(
-                model=lam.model, system=lam.prompt, user=str(input_val),
-                temperature=lam.temperature, max_tokens=lam.max_tokens,
+                model=lam.model,
+                system=lam.prompt,
+                user=str(input_val),
+                temperature=lam.temperature,
+                max_tokens=lam.max_tokens,
             ),
             timeout=timeout,
         )
@@ -149,22 +159,39 @@ class AsyncExecutor:
 
         # Hook Layer 3: post_llm (can modify output via output["value"])
         output_wrapper = {"value": result}
-        await self.hooks.afire("post_llm", term=lam, input=input_val,
-                               output=output_wrapper, usage=response.usage, ctx=ctx)
+        await self.hooks.afire(
+            "post_llm",
+            term=lam,
+            input=input_val,
+            output=output_wrapper,
+            usage=response.usage,
+            ctx=ctx,
+        )
         result = output_wrapper["value"]
 
         self._record(lam, input_val, result, duration, response)
-        ctx.log(lam._name, lam._trace_id, input_val, result, duration,
-                lam.model, response.usage.total_tokens)
+        ctx.log(
+            lam._name,
+            lam._trace_id,
+            input_val,
+            result,
+            duration,
+            lam.model,
+            response.usage.total_tokens,
+        )
         return result
 
-    async def _stream_lam(self, lam: Lam, input_val: Any, ctx: Context,
-                          cancel: CancellationToken) -> AsyncGenerator[StreamEvent, None]:
+    async def _stream_lam(
+        self, lam: Lam, input_val: Any, ctx: Context, cancel: CancellationToken
+    ) -> AsyncGenerator[StreamEvent, None]:
         t0 = time.time()
         full_text = []
         async for token in self.llm.stream(
-            model=lam.model, system=lam.prompt, user=str(input_val),
-            temperature=lam.temperature, max_tokens=lam.max_tokens,
+            model=lam.model,
+            system=lam.prompt,
+            user=str(input_val),
+            temperature=lam.temperature,
+            max_tokens=lam.max_tokens,
         ):
             cancel.check()
             full_text.append(token)
@@ -176,16 +203,23 @@ class AsyncExecutor:
         ctx.log(lam._name, lam._trace_id, input_val, result, duration, lam.model)
         yield StepEvent(result, lam._name, duration_ms=duration)
 
-    async def _reduce_compose(self, comp: Compose, input_val: Any, ctx: Context,
-                              cancel: CancellationToken, timeout: float) -> Any:
+    async def _reduce_compose(
+        self,
+        comp: Compose,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
         result = input_val
         for stage in comp.stages:
             cancel.check()
             result = await self.reduce(stage, result, ctx, cancel, timeout)
         return result
 
-    async def _reduce_loop(self, loop: Loop, input_val: Any, ctx: Context,
-                           cancel: CancellationToken) -> Any:
+    async def _reduce_loop(
+        self, loop: Loop, input_val: Any, ctx: Context, cancel: CancellationToken
+    ) -> Any:
         result = input_val
         for step in range(loop.max_steps):
             cancel.check()
@@ -194,8 +228,14 @@ class AsyncExecutor:
                 break
         return result
 
-    async def _reduce_tool(self, tool: Tool, input_val: Any, ctx: Context,
-                           cancel: CancellationToken, timeout: float) -> Any:
+    async def _reduce_tool(
+        self,
+        tool: Tool,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
         # Hook Layer 3: pre_tool
         await self.hooks.afire("pre_tool", term=tool, input=input_val, ctx=ctx)
 
@@ -209,21 +249,43 @@ class AsyncExecutor:
 
         # Hook Layer 3: post_tool (can modify output)
         output_wrapper = {"value": result}
-        await self.hooks.afire("post_tool", term=tool, input=input_val,
-                               output=output_wrapper, duration_ms=duration, ctx=ctx)
+        await self.hooks.afire(
+            "post_tool",
+            term=tool,
+            input=input_val,
+            output=output_wrapper,
+            duration_ms=duration,
+            ctx=ctx,
+        )
         result = output_wrapper["value"]
 
-        self.trace.append(TraceRecord(
-            step=self._step_counter, term_name=tool._name, term_type="Tool",
-            duration_ms=duration, input=str(input_val)[:200], output=str(result)[:200],
-        ))
+        self.trace.append(
+            TraceRecord(
+                step=self._step_counter,
+                term_name=tool._name,
+                term_type="Tool",
+                duration_ms=duration,
+                input=str(input_val)[:200],
+                output=str(result)[:200],
+            )
+        )
         ctx.log(tool._name, tool._trace_id, input_val, result, duration)
         self._step_counter += 1
         return result
 
-    async def _reduce_route(self, route: Route, input_val: Any, ctx: Context,
-                            cancel: CancellationToken, timeout: float) -> Any:
-        label = str(await self.reduce(route.classifier, input_val, ctx, cancel, timeout)).strip().lower()
+    async def _reduce_route(
+        self,
+        route: Route,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
+        label = (
+            str(await self.reduce(route.classifier, input_val, ctx, cancel, timeout))
+            .strip()
+            .lower()
+        )
         agent = route.routes.get(label)
         if agent is None:
             for key, val in route.routes.items():
@@ -234,30 +296,54 @@ class AsyncExecutor:
             agent = route.default
         if agent is None:
             from lambdagent.core import RouteError
+
             raise RouteError(f"No route for '{label}'")
         return await self.reduce(agent, input_val, ctx, cancel, timeout)
 
-    async def _reduce_par(self, par: Par, input_val: Any, ctx: Context,
-                          cancel: CancellationToken, timeout: float) -> tuple:
+    async def _reduce_par(
+        self,
+        par: Par,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> tuple:
         tasks = [
-            self.reduce(a, input_val, ctx, cancel.child(), timeout)
-            for a in par.agents
+            self.reduce(a, input_val, ctx, cancel.child(), timeout) for a in par.agents
         ]
         return tuple(await asyncio.gather(*tasks))
 
-    async def _reduce_pair(self, pair: Pair, input_val: Any, ctx: Context,
-                           cancel: CancellationToken, timeout: float) -> tuple:
+    async def _reduce_pair(
+        self,
+        pair: Pair,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> tuple:
         a, b = await asyncio.gather(
             self.reduce(pair.first, input_val, ctx, cancel.child(), timeout),
             self.reduce(pair.second, input_val, ctx, cancel.child(), timeout),
         )
         return (a, b)
 
-    async def _reduce_if(self, if_term: If, input_val: Any, ctx: Context,
-                         cancel: CancellationToken, timeout: float) -> Any:
+    async def _reduce_if(
+        self,
+        if_term: If,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
         if isinstance(if_term.cond, Term):
-            cond_result = await self.reduce(if_term.cond, input_val, ctx, cancel, timeout)
-            branch = If._is_truthy(cond_result) if isinstance(cond_result, str) else bool(cond_result)
+            cond_result = await self.reduce(
+                if_term.cond, input_val, ctx, cancel, timeout
+            )
+            branch = (
+                If._is_truthy(cond_result)
+                if isinstance(cond_result, str)
+                else bool(cond_result)
+            )
         else:
             branch = if_term.cond(input_val)
         if branch:
@@ -265,18 +351,35 @@ class AsyncExecutor:
         else:
             return await self.reduce(if_term.else_, input_val, ctx, cancel, timeout)
 
-    async def _reduce_memory(self, mem: Memory, input_val: Any, ctx: Context,
-                             cancel: CancellationToken, timeout: float) -> Any:
+    async def _reduce_memory(
+        self,
+        mem: Memory,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
         if mem.store:
-            memory_str = "\n".join(f"- {k}: {v}" for k, v in mem.store.items()
-                                   if not k.startswith("_"))
-            augmented = f"[Memory]\n{memory_str}\n\n[Input]\n{input_val}" if memory_str else str(input_val)
+            memory_str = "\n".join(
+                f"- {k}: {v}" for k, v in mem.store.items() if not k.startswith("_")
+            )
+            augmented = (
+                f"[Memory]\n{memory_str}\n\n[Input]\n{input_val}"
+                if memory_str
+                else str(input_val)
+            )
         else:
             augmented = str(input_val)
         return await self.reduce(mem.agent, augmented, ctx, cancel, timeout)
 
-    async def _reduce_guard(self, guard: Guard, input_val: Any, ctx: Context,
-                            cancel: CancellationToken, timeout: float) -> Any:
+    async def _reduce_guard(
+        self,
+        guard: Guard,
+        input_val: Any,
+        ctx: Context,
+        cancel: CancellationToken,
+        timeout: float,
+    ) -> Any:
         last_result = None
         for attempt in range(1 + guard.retry):
             cancel.check()
@@ -285,27 +388,43 @@ class AsyncExecutor:
             if callable(guard.validator) and not isinstance(guard.validator, Term):
                 valid = guard.validator(result)
             elif isinstance(guard.validator, Term):
-                valid = bool(await self.reduce(guard.validator, result, ctx, cancel, timeout))
+                valid = bool(
+                    await self.reduce(guard.validator, result, ctx, cancel, timeout)
+                )
             else:
                 valid = True
             if valid:
                 return result
         # Hook Layer 3: on_guard_fail
-        await self.hooks.afire("on_guard_fail", term=guard, input=input_val,
-                               last_result=last_result, attempts=1 + guard.retry, ctx=ctx)
+        await self.hooks.afire(
+            "on_guard_fail",
+            term=guard,
+            input=input_val,
+            last_result=last_result,
+            attempts=1 + guard.retry,
+            ctx=ctx,
+        )
         if guard.on_fail:
             return guard.on_fail(last_result)
         from lambdagent.core import ValidationError
+
         raise ValidationError(f"Guard failed after {1 + guard.retry} attempts")
 
     # ── Helpers ──
 
     def _record(self, lam: Lam, input_val, result, duration_ms, response: LLMResponse):
-        self.trace.append(TraceRecord(
-            step=self._step_counter, term_name=lam._name, term_type="Lam",
-            duration_ms=duration_ms, input=str(input_val)[:200], output=str(result)[:200],
-            model=lam.model, temperature=lam.temperature,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-        ))
+        self.trace.append(
+            TraceRecord(
+                step=self._step_counter,
+                term_name=lam._name,
+                term_type="Lam",
+                duration_ms=duration_ms,
+                input=str(input_val)[:200],
+                output=str(result)[:200],
+                model=lam.model,
+                temperature=lam.temperature,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+            )
+        )
         self._step_counter += 1

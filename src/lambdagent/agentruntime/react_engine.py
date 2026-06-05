@@ -1,4 +1,5 @@
 """agentruntime.react_engine — ReAct loop engine (Y combinator runtime)"""
+
 from __future__ import annotations
 import time
 from dataclasses import dataclass
@@ -23,16 +24,18 @@ STEP_ANSWER = "answer"
 @dataclass
 class StepEvent:
     """One streaming event emitted during ReAct execution."""
-    type: str            # STEP_THINK, STEP_TOOL_CALL, STEP_TOOL_RESULT, STEP_ERROR, STEP_ANSWER
+
+    type: str  # STEP_THINK, STEP_TOOL_CALL, STEP_TOOL_RESULT, STEP_ERROR, STEP_ANSWER
     step: int
-    content: str         # The text payload
-    tool: str = ""       # Tool name (for tool_call / tool_result)
+    content: str  # The text payload
+    tool: str = ""  # Tool name (for tool_call / tool_result)
     duration_ms: float = 0
 
 
 @dataclass
 class StepResult:
     """Result of one Y combinator unfolding."""
+
     terminated: bool
     answer: Optional[str]
     next_state: Optional[str]
@@ -115,20 +118,26 @@ class ReActEngine:
 
             if result.terminated:
                 final_answer = result.answer
-                self._emit(StepEvent(
-                    type=STEP_ANSWER, step=step,
-                    content=final_answer or "",
-                ))
+                self._emit(
+                    StepEvent(
+                        type=STEP_ANSWER,
+                        step=step,
+                        content=final_answer or "",
+                    )
+                )
                 break
 
             state = result.next_state
 
         if final_answer is None:
             final_answer = self._force_terminate(state, ctx)
-            self._emit(StepEvent(
-                type=STEP_ANSWER, step=self.max_steps,
-                content=final_answer,
-            ))
+            self._emit(
+                StepEvent(
+                    type=STEP_ANSWER,
+                    step=self.max_steps,
+                    content=final_answer,
+                )
+            )
 
         return final_answer
 
@@ -141,14 +150,25 @@ class ReActEngine:
         thought = self.think(prompt, ctx)
         think_ms = (time.time() - t0) * 1000
 
-        self._record(TraceRecord(
-            step=step, term_name="think", term_type="Lam",
-            duration_ms=think_ms, input=state[:200], output=str(thought)[:200],
-        ), ctx)
-        self._emit(StepEvent(
-            type=STEP_THINK, step=step,
-            content=str(thought), duration_ms=think_ms,
-        ))
+        self._record(
+            TraceRecord(
+                step=step,
+                term_name="think",
+                term_type="Lam",
+                duration_ms=think_ms,
+                input=state[:200],
+                output=str(thought)[:200],
+            ),
+            ctx,
+        )
+        self._emit(
+            StepEvent(
+                type=STEP_THINK,
+                step=step,
+                content=str(thought),
+                duration_ms=think_ms,
+            )
+        )
 
         # ═══ Phase 2: PARSE (extract structured action) ═══
         try:
@@ -156,13 +176,25 @@ class ReActEngine:
         except ParseError as e:
             observation = f"[FORMAT_ERROR] {e}. Please output a valid action."
             next_state = self._append_observation(state, str(thought), observation)
-            self._record(TraceRecord(
-                step=step, term_name="parse_error", term_type="Error",
-                input=str(thought)[:200], output=observation, error=str(e),
-            ), ctx)
+            self._record(
+                TraceRecord(
+                    step=step,
+                    term_name="parse_error",
+                    term_type="Error",
+                    input=str(thought)[:200],
+                    output=observation,
+                    error=str(e),
+                ),
+                ctx,
+            )
             return StepResult(
-                terminated=False, answer=None, next_state=next_state,
-                thought=str(thought), action=None, observation=observation, step=step,
+                terminated=False,
+                answer=None,
+                next_state=next_state,
+                thought=str(thought),
+                action=None,
+                observation=observation,
+                step=step,
             )
 
         # ═══ Phase 3: ROUTE (select tool = CASE dispatch) ═══
@@ -170,8 +202,13 @@ class ReActEngine:
             observation = f"[ROUTE_ERROR] Unknown tool: {action.tool}. Available: {list(self.tools.keys())}"
             next_state = self._append_observation(state, str(thought), observation)
             return StepResult(
-                terminated=False, answer=None, next_state=next_state,
-                thought=str(thought), action=action, observation=observation, step=step,
+                terminated=False,
+                answer=None,
+                next_state=next_state,
+                thought=str(thought),
+                action=action,
+                observation=observation,
+                step=step,
             )
 
         tool = self.tools[action.tool]
@@ -181,47 +218,88 @@ class ReActEngine:
         # 4a. Base case: terminate = lambda x.x
         if action.tool == "terminate":
             answer = self._extract_final_answer(str(thought), action)
-            self._record(TraceRecord(
-                step=step, term_name="terminate", term_type="Tool",
-                input=str(thought)[:200], output=answer[:200], terminated=True,
-                action="terminate",
-            ), ctx)
+            self._record(
+                TraceRecord(
+                    step=step,
+                    term_name="terminate",
+                    term_type="Tool",
+                    input=str(thought)[:200],
+                    output=answer[:200],
+                    terminated=True,
+                    action="terminate",
+                ),
+                ctx,
+            )
             return StepResult(
-                terminated=True, answer=answer, next_state=None,
-                thought=str(thought), action=action, observation=None, step=step,
+                terminated=True,
+                answer=answer,
+                next_state=None,
+                thought=str(thought),
+                action=action,
+                observation=None,
+                step=step,
             )
 
         # 4b. Tool call
-        self._emit(StepEvent(
-            type=STEP_TOOL_CALL, step=step,
-            content=str(action.input)[:500], tool=action.tool,
-        ))
+        self._emit(
+            StepEvent(
+                type=STEP_TOOL_CALL,
+                step=step,
+                content=str(action.input)[:500],
+                tool=action.tool,
+            )
+        )
         t0 = time.time()
         try:
-            tool_input = action.input if isinstance(action.input, str) else str(action.input)
+            tool_input = (
+                action.input if isinstance(action.input, str) else str(action.input)
+            )
             tool_result = tool(tool_input)
             tool_ms = (time.time() - t0) * 1000
-            self._record(TraceRecord(
-                step=step, term_name=f"Tool:{action.tool}", term_type="Tool",
-                duration_ms=tool_ms, input=tool_input[:200], output=str(tool_result)[:200],
-                action=action.tool, action_input=action.input,
-            ), ctx)
-            self._emit(StepEvent(
-                type=STEP_TOOL_RESULT, step=step,
-                content=str(tool_result)[:1000], tool=action.tool,
-                duration_ms=tool_ms,
-            ))
+            self._record(
+                TraceRecord(
+                    step=step,
+                    term_name=f"Tool:{action.tool}",
+                    term_type="Tool",
+                    duration_ms=tool_ms,
+                    input=tool_input[:200],
+                    output=str(tool_result)[:200],
+                    action=action.tool,
+                    action_input=action.input,
+                ),
+                ctx,
+            )
+            self._emit(
+                StepEvent(
+                    type=STEP_TOOL_RESULT,
+                    step=step,
+                    content=str(tool_result)[:1000],
+                    tool=action.tool,
+                    duration_ms=tool_ms,
+                )
+            )
         except Exception as e:
             tool_result = f"[TOOL_ERROR] {e}"
-            self._record(TraceRecord(
-                step=step, term_name=f"Tool:{action.tool}", term_type="Tool",
-                input=str(action.input)[:200], output=tool_result, error=str(e),
-                action=action.tool,
-            ), ctx)
-            self._emit(StepEvent(
-                type=STEP_ERROR, step=step,
-                content=tool_result, tool=action.tool,
-            ))
+            self._record(
+                TraceRecord(
+                    step=step,
+                    term_name=f"Tool:{action.tool}",
+                    term_type="Tool",
+                    input=str(action.input)[:200],
+                    output=tool_result,
+                    error=str(e),
+                    action=action.tool,
+                ),
+                ctx,
+            )
+            self._emit(
+                StepEvent(
+                    type=STEP_ERROR,
+                    step=step,
+                    content=tool_result,
+                    tool=action.tool,
+                )
+            )
 
         # ═══ Phase 5: OBSERVE (format observation) ═══
         observation = self._format_observation(action.tool, str(tool_result))
@@ -238,16 +316,26 @@ class ReActEngine:
         if self.termination.should_stop(str(thought), observation, step):
             answer = self._extract_final_answer(str(thought), action)
             return StepResult(
-                terminated=True, answer=answer, next_state=None,
-                thought=str(thought), action=action, observation=observation, step=step,
+                terminated=True,
+                answer=answer,
+                next_state=None,
+                thought=str(thought),
+                action=action,
+                observation=observation,
+                step=step,
             )
 
         # Prepare next state (recursion: self(state + obs))
         next_state = self._append_observation(state, str(thought), observation)
 
         return StepResult(
-            terminated=False, answer=None, next_state=next_state,
-            thought=str(thought), action=action, observation=observation, step=step,
+            terminated=False,
+            answer=None,
+            next_state=next_state,
+            thought=str(thought),
+            action=action,
+            observation=observation,
+            step=step,
         )
 
     def _build_prompt(self, state: str, step: int) -> str:
@@ -264,8 +352,12 @@ class ReActEngine:
 
         # Tool descriptions
         parts.append("[Available Tools]")
-        parts.append('Call a tool by outputting JSON: {"action": "tool_name", "input": {...}}')
-        parts.append('To finish, call: {"action": "terminate", "answer": "your final answer"}')
+        parts.append(
+            'Call a tool by outputting JSON: {"action": "tool_name", "input": {...}}'
+        )
+        parts.append(
+            'To finish, call: {"action": "terminate", "answer": "your final answer"}'
+        )
         parts.append("")
         for name in self.tools:
             if name == "terminate":

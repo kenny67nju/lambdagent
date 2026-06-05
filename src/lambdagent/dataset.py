@@ -22,6 +22,7 @@ class Dataset:
         Dataset([("0","1"), ("1","2"), ("2","3")])
         ≡ 定义了后继函数 SUCC 的 Lambda 项
     """
+
     examples: List[tuple[str, str]]
     description: str = ""
     system_prompt: str = ""
@@ -49,4 +50,5 @@ class Dataset:
     def to_lam(self, name: str, model: str = "claude-sonnet-4-20250514", **kwargs):
         """将 Dataset 转为 Lam（λ 抽象）"""
         from .primitives import Lam
+
         return Lam(name=name, prompt=self.to_prompt(), model=model, **kwargs)

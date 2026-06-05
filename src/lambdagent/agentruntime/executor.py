@@ -1,4 +1,5 @@
 """agentruntime.executor — Beta-reduction engine"""
+
 from __future__ import annotations
 import time
 from typing import Any
@@ -87,15 +88,29 @@ class Executor:
         duration = (time.time() - t0) * 1000
         result = lam.output_parser(response.text)
 
-        self.trace.append(TraceRecord(
-            step=self._step_counter, term_name=lam._name, term_type="Lam",
-            duration_ms=duration, input=str(input_val)[:200], output=str(result)[:200],
-            model=lam.model, temperature=lam.temperature,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-        ))
-        ctx.log(lam._name, lam._trace_id, input_val, result, duration, lam.model,
-                response.usage.total_tokens)
+        self.trace.append(
+            TraceRecord(
+                step=self._step_counter,
+                term_name=lam._name,
+                term_type="Lam",
+                duration_ms=duration,
+                input=str(input_val)[:200],
+                output=str(result)[:200],
+                model=lam.model,
+                temperature=lam.temperature,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+            )
+        )
+        ctx.log(
+            lam._name,
+            lam._trace_id,
+            input_val,
+            result,
+            duration,
+            lam.model,
+            response.usage.total_tokens,
+        )
         self._step_counter += 1
         return result
 
@@ -121,10 +136,16 @@ class Executor:
         t0 = time.time()
         result = tool.fn(input_val)
         duration = (time.time() - t0) * 1000
-        self.trace.append(TraceRecord(
-            step=self._step_counter, term_name=tool._name, term_type="Tool",
-            duration_ms=duration, input=str(input_val)[:200], output=str(result)[:200],
-        ))
+        self.trace.append(
+            TraceRecord(
+                step=self._step_counter,
+                term_name=tool._name,
+                term_type="Tool",
+                duration_ms=duration,
+                input=str(input_val)[:200],
+                output=str(result)[:200],
+            )
+        )
         ctx.log(tool._name, tool._trace_id, input_val, result, duration)
         self._step_counter += 1
         return result
@@ -142,14 +163,16 @@ class Executor:
             agent = route.default
         if agent is None:
             from lambdagent.core import RouteError
+
             raise RouteError(f"No route for '{label}'")
         return self.reduce(agent, input_val, ctx)
 
     def _reduce_memory(self, mem: Memory, input_val: Any, ctx: Context) -> Any:
         """Environment extension: inject memory, execute, write back."""
         if mem.store:
-            memory_str = "\n".join(f"- {k}: {v}" for k, v in mem.store.items()
-                                   if not k.startswith("_"))
+            memory_str = "\n".join(
+                f"- {k}: {v}" for k, v in mem.store.items() if not k.startswith("_")
+            )
             if memory_str:
                 augmented = f"[Memory]\n{memory_str}\n\n[Input]\n{input_val}"
             else:
@@ -175,6 +198,7 @@ class Executor:
         if guard.on_fail:
             return guard.on_fail(last_result)
         from lambdagent.core import ValidationError
+
         raise ValidationError(f"Guard failed after {1 + guard.retry} attempts")
 
     def _reduce_par(self, par: Par, input_val: Any, ctx: Context) -> tuple:
@@ -189,7 +213,11 @@ class Executor:
     def _reduce_if(self, if_term: If, input_val: Any, ctx: Context) -> Any:
         if isinstance(if_term.cond, Term):
             cond_result = self.reduce(if_term.cond, input_val, ctx)
-            branch = If._is_truthy(cond_result) if isinstance(cond_result, str) else bool(cond_result)
+            branch = (
+                If._is_truthy(cond_result)
+                if isinstance(cond_result, str)
+                else bool(cond_result)
+            )
         else:
             branch = if_term.cond(input_val)
         if branch:

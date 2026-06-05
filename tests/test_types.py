@@ -11,9 +11,23 @@ Tests cover:
 
 import pytest
 from lambdagent.lam_types import (
-    LamType, TypeTag, AgentType, AgentTypeError,
-    T_ANY, T_NONE, T_STR, T_INT, T_FLOAT, T_BOOL, T_JSON, T_TUPLE, T_UNION,
-    is_subtype, check_compose_types, parse_type_annotation, infer_type_from_value,
+    LamType,
+    TypeTag,
+    AgentType,
+    AgentTypeError,
+    T_ANY,
+    T_NONE,
+    T_STR,
+    T_INT,
+    T_FLOAT,
+    T_BOOL,
+    T_JSON,
+    T_TUPLE,
+    T_UNION,
+    is_subtype,
+    check_compose_types,
+    parse_type_annotation,
+    infer_type_from_value,
 )
 from lambdagent.core import Term, Context
 from lambdagent.primitives import Lam, Compose, Tool, Pair
@@ -22,6 +36,7 @@ from lambdagent.primitives import Lam, Compose, Tool, Pair
 # ============================================================
 # 1. Basic Subtype Relations (Paper III Definition 5)
 # ============================================================
+
 
 class TestBasicSubtyping:
     """Test basic subtype rules from Definition 5."""
@@ -80,6 +95,7 @@ class TestBasicSubtyping:
 # 2. Json(S) Structural Subtyping
 # ============================================================
 
+
 class TestJsonSubtyping:
     """Test Json Schema structural subtyping (width + depth)."""
 
@@ -90,85 +106,105 @@ class TestJsonSubtyping:
 
     def test_width_subtyping(self):
         """More fields <: fewer fields (width subtyping)"""
-        sub = T_JSON({
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "age": {"type": "integer"},
-                "email": {"type": "string"},  # extra field
-            },
-            "required": ["name", "age"],
-        })
-        sup = T_JSON({
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "age": {"type": "integer"},
-            },
-            "required": ["name"],
-        })
+        sub = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "integer"},
+                    "email": {"type": "string"},  # extra field
+                },
+                "required": ["name", "age"],
+            }
+        )
+        sup = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "integer"},
+                },
+                "required": ["name"],
+            }
+        )
         assert is_subtype(sub, sup)
 
     def test_missing_required_field(self):
         """Missing required field → not subtype"""
-        sub = T_JSON({
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-            },
-        })
-        sup = T_JSON({
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "age": {"type": "integer"},
-            },
-            "required": ["name", "age"],
-        })
+        sub = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                },
+            }
+        )
+        sup = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "integer"},
+                },
+                "required": ["name", "age"],
+            }
+        )
         assert not is_subtype(sub, sup)
 
     def test_depth_subtyping(self):
         """Nested field types must be compatible (depth subtyping)"""
-        sub = T_JSON({
-            "type": "object",
-            "properties": {
-                "count": {"type": "integer"},
-            },
-        })
-        sup = T_JSON({
-            "type": "object",
-            "properties": {
-                "count": {"type": "number"},  # integer <: number
-            },
-        })
+        sub = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "integer"},
+                },
+            }
+        )
+        sup = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "number"},  # integer <: number
+                },
+            }
+        )
         assert is_subtype(sub, sup)
 
     def test_depth_subtype_failure(self):
         """Incompatible nested types → not subtype"""
-        sub = T_JSON({
-            "type": "object",
-            "properties": {
-                "count": {"type": "string"},
-            },
-        })
-        sup = T_JSON({
-            "type": "object",
-            "properties": {
-                "count": {"type": "integer"},
-            },
-        })
+        sub = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "string"},
+                },
+            }
+        )
+        sup = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "integer"},
+                },
+            }
+        )
         assert not is_subtype(sub, sup)
 
     def test_array_subtyping(self):
         """Array items covariance"""
-        sub = T_JSON({
-            "type": "array",
-            "items": {"type": "integer"},
-        })
-        sup = T_JSON({
-            "type": "array",
-            "items": {"type": "number"},
-        })
+        sub = T_JSON(
+            {
+                "type": "array",
+                "items": {"type": "integer"},
+            }
+        )
+        sup = T_JSON(
+            {
+                "type": "array",
+                "items": {"type": "number"},
+            }
+        )
         assert is_subtype(sub, sup)
 
     def test_type_mismatch(self):
@@ -187,8 +223,8 @@ class TestJsonSubtyping:
 # 3. Tuple and Union Types
 # ============================================================
 
-class TestCompoundTypes:
 
+class TestCompoundTypes:
     def test_tuple_covariance(self):
         """(Int, Str) <: (Float, Str) when Int <: Float"""
         assert is_subtype(
@@ -220,11 +256,13 @@ class TestCompoundTypes:
 # 4. T-Compose Type Checking (Paper III §3.3.3)
 # ============================================================
 
-class TestTCompose:
 
+class TestTCompose:
     def test_compatible_chain(self):
         """Str → Json(S) >> Json(S) → Str should pass"""
-        json_type = T_JSON({"type": "object", "properties": {"result": {"type": "string"}}})
+        json_type = T_JSON(
+            {"type": "object", "properties": {"result": {"type": "string"}}}
+        )
         types = [
             AgentType(T_STR, json_type),
             AgentType(json_type, T_STR),
@@ -264,23 +302,27 @@ class TestTCompose:
 
     def test_json_width_subtype_in_chain(self):
         """Agent outputting {name, age, email} >> Agent expecting {name, age}"""
-        full = T_JSON({
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "age": {"type": "integer"},
-                "email": {"type": "string"},
-            },
-            "required": ["name", "age"],
-        })
-        partial = T_JSON({
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "age": {"type": "integer"},
-            },
-            "required": ["name"],
-        })
+        full = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "integer"},
+                    "email": {"type": "string"},
+                },
+                "required": ["name", "age"],
+            }
+        )
+        partial = T_JSON(
+            {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "integer"},
+                },
+                "required": ["name"],
+            }
+        )
         types = [
             AgentType(T_STR, full),
             AgentType(partial, T_STR),
@@ -316,8 +358,8 @@ class TestTCompose:
 # 5. Type Annotation Parsing
 # ============================================================
 
-class TestTypeAnnotationParsing:
 
+class TestTypeAnnotationParsing:
     def test_parse_str(self):
         assert parse_type_annotation("Str") == T_STR
         assert parse_type_annotation("string") == T_STR
@@ -345,8 +387,8 @@ class TestTypeAnnotationParsing:
 # 6. Operator Type Checking (>> at construction time)
 # ============================================================
 
-class TestOperatorTypeChecking:
 
+class TestOperatorTypeChecking:
     def test_rshift_with_types_pass(self):
         """f >> g passes when output(f) <: input(g)"""
         f = Tool("to_int", lambda x: int(x))
@@ -386,8 +428,8 @@ class TestOperatorTypeChecking:
 # 7. Type Inference from Values
 # ============================================================
 
-class TestTypeInference:
 
+class TestTypeInference:
     def test_infer_str(self):
         assert infer_type_from_value("hello") == T_STR
 
@@ -413,8 +455,8 @@ class TestTypeInference:
 # 8. Type Repr
 # ============================================================
 
-class TestTypeRepr:
 
+class TestTypeRepr:
     def test_basic_repr(self):
         assert repr(T_STR) == "Str"
         assert repr(T_INT) == "Int"

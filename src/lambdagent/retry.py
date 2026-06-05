@@ -4,6 +4,7 @@ lambdagent.retry — Resilience primitives for β-reduction I/O
 Provides retry with exponential backoff, configurable timeouts,
 and circuit breaker pattern for LLM/MCP calls.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,13 +33,15 @@ class RetryPolicy:
 
 
 def _backoff_delay(attempt: int, policy: RetryPolicy) -> float:
-    delay = min(policy.base_delay * (2 ** attempt), policy.max_delay)
+    delay = min(policy.base_delay * (2**attempt), policy.max_delay)
     if policy.jitter:
         delay = random.uniform(0, delay)
     return delay
 
 
-async def with_retry(fn, policy: RetryPolicy | None = None, timeout: float | None = None):
+async def with_retry(
+    fn, policy: RetryPolicy | None = None, timeout: float | None = None
+):
     """Retry an async callable with exponential backoff and optional timeout."""
     if policy is None:
         policy = RetryPolicy()
@@ -56,7 +59,10 @@ async def with_retry(fn, policy: RetryPolicy | None = None, timeout: float | Non
                 delay = _backoff_delay(attempt, policy)
                 logger.warning(
                     "Retry %d/%d after %.2fs: %s",
-                    attempt + 1, policy.max_attempts, delay, exc,
+                    attempt + 1,
+                    policy.max_attempts,
+                    delay,
+                    exc,
                 )
                 await asyncio.sleep(delay)
         except asyncio.TimeoutError as exc:
@@ -65,14 +71,19 @@ async def with_retry(fn, policy: RetryPolicy | None = None, timeout: float | Non
                 delay = _backoff_delay(attempt, policy)
                 logger.warning(
                     "Retry %d/%d after timeout (%.2fs backoff): %s",
-                    attempt + 1, policy.max_attempts, delay, exc,
+                    attempt + 1,
+                    policy.max_attempts,
+                    delay,
+                    exc,
                 )
                 await asyncio.sleep(delay)
 
     raise last_exc  # type: ignore[misc]
 
 
-def with_retry_sync(fn, policy: RetryPolicy | None = None, timeout: float | None = None):
+def with_retry_sync(
+    fn, policy: RetryPolicy | None = None, timeout: float | None = None
+):
     """Synchronous retry with exponential backoff and optional timeout.
 
     When *timeout* is set, each individual attempt is bounded by a
@@ -99,7 +110,10 @@ def with_retry_sync(fn, policy: RetryPolicy | None = None, timeout: float | None
                 delay = _backoff_delay(attempt, policy)
                 logger.warning(
                     "Retry %d/%d after %.2fs: %s",
-                    attempt + 1, policy.max_attempts, delay, exc,
+                    attempt + 1,
+                    policy.max_attempts,
+                    delay,
+                    exc,
                 )
                 time.sleep(delay)
 
@@ -153,7 +167,11 @@ class CircuitBreaker:
             self._last_failure_time = time.monotonic()
             if self._failure_count >= self.failure_threshold:
                 self._state = self._OPEN
-                logger.error("Circuit breaker '%s' opened after %d failures", self.name, self._failure_count)
+                logger.error(
+                    "Circuit breaker '%s' opened after %d failures",
+                    self.name,
+                    self._failure_count,
+                )
 
     def _check_state(self) -> None:
         with self._lock:

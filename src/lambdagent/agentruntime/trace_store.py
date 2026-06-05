@@ -1,4 +1,5 @@
 """agentruntime.trace_store — Beta-reduction trace persistence"""
+
 from __future__ import annotations
 import json
 import time
@@ -9,6 +10,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class TraceRecord:
     """One beta-reduction record."""
+
     step: int = 0
     term_name: str = ""
     term_type: str = ""

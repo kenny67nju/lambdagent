@@ -31,6 +31,7 @@ from .config import RuntimeConfig
 @dataclass
 class Complexity:
     """Term complexity assessment for engine selection."""
+
     max_possible_steps: int = 1
     has_parallel: bool = False
     has_guard: bool = False
@@ -64,6 +65,7 @@ def assess_complexity(term: Term) -> Complexity:
     # Estimate cost if cost_grade module is available
     try:
         from lambdagent.cost_grade import estimate_cost
+
         grade = estimate_cost(term)
         c.estimated_cost_usd = grade.money
     except Exception:
@@ -77,23 +79,23 @@ def _walk(term: Term, c: Complexity, depth: int):
     c.depth = max(c.depth, depth)
 
     if isinstance(term, Loop):
-        max_steps = getattr(term, 'max_steps', 10)
+        max_steps = getattr(term, "max_steps", 10)
         c.max_possible_steps += max_steps
-        if hasattr(term, 'body'):
+        if hasattr(term, "body"):
             _walk(term.body, c, depth + 1)
 
     elif isinstance(term, Compose):
-        stages = getattr(term, 'stages', [])
+        stages = getattr(term, "stages", [])
         for stage in stages:
             _walk(stage, c, depth + 1)
 
     elif isinstance(term, (Pair, Par)):
         c.has_parallel = True
-        agents = getattr(term, 'agents', [])
+        agents = getattr(term, "agents", [])
         if not agents:
             # Pair has first/second
-            first = getattr(term, 'first', None)
-            second = getattr(term, 'second', None)
+            first = getattr(term, "first", None)
+            second = getattr(term, "second", None)
             if first:
                 _walk(first, c, depth + 1)
             if second:
@@ -104,42 +106,43 @@ def _walk(term: Term, c: Complexity, depth: int):
 
     elif isinstance(term, Guard):
         c.has_guard = True
-        retry = getattr(term, 'retry', 0)
+        retry = getattr(term, "retry", 0)
         c.guard_max_retries = max(c.guard_max_retries, retry)
         c.max_possible_steps += retry
-        if hasattr(term, 'agent'):
+        if hasattr(term, "agent"):
             _walk(term.agent, c, depth + 1)
 
     elif isinstance(term, Route):
-        routes = getattr(term, 'routes', {})
+        routes = getattr(term, "routes", {})
         for route_term in routes.values():
             if isinstance(route_term, Term):
                 _walk(route_term, c, depth + 1)
 
     elif isinstance(term, If):
-        then_ = getattr(term, 'then_', None)
-        else_ = getattr(term, 'else_', None)
+        then_ = getattr(term, "then_", None)
+        else_ = getattr(term, "else_", None)
         if then_ and isinstance(then_, Term):
             _walk(then_, c, depth + 1)
         if else_ and isinstance(else_, Term):
             _walk(else_, c, depth + 1)
 
     elif isinstance(term, Memory):
-        if hasattr(term, 'agent'):
+        if hasattr(term, "agent"):
             _walk(term.agent, c, depth + 1)
 
     # Check for multiagent constructs
     try:
         from lambdagent.multiagent import GroupChat, AsyncPar, Handoff
+
         if isinstance(term, (GroupChat, AsyncPar)):
             c.has_parallel = True
-            agents = getattr(term, 'agents', [])
-            max_rounds = getattr(term, 'max_rounds', 10)
+            agents = getattr(term, "agents", [])
+            max_rounds = getattr(term, "max_rounds", 10)
             c.max_possible_steps += max_rounds * len(agents)
             for agent in agents:
                 _walk(agent, c, depth + 1)
         elif isinstance(term, Handoff):
-            registry = getattr(term, 'registry', {})
+            registry = getattr(term, "registry", {})
             for agent in registry.values():
                 if isinstance(agent, Term):
                     _walk(agent, c, depth + 1)
@@ -159,15 +162,15 @@ class AdaptiveEngine(Engine):
         self._config = config
         self._engine_opts = engine_opts
 
-    def execute(self, term: Term, input_val: Any, ctx: Context,
-                **opts) -> EngineResult:
+    def execute(self, term: Term, input_val: Any, ctx: Context, **opts) -> EngineResult:
         complexity = assess_complexity(term)
         engine = self._select(complexity)
         result = engine.execute(term, input_val, ctx, **opts)
         return result
 
-    async def execute_async(self, term: Term, input_val: Any, ctx: Context,
-                            **opts) -> EngineResult:
+    async def execute_async(
+        self, term: Term, input_val: Any, ctx: Context, **opts
+    ) -> EngineResult:
         complexity = assess_complexity(term)
         engine = self._select(complexity)
         result = await engine.execute_async(term, input_val, ctx, **opts)

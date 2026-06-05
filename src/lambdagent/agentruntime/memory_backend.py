@@ -1,4 +1,5 @@
 """agentruntime.memory_backend — Environment Gamma persistence"""
+
 from __future__ import annotations
 import time
 import sqlite3
@@ -48,23 +49,43 @@ class MemoryBackend(ABC):
         S14: namespace parameter provides tenant/agent isolation.
         Format: "tenant_id:agent_id" → all keys prefixed, preventing cross-agent access.
         """
-        strategy = getattr(config, 'strategy', 'local') if hasattr(config, 'strategy') else config.get('strategy', 'local')
-        size = getattr(config, 'size', 20) if hasattr(config, 'size') else config.get('size', 20)
-        ttl = getattr(config, 'ttl', 3600) if hasattr(config, 'ttl') else config.get('ttl', 3600)
+        strategy = (
+            getattr(config, "strategy", "local")
+            if hasattr(config, "strategy")
+            else config.get("strategy", "local")
+        )
+        size = (
+            getattr(config, "size", 20)
+            if hasattr(config, "size")
+            else config.get("size", 20)
+        )
+        ttl = (
+            getattr(config, "ttl", 3600)
+            if hasattr(config, "ttl")
+            else config.get("ttl", 3600)
+        )
 
         # S14: Extract namespace from config if not provided
         if not namespace:
-            if hasattr(config, 'namespace'):
+            if hasattr(config, "namespace"):
                 namespace = config.namespace
             elif isinstance(config, dict):
-                namespace = config.get('namespace', '')
+                namespace = config.get("namespace", "")
 
         if strategy == "sqlite":
-            db_path = getattr(config, 'db_path', '') if hasattr(config, 'db_path') else config.get('db_path', '')
+            db_path = (
+                getattr(config, "db_path", "")
+                if hasattr(config, "db_path")
+                else config.get("db_path", "")
+            )
             return SQLiteMemory(size, ttl, db_path or ":memory:", namespace=namespace)
         elif strategy == "redis":
             try:
-                redis_url = getattr(config, 'redis_url', '') if hasattr(config, 'redis_url') else config.get('redis_url', '')
+                redis_url = (
+                    getattr(config, "redis_url", "")
+                    if hasattr(config, "redis_url")
+                    else config.get("redis_url", "")
+                )
                 return RedisMemory(size, ttl, redis_url, namespace=namespace)
             except Exception:
                 return LocalMemory(size, ttl, namespace=namespace)
@@ -123,7 +144,11 @@ class LocalMemory(MemoryBackend):
             self._store.popitem(last=False)
 
     def auto_save(self, key: str, thought: str, action: str, observation: str) -> None:
-        summary = f"[{action}] {observation[:200]}" if observation else f"[thought] {thought[:200]}"
+        summary = (
+            f"[{action}] {observation[:200]}"
+            if observation
+            else f"[thought] {thought[:200]}"
+        )
         self.write(key, summary)
 
     def clear(self) -> None:
@@ -157,24 +182,33 @@ class SQLiteMemory(MemoryBackend):
     def read_recent(self, n: int) -> List[Tuple[str, Any, str]]:
         self._evict_expired()
         rows = self.conn.execute(
-            "SELECT key, value, timestamp FROM memory ORDER BY timestamp DESC LIMIT ?", (n,)
+            "SELECT key, value, timestamp FROM memory ORDER BY timestamp DESC LIMIT ?",
+            (n,),
         ).fetchall()
         result = []
         now = time.time()
         for key, value, ts in rows:
             age = int(now - ts)
-            age_str = f"{age}s ago" if age < 60 else f"{age // 60}min ago" if age < 3600 else f"{age // 3600}h ago"
+            age_str = (
+                f"{age}s ago"
+                if age < 60
+                else f"{age // 60}min ago"
+                if age < 3600
+                else f"{age // 3600}h ago"
+            )
             result.append((key, value, age_str))
         return result
 
     def read(self, key: str) -> Optional[Any]:
-        row = self.conn.execute("SELECT value FROM memory WHERE key=?", (key,)).fetchone()
+        row = self.conn.execute(
+            "SELECT value FROM memory WHERE key=?", (key,)
+        ).fetchone()
         return row[0] if row else None
 
     def write(self, key: str, value: Any) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO memory (key, value, timestamp) VALUES (?, ?, ?)",
-            (key, str(value), time.time())
+            (key, str(value), time.time()),
         )
         # LRU eviction
         count = self.conn.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
@@ -182,12 +216,16 @@ class SQLiteMemory(MemoryBackend):
             excess = count - self.size
             self.conn.execute(
                 "DELETE FROM memory WHERE key IN (SELECT key FROM memory ORDER BY timestamp ASC LIMIT ?)",
-                (excess,)
+                (excess,),
             )
         self.conn.commit()
 
     def auto_save(self, key, thought, action, observation):
-        summary = f"[{action}] {observation[:200]}" if observation else f"[thought] {thought[:200]}"
+        summary = (
+            f"[{action}] {observation[:200]}"
+            if observation
+            else f"[thought] {thought[:200]}"
+        )
         self.write(key, summary)
 
     def clear(self):
@@ -209,6 +247,7 @@ class RedisMemory(MemoryBackend):
         self.ttl = ttl
         try:
             import redis
+
             self.r = redis.from_url(redis_url or "redis://localhost:6379/0")
             self.r.ping()
         except Exception as e:
@@ -248,7 +287,11 @@ class RedisMemory(MemoryBackend):
             self.r.zremrangebyrank(self.prefix + "index", 0, count - self.size - 1)
 
     def auto_save(self, key, thought, action, observation):
-        summary = f"[{action}] {observation[:200]}" if observation else f"[thought] {thought[:200]}"
+        summary = (
+            f"[{action}] {observation[:200]}"
+            if observation
+            else f"[thought] {thought[:200]}"
+        )
         self.write(key, summary)
 
     def clear(self):

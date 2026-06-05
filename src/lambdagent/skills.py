@@ -34,6 +34,7 @@ from .core import Term, Context, LambdagentError
 # Skill: 命名的 Lambda 项
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class SkillSignature:
     """
@@ -42,9 +43,10 @@ class SkillSignature:
     Lambda 类型: τ_in → τ_out
     用于组合检查: skill_a >> skill_b 要求 a.τ_out ⊆ b.τ_in
     """
-    input_type: str = "Str"       # 输入类型描述
-    output_type: str = "Str"      # 输出类型描述
-    input_schema: Optional[dict] = None   # JSON Schema (可选)
+
+    input_type: str = "Str"  # 输入类型描述
+    output_type: str = "Str"  # 输出类型描述
+    input_schema: Optional[dict] = None  # JSON Schema (可选)
     output_schema: Optional[dict] = None  # JSON Schema (可选)
 
     def compatible_with(self, other: SkillSignature) -> bool:
@@ -116,14 +118,15 @@ class Skill(Term):
         """
         prefix = "\n".join(f"[{k}={v}]" for k, v in kwargs.items())
         from .primitives import Tool
-        binder = Tool(f"bind({','.join(kwargs.keys())})",
-                      lambda x: f"{prefix}\n{x}")
-        new_term = binder >> self.term if hasattr(binder, '__rshift__') else self.term
+
+        binder = Tool(f"bind({','.join(kwargs.keys())})", lambda x: f"{prefix}\n{x}")
+        new_term = binder >> self.term if hasattr(binder, "__rshift__") else self.term
         # Use Compose explicitly
         from .primitives import Compose
+
         new_term = Compose(binder, self.term)
         return Skill(
-            name=f"{self._name}[{','.join(f'{k}={v}' for k,v in kwargs.items())}]",
+            name=f"{self._name}[{','.join(f'{k}={v}' for k, v in kwargs.items())}]",
             term=new_term,
             description=f"{self.description} (with {kwargs})",
             signature=self.signature,
@@ -141,14 +144,18 @@ class Skill(Term):
         类型检查: self.τ_out 兼容 other.τ_in
         """
         from .primitives import Compose
+
         other_sig = other.signature if isinstance(other, Skill) else SkillSignature()
         if isinstance(other, Skill) and not self.signature.compatible_with(other_sig):
             import warnings
+
             warnings.warn(
                 f"Skill type mismatch: {self._name}:{self.signature.output_type} "
                 f">> {other._name}:{other_sig.input_type}"
             )
-        composed_term = Compose(self.term, other.term if isinstance(other, Skill) else other)
+        composed_term = Compose(
+            self.term, other.term if isinstance(other, Skill) else other
+        )
         return Skill(
             name=f"{self._name}>>{other._name}",
             term=composed_term,
@@ -157,7 +164,9 @@ class Skill(Term):
                 input_type=self.signature.input_type,
                 output_type=other_sig.output_type,
             ),
-            tags=list(set(self.tags + (other.tags if isinstance(other, Skill) else []))),
+            tags=list(
+                set(self.tags + (other.tags if isinstance(other, Skill) else []))
+            ),
         )
 
     @property
@@ -187,14 +196,17 @@ class Skill(Term):
         }
 
     def __repr__(self):
-        return (f"Skill({self._name!r}, "
-                f"{self.signature.input_type}→{self.signature.output_type}, "
-                f"tags={self.tags})")
+        return (
+            f"Skill({self._name!r}, "
+            f"{self.signature.input_type}→{self.signature.output_type}, "
+            f"tags={self.tags})"
+        )
 
 
 # ════════════════════════════════════════════════════════════
 # SkillPack: 技能集合
 # ════════════════════════════════════════════════════════════
+
 
 class SkillPack:
     """
@@ -210,8 +222,9 @@ class SkillPack:
         - 一键注册到 Registry
     """
 
-    def __init__(self, name: str, description: str = "",
-                 version: str = "1.0.0", author: str = ""):
+    def __init__(
+        self, name: str, description: str = "", version: str = "1.0.0", author: str = ""
+    ):
         self.name = name
         self.description = description
         self.version = version
@@ -244,6 +257,7 @@ class SkillPack:
 # ════════════════════════════════════════════════════════════
 # Registry: 全局技能注册表
 # ════════════════════════════════════════════════════════════
+
 
 class SkillRegistry:
     """
@@ -298,7 +312,9 @@ class SkillRegistry:
             # 文本匹配（任意 query 词在 name/description/tags 中出现即可）
             if query:
                 query_words = query.lower().split()
-                text = f"{skill._name} {skill.description} {' '.join(skill.tags)}".lower()
+                text = (
+                    f"{skill._name} {skill.description} {' '.join(skill.tags)}".lower()
+                )
                 if not any(w in text for w in query_words):
                     continue
             # 标签过滤
@@ -308,8 +324,9 @@ class SkillRegistry:
             results.append(skill)
         return results
 
-    def discover(self, task: str, classifier: Optional[Term] = None,
-                 top_k: int = 3) -> List[Skill]:
+    def discover(
+        self, task: str, classifier: Optional[Term] = None, top_k: int = 3
+    ) -> List[Skill]:
         """
         LLM 驱动的技能发现。
 
@@ -349,6 +366,7 @@ class SkillRegistry:
         这里返回的是 routes dict，调用者负责提供 classifier。
         """
         from .extensions import Route
+
         routes = {name: skill for name, skill in self._skills.items()}
         return routes
 
@@ -360,7 +378,7 @@ class SkillRegistry:
             "skills_by_tag": self._tag_distribution(),
             "most_used": sorted(
                 [(s._name, s._call_count) for s in self._skills.values()],
-                key=lambda x: -x[1]
+                key=lambda x: -x[1],
             )[:10],
         }
 
@@ -390,6 +408,7 @@ class SkillRegistry:
 # ════════════════════════════════════════════════════════════
 # SkillAgent: 能自动发现和使用技能的 Agent
 # ════════════════════════════════════════════════════════════
+
 
 class SkillAgent(Term):
     """
@@ -433,7 +452,10 @@ class SkillAgent(Term):
         found_skill = self.registry.get(selected_name)
         if found_skill is None:
             for name, s in self.registry._skills.items():
-                if name.lower() in selected_name.lower() or selected_name.lower() in name.lower():
+                if (
+                    name.lower() in selected_name.lower()
+                    or selected_name.lower() in name.lower()
+                ):
                     found_skill = s
                     break
 
@@ -455,8 +477,13 @@ class SkillAgent(Term):
         # 执行技能
         result = found_skill.apply(input, ctx)
         elapsed = (time.time() - t0) * 1000
-        ctx.log(f"SkillAgent→{found_skill._name}", self._trace_id,
-                str(input)[:100], str(result)[:100], elapsed)
+        ctx.log(
+            f"SkillAgent→{found_skill._name}",
+            self._trace_id,
+            str(input)[:100],
+            str(result)[:100],
+            elapsed,
+        )
         return result
 
 
@@ -464,10 +491,17 @@ class SkillAgent(Term):
 # 便利函数: 快速创建 Skill
 # ════════════════════════════════════════════════════════════
 
-def skill(name: str, description: str = "", tags: Optional[List[str]] = None,
-          input_type: str = "Str", output_type: str = "Str",
-          examples: Optional[List[Tuple[str, str]]] = None,
-          version: str = "1.0.0", author: str = ""):
+
+def skill(
+    name: str,
+    description: str = "",
+    tags: Optional[List[str]] = None,
+    input_type: str = "Str",
+    output_type: str = "Str",
+    examples: Optional[List[Tuple[str, str]]] = None,
+    version: str = "1.0.0",
+    author: str = "",
+):
     """
     装饰器: 将 Term 或函数包装为 Skill。
 
@@ -479,11 +513,13 @@ def skill(name: str, description: str = "", tags: Optional[List[str]] = None,
         # 或包装已有的 Term:
         my_skill = skill("translate", "Translate text")(my_lam_agent)
     """
+
     def decorator(fn_or_term):
         if isinstance(fn_or_term, Term):
             term = fn_or_term
         elif callable(fn_or_term):
             from .primitives import Tool
+
             term = Tool(name, fn_or_term)
         else:
             raise TypeError(f"Expected Term or callable, got {type(fn_or_term)}")

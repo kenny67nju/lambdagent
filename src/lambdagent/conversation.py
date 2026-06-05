@@ -20,13 +20,19 @@ Usage:
     r2 = lam.apply("[tool result] ...")     # continues with full memory
     r3 = lam.apply("[tool result] ...")     # still remembers r1, r2
 """
+
 from __future__ import annotations
 
 import time
 from typing import Any, Callable, List, Optional
 
 from lambdagent.core import Term, Context
-from lambdagent.providers.base import LLMProvider, ProviderError, ChatMessage, ChatResponse
+from lambdagent.providers.base import (
+    LLMProvider,
+    ProviderError,
+    ChatMessage,
+    ChatResponse,
+)
 
 
 class ConversationLam(Term):
@@ -69,9 +75,7 @@ class ConversationLam(Term):
         self._max_tokens = max_tokens
 
         # Conversation history (system message always first)
-        self.messages: List[dict] = [
-            {"role": "system", "content": system_prompt}
-        ]
+        self.messages: List[dict] = [{"role": "system", "content": system_prompt}]
 
         # L03: ChatMessage-based history (parallel to dict-based for typed path)
         self._typed_messages: List[ChatMessage] = []
@@ -84,7 +88,7 @@ class ConversationLam(Term):
     # Expose _session_id for react_step session detection
     @property
     def _session_id(self):
-        return getattr(self.provider, '_session_id', None)
+        return getattr(self.provider, "_session_id", None)
 
     def apply(self, input: Any, ctx: Context | None = None) -> Any:
         """Beta-reduction with conversation memory."""
@@ -109,7 +113,9 @@ class ConversationLam(Term):
 
         duration = (time.time() - t0) * 1000
         result = self.output_parser(response)
-        ctx.log(self._name, self._trace_id, input, result, duration, self.model, tokens_used)
+        ctx.log(
+            self._name, self._trace_id, input, result, duration, self.model, tokens_used
+        )
         return result
 
     # ── L03: ChatMessage-based typed path ──
@@ -150,16 +156,24 @@ class ConversationLam(Term):
 
         # Update typed history
         self._typed_messages.append(ChatMessage(role="user", content=str(input)))
-        self._typed_messages.append(ChatMessage(role="assistant", content=response.text))
+        self._typed_messages.append(
+            ChatMessage(role="assistant", content=response.text)
+        )
 
         # Also sync to dict-based history for compatibility
         self.messages.append({"role": "user", "content": str(input)})
         self.messages.append({"role": "assistant", "content": response.text})
 
         # Log to context
-        ctx.log(self._name, self._trace_id, str(input)[:200],
-                response.text[:200], duration, self.model,
-                response.input_tokens + response.output_tokens)
+        ctx.log(
+            self._name,
+            self._trace_id,
+            str(input)[:200],
+            response.text[:200],
+            duration,
+            self.model,
+            response.input_tokens + response.output_tokens,
+        )
 
         return response
 
@@ -208,8 +222,14 @@ class ConversationLam(Term):
         system = self.messages[0]
         # Each turn = 1 user + 1 assistant = 2 messages
         keep_count = self.keep_recent_turns * 2
-        recent = self.messages[-keep_count:] if len(self.messages) > keep_count else self.messages[1:]
-        old = self.messages[1:-keep_count] if len(self.messages) > keep_count + 1 else []
+        recent = (
+            self.messages[-keep_count:]
+            if len(self.messages) > keep_count
+            else self.messages[1:]
+        )
+        old = (
+            self.messages[1:-keep_count] if len(self.messages) > keep_count + 1 else []
+        )
 
         if not old:
             return list(self.messages)
@@ -233,9 +253,10 @@ class ConversationLam(Term):
         """Clear conversation history, start fresh."""
         self.messages = [{"role": "system", "content": self.system_prompt}]
         self._typed_messages = []
-        if hasattr(self.provider, 'reset_session'):
+        if hasattr(self.provider, "reset_session"):
             self.provider.reset_session()
 
     def __rshift__(self, other):
         from lambdagent.primitives import Compose
+
         return Compose(self, other)

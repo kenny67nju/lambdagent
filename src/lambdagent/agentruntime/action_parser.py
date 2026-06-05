@@ -1,4 +1,5 @@
 """agentruntime.action_parser — Extract structured actions from LLM output"""
+
 from __future__ import annotations
 import json
 import re
@@ -13,6 +14,7 @@ class ParseError(Exception):
 @dataclass
 class Action:
     """Structured action extracted from LLM output."""
+
     tool: str
     input: Dict[str, Any] = field(default_factory=dict)
     thought: str = ""
@@ -28,8 +30,12 @@ class ActionParser:
     """
 
     TERMINATE_SIGNALS = [
-        "final answer:", "task complete", "task is done",
-        "i have completed", "here is the result:", "in conclusion,",
+        "final answer:",
+        "task complete",
+        "task is done",
+        "i have completed",
+        "here is the result:",
+        "in conclusion,",
     ]
 
     def __init__(self, tool_names: List[str], tool_schemas: Dict[str, dict] = None):
@@ -63,10 +69,12 @@ class ActionParser:
         if result:
             return result
 
-        raise ParseError(f"Could not parse action from LLM output: {llm_output[:200]}...")
+        raise ParseError(
+            f"Could not parse action from LLM output: {llm_output[:200]}..."
+        )
 
     def _try_json_block(self, text: str) -> Optional[Action]:
-        match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
         if match:
             return self._parse_json_to_action(match.group(1), text)
         return None
@@ -81,18 +89,18 @@ class ActionParser:
         return None
 
     def _try_xml(self, text: str) -> Optional[Action]:
-        action_match = re.search(r'<action>\s*(\w+)\s*</action>', text)
+        action_match = re.search(r"<action>\s*(\w+)\s*</action>", text)
         if not action_match:
             return None
         tool_name = action_match.group(1)
-        input_match = re.search(r'<input>(.*?)</input>', text, re.DOTALL)
+        input_match = re.search(r"<input>(.*?)</input>", text, re.DOTALL)
         inp_str = input_match.group(1).strip() if input_match else ""
         try:
             inp = json.loads(inp_str)
         except (json.JSONDecodeError, ValueError):
             inp = {"query": inp_str} if inp_str else {}
 
-        answer_match = re.search(r'<answer>(.*?)</answer>', text, re.DOTALL)
+        answer_match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
         if tool_name == "terminate" and answer_match:
             inp["answer"] = answer_match.group(1).strip()
 
@@ -111,12 +119,19 @@ class ActionParser:
             if signal in text_lower:
                 # Extract answer after the signal
                 idx = text_lower.find(signal)
-                answer = text[idx + len(signal):].strip()
-                return Action(tool="terminate", input={"answer": answer or text}, thought=text, raw=text)
+                answer = text[idx + len(signal) :].strip()
+                return Action(
+                    tool="terminate",
+                    input={"answer": answer or text},
+                    thought=text,
+                    raw=text,
+                )
 
         # If "terminate" is in tool_names and text mentions it
         if "terminate" in self.tool_names and "terminate" in text_lower:
-            return Action(tool="terminate", input={"answer": text}, thought=text, raw=text)
+            return Action(
+                tool="terminate", input={"answer": text}, thought=text, raw=text
+            )
 
         return None
 
@@ -130,7 +145,9 @@ class ActionParser:
         if not tool_name:
             return None
 
-        tool_input = data.get("input") or data.get("args") or data.get("arguments") or {}
+        tool_input = (
+            data.get("input") or data.get("args") or data.get("arguments") or {}
+        )
         if isinstance(tool_input, str):
             tool_input = {"query": tool_input}
         if not isinstance(tool_input, dict):
@@ -142,7 +159,9 @@ class ActionParser:
             if answer:
                 tool_input["answer"] = answer
 
-        return Action(tool=tool_name, input=tool_input, thought=full_text, raw=full_text)
+        return Action(
+            tool=tool_name, input=tool_input, thought=full_text, raw=full_text
+        )
 
     def _validate_action(self, action: Action) -> Action:
         if action.tool not in self.tool_names:

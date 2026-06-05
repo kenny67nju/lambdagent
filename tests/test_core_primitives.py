@@ -19,6 +19,7 @@ from lambdagent.handlers import TestHandler, set_current_handler
 
 # ── helpers ─────────────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def _clear_handler():
     """Ensure no handler leaks between tests."""
@@ -36,8 +37,8 @@ def _make_tool(name: str, fn):
 # Context tests
 # ════════════════════════════════════════════════════════════
 
-class TestContext:
 
+class TestContext:
     def test_empty_context(self):
         ctx = Context()
         assert ctx.bindings == {}
@@ -145,8 +146,8 @@ class TestContext:
 # Lam tests (with TestHandler mock)
 # ════════════════════════════════════════════════════════════
 
-class TestLam:
 
+class TestLam:
     def test_lam_apply_with_test_handler(self):
         handler = TestHandler()
         handler.mock_llm("summarize", "Short summary.")
@@ -172,6 +173,7 @@ class TestLam:
         agent = Lam("typed", "prompt")
         # Default types are T_ANY
         from lambdagent.lam_types import T_ANY
+
         assert agent.input_type == T_ANY
         assert agent.output_type == T_ANY
 
@@ -201,8 +203,8 @@ class TestLam:
 # Compose tests
 # ════════════════════════════════════════════════════════════
 
-class TestCompose:
 
+class TestCompose:
     def test_compose_two(self):
         f = _make_tool("double", lambda x: int(x) * 2)
         g = _make_tool("add1", lambda x: int(x) + 1)
@@ -246,8 +248,8 @@ class TestCompose:
 # If tests
 # ════════════════════════════════════════════════════════════
 
-class TestIf:
 
+class TestIf:
     def test_true_branch(self):
         cond = _make_tool("cond", lambda x: True)
         then = _make_tool("then", lambda x: "YES")
@@ -291,8 +293,8 @@ class TestIf:
 # Loop tests
 # ════════════════════════════════════════════════════════════
 
-class TestLoop:
 
+class TestLoop:
     def test_loop_terminates_on_condition(self):
         body = _make_tool("incr", lambda x: int(x) + 1)
         # Stop when result >= 5
@@ -318,8 +320,8 @@ class TestLoop:
 # Pair / Fst / Snd tests
 # ════════════════════════════════════════════════════════════
 
-class TestPairFstSnd:
 
+class TestPairFstSnd:
     def test_pair(self):
         f = _make_tool("upper", lambda x: str(x).upper())
         g = _make_tool("lower", lambda x: str(x).lower())
@@ -361,8 +363,8 @@ class TestPairFstSnd:
 # Tool tests
 # ════════════════════════════════════════════════════════════
 
-class TestTool:
 
+class TestTool:
     def test_tool_apply(self):
         tool = Tool("double", lambda x: int(x) * 2)
         assert tool("5") == 10
@@ -393,8 +395,8 @@ class TestTool:
 # Route tests
 # ════════════════════════════════════════════════════════════
 
-class TestRoute:
 
+class TestRoute:
     def test_route_dispatches_correctly(self):
         classifier = _make_tool("classify", lambda x: "math")
         math_agent = _make_tool("math", lambda x: f"math({x})")
@@ -430,8 +432,8 @@ class TestRoute:
 # Guard tests
 # ════════════════════════════════════════════════════════════
 
-class TestGuard:
 
+class TestGuard:
     def test_guard_passes_valid(self):
         agent = _make_tool("gen", lambda x: 42)
         guard = Guard(agent, validator=lambda r: isinstance(r, int))
@@ -472,8 +474,8 @@ class TestGuard:
 # Memory tests
 # ════════════════════════════════════════════════════════════
 
-class TestMemory:
 
+class TestMemory:
     def test_memory_injects_store(self):
         """Memory prepends store contents to the agent input."""
         captured = {}

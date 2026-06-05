@@ -8,6 +8,7 @@ Tests:
   - T16: GroupChat anti-state-explosion
   - T17: Execution checkpoint
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,6 +26,7 @@ from lambdagent.primitives import Tool, Lam, Compose, Loop
 # T13: Par true parallel
 # ════════════════════════════════════════════════════════════
 
+
 class TestParTrueParallel:
     def test_par_runs_parallel(self):
         """Verify true parallelism via thread synchronization, not wall-clock.
@@ -37,12 +39,14 @@ class TestParTrueParallel:
         """
         import threading
         from lambdagent.extensions import Par
+
         gate = threading.Barrier(2, timeout=2.0)
 
         def make_tool(label):
             def fn(_):
-                gate.wait()   # raises BrokenBarrierError if Par is sequential
+                gate.wait()  # raises BrokenBarrierError if Par is sequential
                 return label
+
             return Tool(f"s_{label}", fn)
 
         par = Par(make_tool("a"), make_tool("b"))
@@ -51,6 +55,7 @@ class TestParTrueParallel:
 
     def test_par_single_agent(self):
         from lambdagent.extensions import Par
+
         tool = Tool("only", lambda x: "result")
         par = Par(tool)
         result = par.apply("x", Context())
@@ -58,6 +63,7 @@ class TestParTrueParallel:
 
     def test_par_preserves_order(self):
         from lambdagent.extensions import Par
+
         # Agent 1 is slow, Agent 2 is fast — results should maintain order
         slow = Tool("slow", lambda x: (time.sleep(0.05), "slow")[1])
         fast = Tool("fast", lambda x: "fast")
@@ -70,9 +76,11 @@ class TestParTrueParallel:
 # T14: Context compaction
 # ════════════════════════════════════════════════════════════
 
+
 class TestContextCompaction:
     def test_should_compact(self):
         from lambdagent.context_manager import ContextManager
+
         cm = ContextManager(max_tokens=100, compact_threshold=0.8)
         short = "hello"
         assert not cm.should_compact(short)
@@ -81,11 +89,16 @@ class TestContextCompaction:
 
     def test_compact_preserves_recent(self):
         from lambdagent.context_manager import ContextManager
+
         cm = ContextManager(max_tokens=10000, keep_recent=2)
 
         state = "User: what's 2+2?\n\n"
-        state += "[Step 1]\nThought: need to calculate\nAction: calc\nObservation: 4\n\n"
-        state += "[Step 2]\nThought: got result\nAction: verify\nObservation: correct\n\n"
+        state += (
+            "[Step 1]\nThought: need to calculate\nAction: calc\nObservation: 4\n\n"
+        )
+        state += (
+            "[Step 2]\nThought: got result\nAction: verify\nObservation: correct\n\n"
+        )
         state += "[Step 3]\nThought: verified\nAction: terminate\nObservation: done\n\n"
         state += "[Step 4]\nThought: final\nAction: report\nObservation: 2+2=4"
 
@@ -98,6 +111,7 @@ class TestContextCompaction:
 
     def test_compact_no_op_for_short(self):
         from lambdagent.context_manager import ContextManager
+
         cm = ContextManager(keep_recent=5)
         state = "User: hi\n\n[Step 1]\nThought: hello"
         assert cm.compact(state) == state
@@ -106,6 +120,7 @@ class TestContextCompaction:
 # ════════════════════════════════════════════════════════════
 # T15: Tool input validation
 # ════════════════════════════════════════════════════════════
+
 
 class TestToolValidation:
     def test_validated_tool_with_schema(self):
@@ -137,9 +152,11 @@ class TestToolValidation:
 # T16: GroupChat anti-state-explosion
 # ════════════════════════════════════════════════════════════
 
+
 class TestGroupChatAntiExplosion:
     def test_build_speaker_input_short(self):
         from lambdagent.multiagent import GroupChat
+
         a1 = Tool("alice", lambda x: "hi")
         a2 = Tool("bob", lambda x: "hello")
         chat = GroupChat([a1, a2], max_rounds=5)
@@ -155,6 +172,7 @@ class TestGroupChatAntiExplosion:
 
     def test_build_speaker_input_long(self):
         from lambdagent.multiagent import GroupChat
+
         a1 = Tool("alice", lambda x: "hi")
         a2 = Tool("bob", lambda x: "hello")
         chat = GroupChat([a1, a2], max_rounds=20)
@@ -162,11 +180,13 @@ class TestGroupChatAntiExplosion:
         # Create a long conversation
         conversation = []
         for i in range(20):
-            conversation.append({
-                "speaker": "alice" if i % 2 == 0 else "bob",
-                "content": f"message {i}",
-                "round": i // 2,
-            })
+            conversation.append(
+                {
+                    "speaker": "alice" if i % 2 == 0 else "bob",
+                    "content": f"message {i}",
+                    "round": i // 2,
+                }
+            )
 
         result = chat._build_speaker_input("alice", conversation, "task", 10)
         # Should have topic, own messages, and recent
@@ -178,6 +198,7 @@ class TestGroupChatAntiExplosion:
 # ════════════════════════════════════════════════════════════
 # T17: Execution checkpoint
 # ════════════════════════════════════════════════════════════
+
 
 class TestExecutionCheckpoint:
     def test_checkpoint_save_load(self):
@@ -224,6 +245,7 @@ class TestExecutionCheckpoint:
 
     def test_stack_frame_serialization(self):
         from lambdagent.execution_checkpoint import StackFrame
+
         frame = StackFrame("GroupChat", "discussion", 3, {"round": 3, "speakers": 5})
         d = frame.to_dict()
         restored = StackFrame.from_dict(d)

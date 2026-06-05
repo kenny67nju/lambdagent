@@ -25,14 +25,18 @@ if TYPE_CHECKING:
 # 异常
 # ============================================================
 
+
 class LambdagentError(Exception):
     pass
+
 
 class UnboundVariable(LambdagentError):
     pass
 
+
 class RouteError(LambdagentError):
     pass
+
 
 class ValidationError(LambdagentError):
     pass
@@ -42,9 +46,11 @@ class ValidationError(LambdagentError):
 # TraceEntry: 一步 β-规约的记录
 # ============================================================
 
+
 @dataclass
 class TraceEntry:
     """记录一次 β-规约（Agent 调用）"""
+
     term_name: str
     term_id: str
     input: Any
@@ -58,6 +64,7 @@ class TraceEntry:
 # Context: 求值环境 Γ
 # ============================================================
 
+
 @dataclass
 class Context:
     """
@@ -66,6 +73,7 @@ class Context:
     携带变量绑定、β-规约追踪、持久记忆。
     支持词法作用域（parent 链）。
     """
+
     bindings: Dict[str, Any] = field(default_factory=dict)
     trace: List[TraceEntry] = field(default_factory=list)
     memory: Dict[str, Any] = field(default_factory=dict)
@@ -93,14 +101,28 @@ class Context:
             return self.parent.lookup(name)
         raise UnboundVariable(f"Unbound variable: {name}")
 
-    def log(self, term_name: str, term_id: str, inp: Any, out: Any,
-            duration_ms: float, model: str = "", tokens: int = 0):
+    def log(
+        self,
+        term_name: str,
+        term_id: str,
+        inp: Any,
+        out: Any,
+        duration_ms: float,
+        model: str = "",
+        tokens: int = 0,
+    ):
         """记录一步 β-规约"""
-        self.trace.append(TraceEntry(
-            term_name=term_name, term_id=term_id,
-            input=inp, output=out,
-            duration_ms=duration_ms, model=model, tokens_used=tokens,
-        ))
+        self.trace.append(
+            TraceEntry(
+                term_name=term_name,
+                term_id=term_id,
+                input=inp,
+                output=out,
+                duration_ms=duration_ms,
+                model=model,
+                tokens_used=tokens,
+            )
+        )
 
     def fork(self) -> Context:
         """
@@ -115,11 +137,11 @@ class Context:
         """
         return Context(
             bindings=copy.deepcopy(self.bindings),  # 深拷贝，隔离嵌套对象
-            trace=[],                                # 独立 trace
-            memory=copy.deepcopy(self.memory),       # 深拷贝，隔离嵌套对象
-            parent=self.parent,                      # parent 只读，不需要拷贝
-            workspace_path=self.workspace_path,      # 共享 workspace（同一次 run）
-            run_id=self.run_id,                      # 共享 run_id
+            trace=[],  # 独立 trace
+            memory=copy.deepcopy(self.memory),  # 深拷贝，隔离嵌套对象
+            parent=self.parent,  # parent 只读，不需要拷贝
+            workspace_path=self.workspace_path,  # 共享 workspace（同一次 run）
+            run_id=self.run_id,  # 共享 run_id
         )
 
     def merge_trace(self, other: Context):
@@ -137,6 +159,7 @@ class Context:
 # ============================================================
 # Term: 所有 Lambda 项的基类
 # ============================================================
+
 
 class Term(ABC):
     """
@@ -166,6 +189,7 @@ class Term(ABC):
         if self._input_type is not None:
             return self._input_type
         from .lam_types import T_ANY
+
         return T_ANY
 
     @input_type.setter
@@ -178,6 +202,7 @@ class Term(ABC):
         if self._output_type is not None:
             return self._output_type
         from .lam_types import T_ANY
+
         return T_ANY
 
     @output_type.setter
@@ -190,6 +215,7 @@ class Term(ABC):
         if self._effect is not None:
             return self._effect
         from .effects import infer_effect_for_term
+
         return infer_effect_for_term(self)
 
     @effect.setter
@@ -200,6 +226,7 @@ class Term(ABC):
     def agent_type(self) -> AgentType:
         """完整的 Agent 函数类型 τ1 →^ε τ2"""
         from .lam_types import AgentType
+
         eff = self.effect
         eff_str = repr(eff)
         return AgentType(self.input_type, self.output_type, effect=eff_str)
@@ -220,16 +247,19 @@ class Term(ABC):
         Paper III T-Compose: 检查 output(f) <: input(g)
         """
         from .primitives import Compose
+
         if isinstance(self, type) and issubclass(self, Term):
             raise TypeError("Use instances, not classes")
 
         # Paper III T-Compose: 类型检查 (仅当两端都有非 Any 类型标注时)
         from .lam_types import T_ANY, is_subtype
-        f_out = self.output_type if hasattr(self, 'stages') else self.output_type
+
+        f_out = self.output_type if hasattr(self, "stages") else self.output_type
         g_in = other.input_type
         if f_out != T_ANY and g_in != T_ANY:
             if not is_subtype(f_out, g_in):
                 from .lam_types import AgentTypeError
+
                 raise AgentTypeError(
                     f"Type mismatch: {self._name} >> {other._name}",
                     source_type=f_out,
@@ -237,13 +267,14 @@ class Term(ABC):
                     position=0,
                 )
 
-        if hasattr(self, 'stages'):  # flatten nested Compose
+        if hasattr(self, "stages"):  # flatten nested Compose
             return Compose(*self.stages, other)
         return Compose(self, other)
 
     def __or__(self, other: Term) -> Term:
         """语法糖: f | g = Par(f, g)"""
         from .extensions import Par
+
         return Par(self, other)
 
     def __repr__(self):

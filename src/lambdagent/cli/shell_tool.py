@@ -114,7 +114,9 @@ class CLIAgent:
         cmd < input 在 Unix 中 = 把 input 喂给 cmd，拿到结果
     """
 
-    def __init__(self, command: str, format: str = "text", timeout: int = 60, retry: int = 0):
+    def __init__(
+        self, command: str, format: str = "text", timeout: int = 60, retry: int = 0
+    ):
         self.command = command
         self.format = format
         self.timeout = timeout
@@ -139,6 +141,7 @@ class CLIAgent:
                 output = proc.stdout.strip()
                 if self.format == "json":
                     import json
+
                     data = json.loads(output)
                     return data.get("result", output)
                 return output

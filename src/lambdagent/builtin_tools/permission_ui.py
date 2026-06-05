@@ -3,6 +3,7 @@ lambdagent.builtin_tools.permission_ui — CLI permission approval
 
 Implements ToolGateway confirm_callback for terminal interaction.
 """
+
 from __future__ import annotations
 
 import sys
@@ -26,7 +27,9 @@ class PermissionUI:
         self._always_allow: set = set()  # Tool patterns always allowed this session
         self._lock = threading.Lock()
 
-    def confirm(self, tool_name: str, tool_input: str, risk_level: str, reason: str) -> bool:
+    def confirm(
+        self, tool_name: str, tool_input: str, risk_level: str, reason: str
+    ) -> bool:
         """Called by ToolGateway when a HIGH-risk tool call needs confirmation.
 
         Returns True to allow, False to deny.
@@ -38,15 +41,17 @@ class PermissionUI:
 
         # Display prompt
         input_preview = tool_input[:120].replace("\n", " ")
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  PERMISSION REQUEST")
         print(f"  Tool:  {tool_name}")
         print(f"  Risk:  {risk_level}")
         print(f"  Input: {input_preview}")
         if reason:
             print(f"  Reason: {reason}")
-        print(f"{'='*60}")
-        print(f"  [y] Allow  [n] Deny  [a] Always allow '{tool_name}'  [timeout={self.timeout}s]")
+        print(f"{'=' * 60}")
+        print(
+            f"  [y] Allow  [n] Deny  [a] Always allow '{tool_name}'  [timeout={self.timeout}s]"
+        )
 
         try:
             response = _input_with_timeout("> ", self.timeout)

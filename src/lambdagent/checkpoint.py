@@ -36,9 +36,11 @@ from .core import Context, TraceEntry, LambdagentError
 # S13: AES-256-GCM 加密/解密
 # ════════════════════════════════════════════════════════════
 
+
 def _encrypt_aes_gcm(plaintext: bytes, key: bytes) -> bytes:
     """AES-256-GCM 加密。返回 nonce(12) + ciphertext + tag(16)。"""
     import secrets
+
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     except ImportError:
@@ -77,13 +79,16 @@ def _decrypt_aes_gcm(data: bytes, key: bytes) -> bytes:
 # 异常
 # ════════════════════════════════════════════════════════════
 
+
 class CheckpointError(LambdagentError):
     """Checkpoint 操作失败"""
+
     pass
 
 
 class CheckpointVersionError(CheckpointError):
     """Checkpoint 版本不兼容"""
+
     pass
 
 
@@ -142,6 +147,7 @@ def _deserialize_trace(data: List[Dict]) -> List[TraceEntry]:
 # Checkpoint: 核心类
 # ════════════════════════════════════════════════════════════
 
+
 class Checkpoint:
     """
     Agent 执行状态的快照。
@@ -196,7 +202,9 @@ class Checkpoint:
             "last_input": self.last_input,
             "metadata": _serialize_value(self.metadata),
             "context": {
-                "bindings": _serialize_value(self.context.bindings) if self.context else {},
+                "bindings": _serialize_value(self.context.bindings)
+                if self.context
+                else {},
                 "memory": _serialize_value(self.context.memory) if self.context else {},
                 "trace": _serialize_trace(self.context.trace) if self.context else [],
             },
@@ -305,7 +313,9 @@ class Checkpoint:
             f"  Timestamp:  {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.timestamp))}",
             f"  Steps:      {self.step_count} β-reductions",
             f"  Total time: {self.total_time_ms:.0f}ms",
-            f"  Last input: {self.last_input[:80]}..." if len(self.last_input) > 80 else f"  Last input: {self.last_input}",
+            f"  Last input: {self.last_input[:80]}..."
+            if len(self.last_input) > 80
+            else f"  Last input: {self.last_input}",
             f"  Memory keys: {list(self.context.memory.keys()) if self.context else []}",
             f"  Shared mem: {list(self.shared_data.keys())}",
         ]
@@ -319,8 +329,10 @@ class Checkpoint:
 # Context 扩展方法
 # ════════════════════════════════════════════════════════════
 
-def save_context(ctx: Context, path: str, last_input: str = "",
-                 description: str = "", **metadata) -> str:
+
+def save_context(
+    ctx: Context, path: str, last_input: str = "", description: str = "", **metadata
+) -> str:
     """
     保存 Context 到 checkpoint 文件。
 
@@ -350,9 +362,13 @@ def load_context(path: str) -> Context:
     return cp.context
 
 
-def save_context_with_shared(ctx: Context, shared_memories: Dict,
-                              path: str, last_input: str = "",
-                              description: str = "") -> str:
+def save_context_with_shared(
+    ctx: Context,
+    shared_memories: Dict,
+    path: str,
+    last_input: str = "",
+    description: str = "",
+) -> str:
     """
     保存 Context + SharedMemory 到 checkpoint。
 
@@ -373,6 +389,7 @@ def save_context_with_shared(ctx: Context, shared_memories: Dict,
 # CheckpointManager: 管理多个 checkpoint
 # ════════════════════════════════════════════════════════════
 
+
 class CheckpointManager:
     """
     Checkpoint 管理器: 自动保存、版本管理、清理。
@@ -391,8 +408,9 @@ class CheckpointManager:
         self.max_checkpoints = max_checkpoints
         self.directory.mkdir(parents=True, exist_ok=True)
 
-    def save(self, ctx: Context, description: str = "",
-             last_input: str = "", **metadata) -> str:
+    def save(
+        self, ctx: Context, description: str = "", last_input: str = "", **metadata
+    ) -> str:
         """保存新 checkpoint"""
         # 生成文件名: cp_001.json, cp_002.json, ...
         existing = self._list_files()
@@ -419,15 +437,18 @@ class CheckpointManager:
         for path in self._list_files():
             try:
                 cp = Checkpoint.load(str(path))
-                results.append({
-                    "file": path.name,
-                    "path": str(path),
-                    "description": cp.description,
-                    "steps": cp.step_count,
-                    "time": time.strftime("%Y-%m-%d %H:%M:%S",
-                                        time.localtime(cp.timestamp)),
-                    "last_input": cp.last_input[:50],
-                })
+                results.append(
+                    {
+                        "file": path.name,
+                        "path": str(path),
+                        "description": cp.description,
+                        "steps": cp.step_count,
+                        "time": time.strftime(
+                            "%Y-%m-%d %H:%M:%S", time.localtime(cp.timestamp)
+                        ),
+                        "last_input": cp.last_input[:50],
+                    }
+                )
             except Exception:
                 continue
         return results

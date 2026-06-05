@@ -34,6 +34,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 # EffectHandler: 效果处理器抽象接口
 # ============================================================
 
+
 class EffectHandler(ABC):
     """
     代数效果处理器 — Paper III §6。
@@ -68,18 +69,17 @@ class EffectHandler(ABC):
         """处理 IO 效果 — 工具调用"""
         ...
 
-    def handle_state_read(self, store: Dict[str, Any], key: str,
-                          default: Any = None) -> Any:
+    def handle_state_read(
+        self, store: Dict[str, Any], key: str, default: Any = None
+    ) -> Any:
         """处理 State 读取效果"""
         return store.get(key, default)
 
-    def handle_state_write(self, store: Dict[str, Any], key: str,
-                           value: Any) -> None:
+    def handle_state_write(self, store: Dict[str, Any], key: str, value: Any) -> None:
         """处理 State 写入效果"""
         store[key] = value
 
-    def handle_cost(self, tokens: int, latency_ms: float,
-                    model: str) -> None:
+    def handle_cost(self, tokens: int, latency_ms: float, model: str) -> None:
         """处理 Cost 效果（可选钩子）"""
         pass
 
@@ -88,6 +88,7 @@ class EffectHandler(ABC):
 # ProductionHandler: 生产环境
 # ============================================================
 
+
 class PassthroughHandler(EffectHandler):
     """Handlers that delegate to the original Term.apply() for LLM/Tool calls.
 
@@ -95,6 +96,7 @@ class PassthroughHandler(EffectHandler):
     isinstance(handler, PassthroughHandler) to know whether to delegate
     or use the handler's handle_llm/handle_tool methods.
     """
+
     pass
 
 
@@ -110,9 +112,15 @@ class ProductionHandler(PassthroughHandler):
     | cost | 记录到 trace |
     """
 
-    def handle_llm(self, prompt: str, input_text: str, model: str,
-                   temperature: float = 0.0, max_tokens: int = 1024,
-                   **kwargs) -> str:
+    def handle_llm(
+        self,
+        prompt: str,
+        input_text: str,
+        model: str,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+        **kwargs,
+    ) -> str:
         """真实 LLM 调用 — 委托给 Lam._call_llm"""
         # 生产处理器直接返回 None，让 Lam 自己调用
         # 这是一个 passthrough — Lam 检查 handler 返回 None 时自行调用
@@ -121,8 +129,7 @@ class ProductionHandler(PassthroughHandler):
             "Lam uses its own _call_llm when handler is ProductionHandler."
         )
 
-    def handle_tool(self, tool_name: str, tool_fn: Callable,
-                    input_val: Any) -> Any:
+    def handle_tool(self, tool_name: str, tool_fn: Callable, input_val: Any) -> Any:
         """真实工具执行"""
         return tool_fn(input_val)
 
@@ -130,6 +137,7 @@ class ProductionHandler(PassthroughHandler):
 # ============================================================
 # TestHandler: 测试环境（确定性 Mock）
 # ============================================================
+
 
 class TestHandler(EffectHandler):
     """
@@ -149,12 +157,12 @@ class TestHandler(EffectHandler):
     """
 
     def __init__(self):
-        self._llm_mocks: Dict[str, str] = {}           # prompt_pattern → response
+        self._llm_mocks: Dict[str, str] = {}  # prompt_pattern → response
         self._llm_default: str = "Mock LLM response"
-        self._tool_mocks: Dict[str, Any] = {}           # tool_name → response
+        self._tool_mocks: Dict[str, Any] = {}  # tool_name → response
         self._tool_default: Any = "Mock tool result"
-        self._state: Dict[str, Any] = {}                # 内存状态存储
-        self._call_log: List[Dict[str, Any]] = []       # 调用记录
+        self._state: Dict[str, Any] = {}  # 内存状态存储
+        self._call_log: List[Dict[str, Any]] = []  # 调用记录
 
     def mock_llm(self, pattern: str, response: str):
         """设置 LLM Mock: 当 prompt 或 input 包含 pattern 时返回 response"""
@@ -172,16 +180,24 @@ class TestHandler(EffectHandler):
         """设置默认工具 Mock 响应"""
         self._tool_default = response
 
-    def handle_llm(self, prompt: str, input_text: str, model: str,
-                   temperature: float = 0.0, max_tokens: int = 1024,
-                   **kwargs) -> str:
+    def handle_llm(
+        self,
+        prompt: str,
+        input_text: str,
+        model: str,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+        **kwargs,
+    ) -> str:
         """返回 Mock LLM 响应（确定性，无网络调用）"""
-        self._call_log.append({
-            "type": "llm",
-            "prompt": prompt[:200],
-            "input": input_text[:200],
-            "model": model,
-        })
+        self._call_log.append(
+            {
+                "type": "llm",
+                "prompt": prompt[:200],
+                "input": input_text[:200],
+                "model": model,
+            }
+        )
 
         # 尝试匹配 pattern
         combined = f"{prompt} {input_text}".lower()
@@ -191,26 +207,27 @@ class TestHandler(EffectHandler):
 
         return self._llm_default
 
-    def handle_tool(self, tool_name: str, tool_fn: Callable,
-                    input_val: Any) -> Any:
+    def handle_tool(self, tool_name: str, tool_fn: Callable, input_val: Any) -> Any:
         """返回 Mock 工具结果（确定性，无真实执行）"""
-        self._call_log.append({
-            "type": "tool",
-            "tool_name": tool_name,
-            "input": str(input_val)[:200],
-        })
+        self._call_log.append(
+            {
+                "type": "tool",
+                "tool_name": tool_name,
+                "input": str(input_val)[:200],
+            }
+        )
 
         if tool_name in self._tool_mocks:
             return self._tool_mocks[tool_name]
         return self._tool_default
 
-    def handle_state_read(self, store: Dict[str, Any], key: str,
-                          default: Any = None) -> Any:
+    def handle_state_read(
+        self, store: Dict[str, Any], key: str, default: Any = None
+    ) -> Any:
         """从内存字典读取"""
         return self._state.get(key, default)
 
-    def handle_state_write(self, store: Dict[str, Any], key: str,
-                           value: Any) -> None:
+    def handle_state_write(self, store: Dict[str, Any], key: str, value: Any) -> None:
         """写入内存字典"""
         self._state[key] = value
 
@@ -243,6 +260,7 @@ class TestHandler(EffectHandler):
 # TraceHandler: 调试/审计环境
 # ============================================================
 
+
 class TraceHandler(PassthroughHandler):
     """
     调试效果处理器 — 真实调用 + 完整日志。
@@ -263,9 +281,15 @@ class TraceHandler(PassthroughHandler):
         self._total_cost_usd = 0.0
         self._total_latency_ms = 0.0
 
-    def handle_llm(self, prompt: str, input_text: str, model: str,
-                   temperature: float = 0.0, max_tokens: int = 1024,
-                   **kwargs) -> str:
+    def handle_llm(
+        self,
+        prompt: str,
+        input_text: str,
+        model: str,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+        **kwargs,
+    ) -> str:
         """真实调用 + 完整记录"""
         # TraceHandler 也是 passthrough — 让 Lam 自行调用
         raise NotImplementedError(
@@ -273,57 +297,63 @@ class TraceHandler(PassthroughHandler):
             "and report via handle_cost."
         )
 
-    def handle_tool(self, tool_name: str, tool_fn: Callable,
-                    input_val: Any) -> Any:
+    def handle_tool(self, tool_name: str, tool_fn: Callable, input_val: Any) -> Any:
         """真实工具执行 + I/O 记录"""
         t0 = time.time()
         result = tool_fn(input_val)
         elapsed = (time.time() - t0) * 1000
 
-        self._trace.append({
-            "type": "tool",
-            "tool_name": tool_name,
-            "input": str(input_val)[:500],
-            "output": str(result)[:500],
-            "latency_ms": elapsed,
-        })
+        self._trace.append(
+            {
+                "type": "tool",
+                "tool_name": tool_name,
+                "input": str(input_val)[:500],
+                "output": str(result)[:500],
+                "latency_ms": elapsed,
+            }
+        )
 
         return result
 
-    def handle_state_read(self, store: Dict[str, Any], key: str,
-                          default: Any = None) -> Any:
+    def handle_state_read(
+        self, store: Dict[str, Any], key: str, default: Any = None
+    ) -> Any:
         """真实读取 + 审计"""
         value = store.get(key, default)
-        self._trace.append({
-            "type": "state_read",
-            "key": key,
-            "value": str(value)[:200],
-        })
+        self._trace.append(
+            {
+                "type": "state_read",
+                "key": key,
+                "value": str(value)[:200],
+            }
+        )
         return value
 
-    def handle_state_write(self, store: Dict[str, Any], key: str,
-                           value: Any) -> None:
+    def handle_state_write(self, store: Dict[str, Any], key: str, value: Any) -> None:
         """真实写入 + 审计"""
         old_value = store.get(key)
         store[key] = value
-        self._trace.append({
-            "type": "state_write",
-            "key": key,
-            "old_value": str(old_value)[:200] if old_value is not None else None,
-            "new_value": str(value)[:200],
-        })
+        self._trace.append(
+            {
+                "type": "state_write",
+                "key": key,
+                "old_value": str(old_value)[:200] if old_value is not None else None,
+                "new_value": str(value)[:200],
+            }
+        )
 
-    def handle_cost(self, tokens: int, latency_ms: float,
-                    model: str) -> None:
+    def handle_cost(self, tokens: int, latency_ms: float, model: str) -> None:
         """累积成本"""
         self._total_tokens += tokens
         self._total_latency_ms += latency_ms
-        self._trace.append({
-            "type": "cost",
-            "tokens": tokens,
-            "latency_ms": latency_ms,
-            "model": model,
-        })
+        self._trace.append(
+            {
+                "type": "cost",
+                "tokens": tokens,
+                "latency_ms": latency_ms,
+                "model": model,
+            }
+        )
 
     @property
     def trace(self) -> List[Dict[str, Any]]:
@@ -361,7 +391,7 @@ _handler_local = threading.local()
 
 def get_current_handler() -> Optional[EffectHandler]:
     """获取当前线程的效果处理器"""
-    return getattr(_handler_local, 'handler', None)
+    return getattr(_handler_local, "handler", None)
 
 
 def set_current_handler(handler: Optional[EffectHandler]) -> None:

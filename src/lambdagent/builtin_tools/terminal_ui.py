@@ -7,6 +7,7 @@ Renders ReAct execution with:
   - Spinner during execution
   - Colored β-reduction trace
 """
+
 from __future__ import annotations
 
 import sys
@@ -17,6 +18,7 @@ from typing import Any
 def _has_rich() -> bool:
     try:
         from rich.console import Console
+
         return True
     except ImportError:
         return False
@@ -36,6 +38,7 @@ class TerminalUI:
 
         if self._use_rich:
             from rich.console import Console
+
             self._console = Console()
 
     def start(self, agent_name: str, agent_type: str, config_path: str = ""):
@@ -70,7 +73,7 @@ class TerminalUI:
             self._console.print(
                 f"  [dim]β[{self._step_count}][/] [yellow]{tool_name}[/] "
                 f"[dim]{input_preview}...[/]",
-                end=""
+                end="",
             )
         else:
             print(f"  β[{self._step_count}] {tool_name}: {input_preview}...", end="")
@@ -99,7 +102,9 @@ class TerminalUI:
             print(f"  β[{step}] thinking...", end="\r")
         sys.stdout.flush()
 
-    def step_complete(self, step: int, term_name: str, duration_ms: float, tokens: int = 0):
+    def step_complete(
+        self, step: int, term_name: str, duration_ms: float, tokens: int = 0
+    ):
         """Display step completion."""
         self._total_tokens += tokens
         if self.verbose:
@@ -126,7 +131,9 @@ class TerminalUI:
             print()
             print(output)
             print()
-            print(f"({trace_count} β-reductions, {elapsed:.1f}s, ~{self._total_tokens} tokens)")
+            print(
+                f"({trace_count} β-reductions, {elapsed:.1f}s, ~{self._total_tokens} tokens)"
+            )
 
     def error(self, message: str):
         """Display error."""
@@ -139,8 +146,13 @@ class TerminalUI:
         """Display full β-reduction trace."""
         if self._use_rich:
             self._console.print(f"\n[bold]β-reduction trace:[/]")
-            colors = {"Lam": "blue", "Tool": "yellow", "Compose": "cyan",
-                      "Loop": "magenta", "Route": "green"}
+            colors = {
+                "Lam": "blue",
+                "Tool": "yellow",
+                "Compose": "cyan",
+                "Loop": "magenta",
+                "Route": "green",
+            }
             for i, e in enumerate(entries):
                 term = getattr(e, "term_name", str(e.get("term", "?")))
                 ms = getattr(e, "duration_ms", e.get("duration_ms", 0))
@@ -149,8 +161,7 @@ class TerminalUI:
                 inp = str(getattr(e, "input", e.get("input", "")))[:50]
                 out = str(getattr(e, "output", e.get("output", "")))[:50]
                 self._console.print(
-                    f"  β[{i}] [{color}]{term}[/] [dim]({ms:.0f}ms)[/]: "
-                    f"{inp} → {out}"
+                    f"  β[{i}] [{color}]{term}[/] [dim]({ms:.0f}ms)[/]: {inp} → {out}"
                 )
         else:
             print("\nβ-reduction trace:")

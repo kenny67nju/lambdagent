@@ -11,7 +11,10 @@ Tests cover:
 
 import pytest
 from lambdagent.store_analysis import (
-    writes, reads, check_store_independence, StoreConflictError,
+    writes,
+    reads,
+    check_store_independence,
+    StoreConflictError,
 )
 from lambdagent.core import Context
 from lambdagent.primitives import Lam, Compose, If, Loop, Pair, Tool
@@ -23,8 +26,8 @@ from lambdagent.multiagent import AsyncPar
 # 1. writes() Analysis
 # ============================================================
 
-class TestWritesAnalysis:
 
+class TestWritesAnalysis:
     def test_lam_no_writes(self):
         """Lam doesn't write to store"""
         lam = Lam("test", "prompt")
@@ -77,8 +80,8 @@ class TestWritesAnalysis:
 # 2. Store Independence Checking
 # ============================================================
 
-class TestStoreIndependence:
 
+class TestStoreIndependence:
     def test_independent_agents_pass(self):
         """Agents with no writes → passes"""
         agents = [
@@ -121,8 +124,8 @@ class TestStoreIndependence:
 # 3. ctx.fork() Isolation
 # ============================================================
 
-class TestContextFork:
 
+class TestContextFork:
     def test_fork_independent_trace(self):
         """Forked context has independent trace"""
         parent = Context()
@@ -160,8 +163,8 @@ class TestContextFork:
 # 4. AsyncPar with Store Independence
 # ============================================================
 
-class TestAsyncParStoreIndependence:
 
+class TestAsyncParStoreIndependence:
     def test_asyncpar_passes_with_pure_agents(self):
         """AsyncPar with pure agents (no writes) passes store check"""
         agents = [
@@ -206,8 +209,8 @@ class TestAsyncParStoreIndependence:
 # 5. Par with Forked Contexts
 # ============================================================
 
-class TestParForkedContexts:
 
+class TestParForkedContexts:
     def test_par_forked_contexts(self):
         """Par uses forked contexts for thread safety"""
         agents = [

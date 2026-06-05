@@ -55,6 +55,9 @@ def extract_config(framework_object, framework: str = "auto") -> dict:
 
 __all__ = [
     "extract_config",
-    "FrameworkExtractor", "ExtractionError",
-    "LangChainExtractor", "CrewAIExtractor", "AutoGenExtractor",
+    "FrameworkExtractor",
+    "ExtractionError",
+    "LangChainExtractor",
+    "CrewAIExtractor",
+    "AutoGenExtractor",
 ]

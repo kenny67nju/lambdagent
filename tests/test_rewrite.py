@@ -21,8 +21,8 @@ from lambdagent.core import Context
 # 1. Identity Elimination (Thm 37/38)
 # ============================================================
 
-class TestIdentityElimination:
 
+class TestIdentityElimination:
     def test_left_unit(self):
         """Id >> f ≡ f"""
         id_term = _IdentityTerm()
@@ -71,8 +71,8 @@ class TestIdentityElimination:
 # 2. Route Distribution (Thm 40)
 # ============================================================
 
-class TestRouteDistribution:
 
+class TestRouteDistribution:
     def test_route_then_tool(self):
         """Route(c, {li: fi}) >> g ≡ Route(c, {li: fi >> g})"""
         classifier = Tool("cls", lambda x: "a")
@@ -114,8 +114,8 @@ class TestRouteDistribution:
 # 3. Loop Simplification (Thm 39)
 # ============================================================
 
-class TestLoopSimplification:
 
+class TestLoopSimplification:
     def test_loop_1_to_if(self):
         """Loop(body, cond, 1) simplified to If(cond, Id, body)"""
         body = Tool("inc", lambda x: int(x) + 1)
@@ -136,8 +136,8 @@ class TestLoopSimplification:
 # 4. Guard Anti-Pattern Warning (Prop 42)
 # ============================================================
 
-class TestGuardAntiPattern:
 
+class TestGuardAntiPattern:
     def test_guard_compose_warning(self):
         """Guard wrapping Compose triggers Prop 42 warning"""
         inner = Compose(
@@ -163,8 +163,8 @@ class TestGuardAntiPattern:
 # 5. Recursive Rewriting
 # ============================================================
 
-class TestRecursiveRewriting:
 
+class TestRecursiveRewriting:
     def test_nested_identity_elimination(self):
         """Identity inside Pair is eliminated"""
         id_term = _IdentityTerm()
@@ -192,8 +192,8 @@ class TestRecursiveRewriting:
 # 6. Semantic Preservation
 # ============================================================
 
-class TestSemanticPreservation:
 
+class TestSemanticPreservation:
     def test_identity_elim_preserves_result(self):
         """Removing Id doesn't change output"""
         id_term = _IdentityTerm()

@@ -34,10 +34,12 @@ _PATTERN_REGISTRY: Dict[str, Callable] = {}
 
 def pattern(name: str):
     """Decorator to register a pattern in the global registry."""
+
     def decorator(fn):
         _PATTERN_REGISTRY[name] = fn
         fn.pattern_name = name
         return fn
+
     return decorator
 
 
@@ -45,8 +47,7 @@ def get_pattern(name: str) -> Callable:
     """Look up a registered pattern by name."""
     if name not in _PATTERN_REGISTRY:
         raise KeyError(
-            f"Unknown pattern: '{name}'. "
-            f"Available: {list(_PATTERN_REGISTRY.keys())}"
+            f"Unknown pattern: '{name}'. Available: {list(_PATTERN_REGISTRY.keys())}"
         )
     return _PATTERN_REGISTRY[name]
 
@@ -62,6 +63,7 @@ def list_patterns() -> List[Dict[str, str]]:
 # ════════════════════════════════════════════════════════════
 # Pattern 1: Review (Producer → Guard → Loop)
 # ════════════════════════════════════════════════════════════
+
 
 @pattern("review")
 def review_pattern(
@@ -111,6 +113,7 @@ def review_pattern(
 # Pattern 2: Fan-Out Merge (Parallel → Synthesize)
 # ════════════════════════════════════════════════════════════
 
+
 @pattern("fan_out_merge")
 def fan_out_merge(
     agents: List[Term],
@@ -141,7 +144,7 @@ def fan_out_merge(
         if isinstance(results, (tuple, list)):
             parts = []
             for i, r in enumerate(results):
-                parts.append(f"[Result {i+1}]\n{r}")
+                parts.append(f"[Result {i + 1}]\n{r}")
             return "\n\n".join(parts)
         return str(results)
 
@@ -152,6 +155,7 @@ def fan_out_merge(
 # ════════════════════════════════════════════════════════════
 # Pattern 3: Pipeline (Sequential Chain)
 # ════════════════════════════════════════════════════════════
+
 
 @pattern("pipeline")
 def pipeline_pattern(*stages: Term) -> Term:
@@ -179,6 +183,7 @@ def pipeline_pattern(*stages: Term) -> Term:
 # ════════════════════════════════════════════════════════════
 # Pattern 4: Escalation Chain
 # ════════════════════════════════════════════════════════════
+
 
 @pattern("escalation")
 def escalation_pattern(
@@ -224,6 +229,7 @@ def escalation_pattern(
 # Pattern 5: Map-Reduce
 # ════════════════════════════════════════════════════════════
 
+
 @pattern("map_reduce")
 def map_reduce_pattern(
     splitter: Term,
@@ -249,6 +255,7 @@ def map_reduce_pattern(
             reducer=Lam("merge", "综合所有段落的分析"),
         )
     """
+
     def _map_and_reduce(input_val):
         # Split
         chunks = splitter.apply(input_val)
@@ -260,13 +267,14 @@ def map_reduce_pattern(
         # Map (parallel via threads)
         from concurrent.futures import ThreadPoolExecutor
         from .core import Context
+
         results = []
         with ThreadPoolExecutor(max_workers=min(len(chunks), 8)) as pool:
             futures = [pool.submit(mapper.apply, chunk, Context()) for chunk in chunks]
             results = [f.result() for f in futures]
 
         # Reduce
-        combined = "\n\n".join(f"[Block {i+1}]\n{r}" for i, r in enumerate(results))
+        combined = "\n\n".join(f"[Block {i + 1}]\n{r}" for i, r in enumerate(results))
         return reducer.apply(combined)
 
     return Tool("map_reduce", _map_and_reduce)
@@ -275,6 +283,7 @@ def map_reduce_pattern(
 # ════════════════════════════════════════════════════════════
 # Pattern 6: Debate (对抗辩论)
 # ════════════════════════════════════════════════════════════
+
 
 @pattern("debate")
 def debate_pattern(
@@ -301,6 +310,7 @@ def debate_pattern(
             judge=Lam("judge", "综合正反方观点，给出裁决。最终裁决请以 FINAL 开头"),
         )
     """
+
     def _one_round(state):
         ctx = Context()
         pro_arg = proponent.apply(state, ctx)

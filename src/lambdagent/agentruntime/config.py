@@ -1,4 +1,5 @@
 """agentruntime.config — Runtime configuration dataclasses"""
+
 from __future__ import annotations
 import os
 import yaml
@@ -15,6 +16,7 @@ class LLMConfig:
     api_key: str = ""
     base_url: str = ""
 
+
 @dataclass
 class MCPNodeConfig:
     url: str = ""
@@ -22,6 +24,7 @@ class MCPNodeConfig:
     headers: Dict[str, str] = field(default_factory=dict)
     timeout: int = 30
     retry: int = 0
+
 
 @dataclass
 class MemoryConfig:
@@ -32,6 +35,7 @@ class MemoryConfig:
     redis_url: str = ""
     db_path: str = ""
 
+
 @dataclass
 class ReActConfig:
     max_steps: int = 10
@@ -40,13 +44,21 @@ class ReActConfig:
     observation_enabled: bool = True
     verbose: bool = False
 
+
 @dataclass
 class TerminationConfig:
-    signals: List[str] = field(default_factory=lambda: [
-        "final answer:", "task complete", "task is done",
-        "i have completed", "here is the result:", "in conclusion,",
-    ])
+    signals: List[str] = field(
+        default_factory=lambda: [
+            "final answer:",
+            "task complete",
+            "task is done",
+            "i have completed",
+            "here is the result:",
+            "in conclusion,",
+        ]
+    )
     implicit_detection: bool = True
+
 
 @dataclass
 class TraceConfig:
@@ -54,13 +66,16 @@ class TraceConfig:
     file: str = ""
     format: str = "text"  # "text" | "json"
 
+
 @dataclass
 class TimeoutConfig:
     """Configurable timeouts for all I/O operations."""
-    llm_call: int = 120       # LLM API call timeout (seconds)
-    tool_call: int = 30       # Tool execution timeout (seconds)
-    mcp_call: int = 30        # MCP server call timeout (seconds)
-    shell: int = 30           # Shell command timeout (seconds)
+
+    llm_call: int = 120  # LLM API call timeout (seconds)
+    tool_call: int = 30  # Tool execution timeout (seconds)
+    mcp_call: int = 30  # MCP server call timeout (seconds)
+    shell: int = 30  # Shell command timeout (seconds)
+
 
 @dataclass
 class RuntimeConfig:
@@ -84,10 +99,14 @@ class RuntimeConfig:
         model_cfg = cfg.get("model", {})
         config.llm = LLMConfig(
             provider=model_cfg.get("provider", "anthropic"),
-            model=overrides.get("model", model_cfg.get("name", "claude-sonnet-4-20250514")),
+            model=overrides.get(
+                "model", model_cfg.get("name", "claude-sonnet-4-20250514")
+            ),
             temperature=overrides.get("temperature", model_cfg.get("temperature", 0.0)),
             max_tokens=model_cfg.get("maxTokens", 1024),
-            api_key=os.environ.get("ANTHROPIC_API_KEY", os.environ.get("OPENAI_API_KEY", "")),
+            api_key=os.environ.get(
+                "ANTHROPIC_API_KEY", os.environ.get("OPENAI_API_KEY", "")
+            ),
             base_url=model_cfg.get("baseUrl", ""),
         )
 

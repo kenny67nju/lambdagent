@@ -11,6 +11,7 @@
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lambdagent import Dataset, Lam, Compose, If, Loop, Pair, Fst, Snd, Tool, Context
@@ -36,24 +37,39 @@ def main():
     # ────────────────────────────────────────
     print("\n[1] SUCC (后继函数)")
     succ = Dataset(
-        examples=[("0","1"),("1","2"),("2","3"),("5","6"),("9","10"),("99","100")],
+        examples=[
+            ("0", "1"),
+            ("1", "2"),
+            ("2", "3"),
+            ("5", "6"),
+            ("9", "10"),
+            ("99", "100"),
+        ],
         description="Given a number n, output n+1.",
     ).to_lam("SUCC")
 
     for n in [3, 7, 42, 255]:
-        check(f"SUCC({n})", str(n+1), succ(str(n), ctx))
+        check(f"SUCC({n})", str(n + 1), succ(str(n), ctx))
 
     # ────────────────────────────────────────
     # 2. TRUE/FALSE: Church 布尔值
     # ────────────────────────────────────────
     print("\n[2] TRUE / FALSE (Church 布尔值)")
     true_ = Dataset(
-        examples=[("A='cat', B='dog'","cat"),("A='1', B='0'","1"),("A='yes', B='no'","yes")],
+        examples=[
+            ("A='cat', B='dog'", "cat"),
+            ("A='1', B='0'", "1"),
+            ("A='yes', B='no'", "yes"),
+        ],
         description="Given two options A and B, always select A (the first one).",
     ).to_lam("TRUE")
 
     false_ = Dataset(
-        examples=[("A='cat', B='dog'","dog"),("A='1', B='0'","0"),("A='yes', B='no'","no")],
+        examples=[
+            ("A='cat', B='dog'", "dog"),
+            ("A='1', B='0'", "0"),
+            ("A='yes', B='no'", "no"),
+        ],
         description="Given two options A and B, always select B (the second one).",
     ).to_lam("FALSE")
 
@@ -67,19 +83,27 @@ def main():
     # ────────────────────────────────────────
     print("\n[3] AND / OR / NOT (逻辑运算)")
     and_ = Dataset(
-        examples=[("TRUE, TRUE","TRUE"),("TRUE, FALSE","FALSE"),
-                  ("FALSE, TRUE","FALSE"),("FALSE, FALSE","FALSE")],
+        examples=[
+            ("TRUE, TRUE", "TRUE"),
+            ("TRUE, FALSE", "FALSE"),
+            ("FALSE, TRUE", "FALSE"),
+            ("FALSE, FALSE", "FALSE"),
+        ],
         description="Logical AND.",
     ).to_lam("AND")
 
     or_ = Dataset(
-        examples=[("TRUE, TRUE","TRUE"),("TRUE, FALSE","TRUE"),
-                  ("FALSE, TRUE","TRUE"),("FALSE, FALSE","FALSE")],
+        examples=[
+            ("TRUE, TRUE", "TRUE"),
+            ("TRUE, FALSE", "TRUE"),
+            ("FALSE, TRUE", "TRUE"),
+            ("FALSE, FALSE", "FALSE"),
+        ],
         description="Logical OR.",
     ).to_lam("OR")
 
     not_ = Dataset(
-        examples=[("TRUE","FALSE"),("FALSE","TRUE")],
+        examples=[("TRUE", "FALSE"), ("FALSE", "TRUE")],
         description="Logical NOT.",
     ).to_lam("NOT")
 
@@ -104,17 +128,30 @@ def main():
         description="If condition is TRUE, output THEN value. If FALSE, output ELSE value.",
     ).to_lam("IF")
 
-    check("IF(T,accept,reject)", "accept",
-          if_lds("condition=TRUE, then='accept', else='reject'", ctx))
-    check("IF(F,accept,reject)", "reject",
-          if_lds("condition=FALSE, then='accept', else='reject'", ctx))
+    check(
+        "IF(T,accept,reject)",
+        "accept",
+        if_lds("condition=TRUE, then='accept', else='reject'", ctx),
+    )
+    check(
+        "IF(F,accept,reject)",
+        "reject",
+        if_lds("condition=FALSE, then='accept', else='reject'", ctx),
+    )
 
     # ────────────────────────────────────────
     # 5. 函数组合: DOUBLE ∘ SUCC ≡ λx. g(f(x))
     # ────────────────────────────────────────
     print("\n[5] DOUBLE ∘ SUCC (函数组合 via >>)")
     double = Dataset(
-        examples=[("0","0"),("1","2"),("2","4"),("3","6"),("5","10"),("10","20")],
+        examples=[
+            ("0", "0"),
+            ("1", "2"),
+            ("2", "4"),
+            ("3", "6"),
+            ("5", "10"),
+            ("10", "20"),
+        ],
         description="Given a number n, output 2*n.",
     ).to_lam("DOUBLE")
 
@@ -122,7 +159,7 @@ def main():
     pipeline = succ >> double  # λx. DOUBLE(SUCC(x))
 
     for n in [0, 3, 5, 10]:
-        check(f"(DOUBLE∘SUCC)({n})", str(2*(n+1)), pipeline(str(n), ctx))
+        check(f"(DOUBLE∘SUCC)({n})", str(2 * (n + 1)), pipeline(str(n), ctx))
 
     # ────────────────────────────────────────
     # 6. PAIR / FST / SND: 有序对
@@ -156,6 +193,7 @@ def main():
     # 8. Church 数: f^n(x)
     # ────────────────────────────────────────
     print("\n[8] Church 数 (f^n(x) via Loop)")
+
     # Church 数 3 = 将 SUCC 作用于 0 共 3 次
     # 用 Loop 实现: 迭代 body n 次
     def apply_n_times(f: Tool, n: int):
@@ -177,9 +215,9 @@ def main():
     # 汇总
     # ────────────────────────────────────────
     total = passed + failed
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"总计: {passed}/{total} 通过")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     # 打印 β-规约追踪
     print(f"\nβ-规约追踪 ({len(ctx.trace)} 步):")

@@ -12,6 +12,7 @@ from typing import Any, Dict
 
 class ExtractionError(Exception):
     """Raised when extraction from a framework object fails."""
+
     pass
 
 

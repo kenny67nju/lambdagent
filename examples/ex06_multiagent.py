@@ -20,11 +20,17 @@ import os
 import time
 import threading
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from lambdagent import (
-    Tool, Context, Lam,
-    Channel, Send, Receive,
+    Tool,
+    Context,
+    Lam,
+    Channel,
+    Send,
+    Receive,
     SharedMemory,
     GroupChat,
     Handoff,
@@ -34,14 +40,15 @@ from lambdagent import (
 
 
 def separator(title: str):
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  案例: {title}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 # ══════════════════════════════════════════════════════════════
 # 案例 1: Channel 通信 — 生产者/消费者模式
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_channel():
     """
@@ -60,13 +67,16 @@ def demo_channel():
     print(f"  创建通道: {research_channel}")
 
     # 研究员: 搜索并发送到通道
-    researcher = Tool("researcher", lambda x:
-        f"[研究结果] 关于'{x}'的3个要点: 1.定义 2.应用 3.趋势")
+    researcher = Tool(
+        "researcher", lambda x: f"[研究结果] 关于'{x}'的3个要点: 1.定义 2.应用 3.趋势"
+    )
     sender = Send(researcher, research_channel)
 
     # 写作者: 从通道接收并加工
-    writer = Tool("writer", lambda x:
-        f"[文章] 基于研究结果撰写:\n{x}\n→ 综上所述，这是一个重要话题。")
+    writer = Tool(
+        "writer",
+        lambda x: f"[文章] 基于研究结果撰写:\n{x}\n→ 综上所述，这是一个重要话题。",
+    )
     receiver = Receive(research_channel, handler=writer, timeout=5)
 
     # 执行: 研究员发送
@@ -101,8 +111,10 @@ def demo_channel():
 
     t1 = threading.Thread(target=producer_thread)
     t2 = threading.Thread(target=consumer_thread)
-    t2.start(); t1.start()
-    t1.join(); t2.join()
+    t2.start()
+    t1.start()
+    t1.join()
+    t2.join()
 
     print(f"  跨线程通信: {results[0]}")
     print("  ✅ Channel 通信完成")
@@ -111,6 +123,7 @@ def demo_channel():
 # ══════════════════════════════════════════════════════════════
 # 案例 2: SharedMemory — 多 Agent 共享知识库
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_shared_memory():
     """
@@ -134,26 +147,37 @@ def demo_shared_memory():
     print(f"  创建: {shared}")
 
     # Agent A: 数据采集
-    collector = Tool("collector", lambda x: (
-        shared.write("market_size", "$15.6B"),
-        shared.write("growth_rate", "34.2%"),
-        shared.write("data_points", 2),  # int → int, 类型一致 ✓
-        f"已采集 2 个数据点"
-    )[-1])
+    collector = Tool(
+        "collector",
+        lambda x: (
+            shared.write("market_size", "$15.6B"),
+            shared.write("growth_rate", "34.2%"),
+            shared.write("data_points", 2),  # int → int, 类型一致 ✓
+            f"已采集 2 个数据点",
+        )[-1],
+    )
     wrapped_collector = shared.wrap(collector)
 
     # Agent B: 分析
-    analyst = Tool("analyst", lambda x:
-        f"分析结果: 市场规模={shared.read('market_size', 'N/A')}, "
-        f"增长率={shared.read('growth_rate', 'N/A')}, "
-        f"共{shared.read('data_points', 0)}个数据点")
+    analyst = Tool(
+        "analyst",
+        lambda x: (
+            f"分析结果: 市场规模={shared.read('market_size', 'N/A')}, "
+            f"增长率={shared.read('growth_rate', 'N/A')}, "
+            f"共{shared.read('data_points', 0)}个数据点"
+        ),
+    )
     wrapped_analyst = shared.wrap(analyst)
 
     # Agent C: 报告
-    reporter = Tool("reporter", lambda x:
-        f"[报告] 项目: {shared.read('project')}\n"
-        f"  {shared.read('market_size', '')} 市场, {shared.read('growth_rate', '')} 增速\n"
-        f"  结论: 市场增长强劲")
+    reporter = Tool(
+        "reporter",
+        lambda x: (
+            f"[报告] 项目: {shared.read('project')}\n"
+            f"  {shared.read('market_size', '')} 市场, {shared.read('growth_rate', '')} 增速\n"
+            f"  结论: 市场增长强劲"
+        ),
+    )
     wrapped_reporter = shared.wrap(reporter)
 
     # 执行流水线
@@ -178,6 +202,7 @@ def demo_shared_memory():
 # 案例 3: GroupChat — 多 Agent 辩论
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_groupchat():
     """
     群组对话: 多个 Agent 轮流发言直到达成共识。
@@ -196,18 +221,29 @@ def demo_groupchat():
     round_counter = [0]
 
     # 三位专家 Agent
-    alice = Tool("Alice_CTO", lambda x: (
-        round_counter.__setitem__(0, round_counter[0] + 1),
-        f"[Alice/CTO] 从架构角度看，我建议用 Rust。性能和安全性是第一位的。"
-        if round_counter[0] <= 1 else
-        f"[Alice/CTO] 好的，综合考虑大家意见，我同意 Go 是更务实的选择。CONSENSUS"
-    )[-1])
+    alice = Tool(
+        "Alice_CTO",
+        lambda x: (
+            round_counter.__setitem__(0, round_counter[0] + 1),
+            f"[Alice/CTO] 从架构角度看，我建议用 Rust。性能和安全性是第一位的。"
+            if round_counter[0] <= 1
+            else f"[Alice/CTO] 好的，综合考虑大家意见，我同意 Go 是更务实的选择。CONSENSUS",
+        )[-1],
+    )
 
-    bob = Tool("Bob_Lead", lambda x:
-        f"[Bob/Lead] 我认为 Go 更适合我们团队。学习曲线低，生态成熟，部署简单。")
+    bob = Tool(
+        "Bob_Lead",
+        lambda x: (
+            f"[Bob/Lead] 我认为 Go 更适合我们团队。学习曲线低，生态成熟，部署简单。"
+        ),
+    )
 
-    carol = Tool("Carol_SRE", lambda x:
-        f"[Carol/SRE] 从运维角度，Go 的编译速度和部署体验确实更好。支持 Bob 的建议。")
+    carol = Tool(
+        "Carol_SRE",
+        lambda x: (
+            f"[Carol/SRE] 从运维角度，Go 的编译速度和部署体验确实更好。支持 Bob 的建议。"
+        ),
+    )
 
     # 创建 GroupChat
     chat = GroupChat(
@@ -232,6 +268,7 @@ def demo_groupchat():
 # 案例 4: Handoff — 智能客服路由
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_handoff():
     """
     动态委派: 运行时确定路由目标。
@@ -249,12 +286,22 @@ def demo_handoff():
     separator("4. Handoff (智能客服动态路由)")
 
     # 专家 Agent 团队
-    billing = Tool("billing_expert", lambda x:
-        f"[账单专家] 您的账户余额为 ¥1,234.56。如需充值请访问 pay.example.com")
-    tech = Tool("tech_support", lambda x:
-        f"[技术支持] 请尝试: 1)重启应用 2)清除缓存 3)检查网络连接")
-    sales = Tool("sales_rep", lambda x:
-        f"[销售顾问] 我们目前有企业版 8 折优惠，包含: API 无限调用 + 专属客服")
+    billing = Tool(
+        "billing_expert",
+        lambda x: (
+            f"[账单专家] 您的账户余额为 ¥1,234.56。如需充值请访问 pay.example.com"
+        ),
+    )
+    tech = Tool(
+        "tech_support",
+        lambda x: f"[技术支持] 请尝试: 1)重启应用 2)清除缓存 3)检查网络连接",
+    )
+    sales = Tool(
+        "sales_rep",
+        lambda x: (
+            f"[销售顾问] 我们目前有企业版 8 折优惠，包含: API 无限调用 + 专属客服"
+        ),
+    )
 
     # 路由选择器
     def route_selector(query: str) -> str:
@@ -296,8 +343,10 @@ def demo_handoff():
 
     # ── 动态注册新专家 ──
     print("  --- 动态注册 VIP 专家 ---")
-    vip = Tool("vip_support", lambda x:
-        f"[VIP专属] 尊敬的客户，我是您的专属顾问，正在为您优先处理。")
+    vip = Tool(
+        "vip_support",
+        lambda x: f"[VIP专属] 尊敬的客户，我是您的专属顾问，正在为您优先处理。",
+    )
     handoff.register("vip_support", vip)
     print(f"  已注册 VIP 专家，当前 {len(handoff.registry)} 个专家")
 
@@ -309,6 +358,7 @@ def demo_handoff():
 # ══════════════════════════════════════════════════════════════
 # 案例 5: AsyncPar — 多维度并行分析
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_async_par():
     """
@@ -365,10 +415,14 @@ def demo_async_par():
 
     speedup = seq_time / par_time
     print(f"\n  加速比: {speedup:.1f}x ({seq_time:.3f}s → {par_time:.3f}s)")
-    print(f"  节省: {seq_time - par_time:.3f}s ({(1 - par_time/seq_time)*100:.0f}%)")
+    print(
+        f"  节省: {seq_time - par_time:.3f}s ({(1 - par_time / seq_time) * 100:.0f}%)"
+    )
 
     # 合并结果
-    merge = Tool("merge", lambda x: f"[综合评估]\n" + "\n".join(x) + "\n→ 建议: 投资可行")
+    merge = Tool(
+        "merge", lambda x: f"[综合评估]\n" + "\n".join(x) + "\n→ 建议: 投资可行"
+    )
     merged = merge(list(r_par))
     print(f"\n  合并结果: {merged[:80]}...")
     print("  ✅ AsyncPar 完成")
@@ -377,6 +431,7 @@ def demo_async_par():
 # ══════════════════════════════════════════════════════════════
 # 案例 6: 综合案例 — 多 Agent 研究系统
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_full_system():
     """
@@ -400,13 +455,12 @@ def demo_full_system():
     shared = SharedMemory(store={"task": "", "findings": []})
 
     # 研究管道: 并行搜索 + 分析
-    search = Tool("search", lambda x: (
-        shared.write("task", x),
-        f"搜索结果: {x} 相关的 5 篇论文"
-    )[-1])
+    search = Tool(
+        "search",
+        lambda x: (shared.write("task", x), f"搜索结果: {x} 相关的 5 篇论文")[-1],
+    )
 
-    analyze = Tool("analyze", lambda x:
-        f"分析结果: {x} 领域有 3 个关键趋势")
+    analyze = Tool("analyze", lambda x: f"分析结果: {x} 领域有 3 个关键趋势")
 
     # 并行执行搜索和分析
     research_par = AsyncPar(search, analyze)
@@ -415,10 +469,10 @@ def demo_full_system():
     review_channel = Channel("review", capacity=5)
 
     # 审阅讨论
-    reviewer = Tool("reviewer", lambda x:
-        f"[审阅] 研究质量良好，建议补充定量数据。CONSENSUS")
-    editor = Tool("editor", lambda x:
-        f"[编辑] 同意审阅意见，文章可以发表。CONSENSUS")
+    reviewer = Tool(
+        "reviewer", lambda x: f"[审阅] 研究质量良好，建议补充定量数据。CONSENSUS"
+    )
+    editor = Tool("editor", lambda x: f"[编辑] 同意审阅意见，文章可以发表。CONSENSUS")
 
     discussion = GroupChat(
         agents=[reviewer, editor],
@@ -491,6 +545,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ❌ {name} 失败: {e}")
             import traceback
+
             traceback.print_exc()
 
     print("\n" + "=" * 70)

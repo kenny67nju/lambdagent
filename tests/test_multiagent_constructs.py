@@ -31,6 +31,7 @@ from lambdagent.handlers import TestHandler, set_current_handler
 
 # ── helpers ─────────────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def _clear_handler():
     set_current_handler(None)
@@ -46,8 +47,8 @@ def _tool(name: str, fn):
 # Channel tests
 # ════════════════════════════════════════════════════════════
 
-class TestChannel:
 
+class TestChannel:
     def test_send_receive_basic(self):
         ch = Channel("test")
         ch.send("hello")
@@ -113,8 +114,8 @@ class TestChannel:
 # Send / Receive tests
 # ════════════════════════════════════════════════════════════
 
-class TestSendReceive:
 
+class TestSendReceive:
     def test_send_puts_result_on_channel(self):
         ch = Channel("pipe")
         agent = _tool("upper", lambda x: str(x).upper())
@@ -171,8 +172,8 @@ class TestSendReceive:
 # GroupChat tests
 # ════════════════════════════════════════════════════════════
 
-class TestGroupChat:
 
+class TestGroupChat:
     def test_round_robin_two_agents(self):
         agent_a = _tool("alice", lambda x: "alice says hi")
         agent_b = _tool("bob", lambda x: "bob says hi")
@@ -230,8 +231,8 @@ class TestGroupChat:
 # Handoff tests
 # ════════════════════════════════════════════════════════════
 
-class TestHandoff:
 
+class TestHandoff:
     def test_handoff_dispatches_to_correct_agent(self):
         math_agent = _tool("math", lambda x: f"math({x})")
         code_agent = _tool("code", lambda x: f"code({x})")
@@ -294,8 +295,8 @@ class TestHandoff:
 # AsyncPar tests
 # ════════════════════════════════════════════════════════════
 
-class TestAsyncPar:
 
+class TestAsyncPar:
     def test_async_par_all_results_present(self):
         a = _tool("double", lambda x: int(x) * 2)
         b = _tool("triple", lambda x: int(x) * 3)
@@ -361,8 +362,8 @@ class TestAsyncPar:
 # SharedMemory tests
 # ════════════════════════════════════════════════════════════
 
-class TestSharedMemory:
 
+class TestSharedMemory:
     def test_read_write(self):
         sm = SharedMemory()
         sm.write("key", "value")

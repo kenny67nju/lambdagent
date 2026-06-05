@@ -26,11 +26,15 @@ from .cancellation import CancellationToken, NullCancellationToken
 # Stream event types
 # ════════════════════════════════════════════════════════════
 
+
 class StreamEvent:
     """Base class for streaming events during async reduction."""
+
     __slots__ = ("type", "data", "term_name", "step")
 
-    def __init__(self, type: str, data: Any = None, term_name: str = "", step: int = -1):
+    def __init__(
+        self, type: str, data: Any = None, term_name: str = "", step: int = -1
+    ):
         self.type = type
         self.data = data
         self.term_name = term_name
@@ -42,6 +46,7 @@ class StreamEvent:
 
 class TokenEvent(StreamEvent):
     """A single token from LLM streaming."""
+
     def __init__(self, token: str, term_name: str = ""):
         super().__init__("token", token, term_name)
         self.token = token
@@ -49,7 +54,10 @@ class TokenEvent(StreamEvent):
 
 class StepEvent(StreamEvent):
     """A completed reduction step."""
-    def __init__(self, result: Any, term_name: str = "", step: int = -1, duration_ms: float = 0):
+
+    def __init__(
+        self, result: Any, term_name: str = "", step: int = -1, duration_ms: float = 0
+    ):
         super().__init__("step", result, term_name, step)
         self.result = result
         self.duration_ms = duration_ms
@@ -57,6 +65,7 @@ class StepEvent(StreamEvent):
 
 class ErrorEvent(StreamEvent):
     """An error during reduction."""
+
     def __init__(self, error: Exception, term_name: str = ""):
         super().__init__("error", error, term_name)
         self.error = error
@@ -66,8 +75,13 @@ class ErrorEvent(StreamEvent):
 # Async mixin for Term — monkey-patched onto base Term class
 # ════════════════════════════════════════════════════════════
 
-async def _term_aapply(self, input: Any, ctx: Context | None = None,
-                       cancel: CancellationToken | None = None) -> Any:
+
+async def _term_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """
     Async β-reduction. Default implementation wraps sync apply() in a thread.
     Subclass-specific async versions are patched below.
@@ -87,8 +101,13 @@ Term.aapply = _term_aapply
 # Async implementations for each Term type
 # ════════════════════════════════════════════════════════════
 
-async def _lam_aapply(self, input: Any, ctx: Context | None = None,
-                      cancel: CancellationToken | None = None) -> Any:
+
+async def _lam_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Lam: LLM call in thread pool (SDK clients are sync)."""
     cancel = cancel or NullCancellationToken()
     cancel.check()
@@ -103,8 +122,12 @@ async def _lam_aapply(self, input: Any, ctx: Context | None = None,
     return result
 
 
-async def _compose_aapply(self, input: Any, ctx: Context | None = None,
-                          cancel: CancellationToken | None = None) -> Any:
+async def _compose_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Compose: sequential async reduction."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -115,14 +138,19 @@ async def _compose_aapply(self, input: Any, ctx: Context | None = None,
     return result
 
 
-async def _if_aapply(self, input: Any, ctx: Context | None = None,
-                     cancel: CancellationToken | None = None) -> Any:
+async def _if_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async If: async condition + branch."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
     if isinstance(self.cond, Term):
         cond_result = await self.cond.aapply(input, ctx, cancel)
         from .primitives import If
+
         branch = If._is_truthy(cond_result)
     else:
         branch = self.cond(input)
@@ -132,8 +160,12 @@ async def _if_aapply(self, input: Any, ctx: Context | None = None,
         return await self.else_.aapply(input, ctx, cancel)
 
 
-async def _loop_aapply(self, input: Any, ctx: Context | None = None,
-                       cancel: CancellationToken | None = None) -> Any:
+async def _loop_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Loop: Y combinator with cancellation."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -146,21 +178,26 @@ async def _loop_aapply(self, input: Any, ctx: Context | None = None,
     return result
 
 
-async def _par_aapply(self, input: Any, ctx: Context | None = None,
-                      cancel: CancellationToken | None = None) -> tuple:
+async def _par_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> tuple:
     """Async Par: true parallel via asyncio.gather."""
     cancel = cancel or NullCancellationToken()
     cancel.check()
     ctx = ctx or Context()
-    tasks = [
-        agent.aapply(input, ctx, cancel.child())
-        for agent in self.agents
-    ]
+    tasks = [agent.aapply(input, ctx, cancel.child()) for agent in self.agents]
     return tuple(await asyncio.gather(*tasks))
 
 
-async def _pair_aapply(self, input: Any, ctx: Context | None = None,
-                       cancel: CancellationToken | None = None) -> tuple:
+async def _pair_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> tuple:
     """Async Pair: parallel execution of both sides."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -171,8 +208,12 @@ async def _pair_aapply(self, input: Any, ctx: Context | None = None,
     return (a, b)
 
 
-async def _tool_aapply(self, input: Any, ctx: Context | None = None,
-                       cancel: CancellationToken | None = None) -> Any:
+async def _tool_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Tool: run fn in thread pool."""
     cancel = cancel or NullCancellationToken()
     cancel.check()
@@ -185,8 +226,12 @@ async def _tool_aapply(self, input: Any, ctx: Context | None = None,
     return result
 
 
-async def _route_aapply(self, input: Any, ctx: Context | None = None,
-                        cancel: CancellationToken | None = None) -> Any:
+async def _route_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Route: async classify then async dispatch."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -201,12 +246,19 @@ async def _route_aapply(self, input: Any, ctx: Context | None = None,
         agent = self.default
     if agent is None:
         from .core import RouteError
-        raise RouteError(f"No route for '{label}'. Available: {list(self.routes.keys())}")
+
+        raise RouteError(
+            f"No route for '{label}'. Available: {list(self.routes.keys())}"
+        )
     return await agent.aapply(input, ctx, cancel)
 
 
-async def _memory_aapply(self, input: Any, ctx: Context | None = None,
-                         cancel: CancellationToken | None = None) -> Any:
+async def _memory_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Memory: inject memory then async reduce."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -218,8 +270,12 @@ async def _memory_aapply(self, input: Any, ctx: Context | None = None,
     return await self.agent.aapply(augmented, ctx, cancel)
 
 
-async def _guard_aapply(self, input: Any, ctx: Context | None = None,
-                        cancel: CancellationToken | None = None) -> Any:
+async def _guard_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Guard: async execute + validate + retry."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -231,6 +287,7 @@ async def _guard_aapply(self, input: Any, ctx: Context | None = None,
         if isinstance(self.validator, Term):
             valid = await self.validator.aapply(result, ctx, cancel)
             from .primitives import If
+
             valid = If._is_truthy(valid) if isinstance(valid, str) else bool(valid)
         else:
             valid = self.validator(result)
@@ -239,14 +296,19 @@ async def _guard_aapply(self, input: Any, ctx: Context | None = None,
     if self.on_fail:
         return self.on_fail(last_result)
     from .core import ValidationError
+
     raise ValidationError(
         f"Guard({self.agent._name}) failed after {1 + self.retry} attempts. "
         f"Last output: {last_result}"
     )
 
 
-async def _groupchat_aapply(self, input: Any, ctx: Context | None = None,
-                            cancel: CancellationToken | None = None) -> Any:
+async def _groupchat_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async GroupChat: async speaker selection + execution."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -273,15 +335,20 @@ async def _groupchat_aapply(self, input: Any, ctx: Context | None = None,
         response = await speaker.aapply(speaker_input, ctx, cancel)
         elapsed = (time.time() - t0) * 1000
 
-        conversation.append({
-            "speaker": speaker._name,
-            "content": str(response),
-            "round": round_idx,
-        })
+        conversation.append(
+            {
+                "speaker": speaker._name,
+                "content": str(response),
+                "round": round_idx,
+            }
+        )
         state = f"{state}\n[{speaker._name}]: {response}"
         ctx.log(
             f"GroupChat.round[{round_idx}]:{speaker._name}",
-            self._trace_id, speaker_input[:100], str(response)[:100], elapsed,
+            self._trace_id,
+            speaker_input[:100],
+            str(response)[:100],
+            elapsed,
         )
         if self.termination(state, round_idx + 1):
             break
@@ -293,35 +360,47 @@ async def _groupchat_aapply(self, input: Any, ctx: Context | None = None,
     return conversation[-1]["content"] if conversation else state
 
 
-async def _asyncpar_aapply(self, input: Any, ctx: Context | None = None,
-                           cancel: CancellationToken | None = None) -> tuple:
+async def _asyncpar_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> tuple:
     """Async AsyncPar: true parallel via asyncio.gather (replaces ThreadPoolExecutor)."""
     cancel = cancel or NullCancellationToken()
     cancel.check()
     ctx = ctx or Context()
     t0 = time.time()
 
-    tasks = [
-        agent.aapply(input, ctx, cancel.child())
-        for agent in self.agents
-    ]
+    tasks = [agent.aapply(input, ctx, cancel.child()) for agent in self.agents]
 
     if self.timeout:
-        results = tuple(await asyncio.wait_for(
-            asyncio.gather(*tasks),
-            timeout=self.timeout,
-        ))
+        results = tuple(
+            await asyncio.wait_for(
+                asyncio.gather(*tasks),
+                timeout=self.timeout,
+            )
+        )
     else:
         results = tuple(await asyncio.gather(*tasks))
 
     elapsed = (time.time() - t0) * 1000
-    ctx.log(self._name, self._trace_id, str(input)[:100],
-            f"{len(results)} results in {elapsed:.0f}ms", elapsed)
+    ctx.log(
+        self._name,
+        self._trace_id,
+        str(input)[:100],
+        f"{len(results)} results in {elapsed:.0f}ms",
+        elapsed,
+    )
     return results
 
 
-async def _handoff_aapply(self, input: Any, ctx: Context | None = None,
-                          cancel: CancellationToken | None = None) -> Any:
+async def _handoff_aapply(
+    self,
+    input: Any,
+    ctx: Context | None = None,
+    cancel: CancellationToken | None = None,
+) -> Any:
     """Async Handoff: async selector + async dispatch."""
     cancel = cancel or NullCancellationToken()
     ctx = ctx or Context()
@@ -336,7 +415,10 @@ async def _handoff_aapply(self, input: Any, ctx: Context | None = None,
         agent = self.registry.get(target_name)
         if agent is None:
             for name, a in self.registry.items():
-                if name.lower() in target_name.lower() or target_name.lower() in name.lower():
+                if (
+                    name.lower() in target_name.lower()
+                    or target_name.lower() in name.lower()
+                ):
                     agent = a
                     target_name = name
                     break
@@ -347,6 +429,7 @@ async def _handoff_aapply(self, input: Any, ctx: Context | None = None,
             target_name = "fallback"
         else:
             from .multiagent import HandoffError
+
             raise HandoffError(
                 f"Handoff target '{target_name}' not found. "
                 f"Available: {list(self.registry.keys())}"
@@ -354,14 +437,20 @@ async def _handoff_aapply(self, input: Any, ctx: Context | None = None,
 
     result = await agent.aapply(input, ctx, cancel)
     elapsed = (time.time() - t0) * 1000
-    ctx.log(f"Handoff→{target_name}", self._trace_id,
-            str(input)[:100], str(result)[:100], elapsed)
+    ctx.log(
+        f"Handoff→{target_name}",
+        self._trace_id,
+        str(input)[:100],
+        str(result)[:100],
+        elapsed,
+    )
     return result
 
 
 # ════════════════════════════════════════════════════════════
 # Apply patches to all Term subclasses
 # ════════════════════════════════════════════════════════════
+
 
 def _patch_async():
     """Monkey-patch aapply onto all Term subclasses."""

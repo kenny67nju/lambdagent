@@ -10,6 +10,7 @@ the transport layer (HTTP API / CLI subprocess / local inference).
 L01: Added ChatMessage, ChatResponse dataclasses and unified interface
 methods (achat, provider_name, default_model) for multi-provider support.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -21,9 +22,11 @@ from typing import Any, Dict, List, Optional
 # L01: Unified message and response types
 # ============================================================
 
+
 @dataclass
 class ChatMessage:
     """Unified chat message for the new provider interface."""
+
     role: str  # "system" | "user" | "assistant" | "tool"
     content: str
 
@@ -31,6 +34,7 @@ class ChatMessage:
 @dataclass
 class ChatResponse:
     """Structured response from an LLM provider."""
+
     text: str
     input_tokens: int = 0
     output_tokens: int = 0
@@ -42,10 +46,12 @@ class ChatResponse:
 # Legacy types (backward compatibility)
 # ============================================================
 
+
 @dataclass
 class Message:
     """A single message in the conversation."""
-    role: str      # "system", "user", "assistant"
+
+    role: str  # "system", "user", "assistant"
     content: str
 
     def to_dict(self) -> dict:
@@ -55,6 +61,7 @@ class Message:
 @dataclass
 class ProviderConfig:
     """Configuration for an LLM provider."""
+
     model: str = ""
     temperature: float = 0.3
     max_tokens: int = 4096
@@ -97,9 +104,13 @@ class LLMProvider(ABC):
 
     # ── L01: Unified interface methods ──
 
-    def chat_typed(self, messages: List[ChatMessage],
-                   model: str = "", temperature: float = 0.0,
-                   max_tokens: int = 4096) -> ChatResponse:
+    def chat_typed(
+        self,
+        messages: List[ChatMessage],
+        model: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
+    ) -> ChatResponse:
         """
         Typed chat completion using ChatMessage/ChatResponse.
 
@@ -125,13 +136,18 @@ class LLMProvider(ABC):
             self.config.model = orig_model
         return ChatResponse(text=text, model=model or self.config.model)
 
-    async def achat(self, messages: List[ChatMessage],
-                    model: str = "", temperature: float = 0.0,
-                    max_tokens: int = 4096) -> ChatResponse:
+    async def achat(
+        self,
+        messages: List[ChatMessage],
+        model: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
+    ) -> ChatResponse:
         """
         Async chat completion. Default wraps sync chat_typed in executor.
         """
         import asyncio
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None, lambda: self.chat_typed(messages, model, temperature, max_tokens)
@@ -158,6 +174,7 @@ class LLMProvider(ABC):
 
 class ProviderError(Exception):
     """Base exception for provider errors."""
+
     def __init__(self, message: str, provider: str = "", retryable: bool = False):
         super().__init__(message)
         self.provider = provider

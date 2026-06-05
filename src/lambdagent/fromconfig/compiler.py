@@ -11,6 +11,7 @@ v2 Optimizations:
   - P2: MCP tool call caching (LRU)
   - P2: Observation truncation to control token growth
 """
+
 from __future__ import annotations
 
 import ast
@@ -27,9 +28,15 @@ from lambdagent.core import Term, Context, LambdagentError
 from lambdagent.primitives import Lam, Compose, Loop, Tool
 from lambdagent.extensions import Par, Route, Memory, Guard
 from lambdagent.lam_types import (
-    LamType, AgentType, AgentTypeError,
-    T_ANY, T_STR, T_JSON,
-    parse_type_annotation, check_compose_types, is_subtype,
+    LamType,
+    AgentType,
+    AgentTypeError,
+    T_ANY,
+    T_STR,
+    T_JSON,
+    parse_type_annotation,
+    check_compose_types,
+    is_subtype,
 )
 
 from .errors import CompileError, SchemaError, SemanticError
@@ -44,8 +51,10 @@ from lambdagent.conversation import ConversationLam
 # Tool call cache (P2)
 # ============================================================
 
+
 class _ToolCache:
     """LRU cache for MCP tool calls. Avoids duplicate HTTP requests."""
+
     def __init__(self, maxsize: int = 64):
         self._cache = OrderedDict()
         self._maxsize = maxsize
@@ -66,6 +75,7 @@ class _ToolCache:
         while len(self._cache) > self._maxsize:
             self._cache.popitem(last=False)
 
+
 _tool_cache = _ToolCache()
 
 
@@ -74,9 +84,17 @@ _tool_cache = _ToolCache()
 # ============================================================
 
 _TERMINATE_SIGNALS = [
-    "final answer:", "task complete", "task is done",
-    "i have completed", "here is the result:", "in conclusion,",
-    "综上所述", "最终答案", "调研报告", "总结如下", "任务完成",
+    "final answer:",
+    "task complete",
+    "task is done",
+    "i have completed",
+    "here is the result:",
+    "in conclusion,",
+    "综上所述",
+    "最终答案",
+    "调研报告",
+    "总结如下",
+    "任务完成",
 ]
 
 
@@ -93,9 +111,9 @@ def _check_implicit_terminate(thought: str) -> bool:
 # State compression (P0)
 # ============================================================
 
-_MAX_STATE_WINDOW = 3        # Keep last N steps in full
-_MAX_OBS_LENGTH = 3000       # Truncate observations (800 was too small, causing retry loops)
-_MAX_THOUGHT_LENGTH = 500    # Truncate thoughts in history
+_MAX_STATE_WINDOW = 3  # Keep last N steps in full
+_MAX_OBS_LENGTH = 3000  # Truncate observations (800 was too small, causing retry loops)
+_MAX_THOUGHT_LENGTH = 500  # Truncate thoughts in history
 
 
 def _sanitize_tool_output(output: str) -> str:
@@ -121,7 +139,10 @@ def _compress_state(state: str, thought: str, tool_name: str, observation: str) 
     """
     # Truncate observation
     if len(observation) > _MAX_OBS_LENGTH:
-        observation = observation[:_MAX_OBS_LENGTH] + f"\n... [truncated, {len(observation)} chars]"
+        observation = (
+            observation[:_MAX_OBS_LENGTH]
+            + f"\n... [truncated, {len(observation)} chars]"
+        )
 
     # Parse existing state into parts
     parts = state.split("\n\n[Step ")
@@ -136,7 +157,13 @@ def _compress_state(state: str, thought: str, tool_name: str, observation: str) 
     step_count = len(steps) + 1
 
     # Anti-hallucination: if tool returned an error, add explicit retry instruction
-    error_prefixes = ("[VALIDATION_ERROR]", "[TOOL_ERROR]", "[ERROR]", "[MCP_ERROR]", "[MCP_TIMEOUT]")
+    error_prefixes = (
+        "[VALIDATION_ERROR]",
+        "[TOOL_ERROR]",
+        "[ERROR]",
+        "[MCP_ERROR]",
+        "[MCP_TIMEOUT]",
+    )
     is_error = any(observation.startswith(p) for p in error_prefixes)
     error_hint = ""
     if is_error:
@@ -184,6 +211,7 @@ def _compress_state(state: str, thought: str, tool_name: str, observation: str) 
 # ============================================================
 # Public API
 # ============================================================
+
 
 def from_config(path: str, **overrides) -> Term:
     """
@@ -249,7 +277,10 @@ def build_agent(cfg: Dict[str, Any], overrides: Dict = None, _depth: int = 0) ->
     # subAgents 节定义了子代理，编译后作为 call_* 工具注入到协调者
     sub_agents_cfg = cfg.get("subAgents", {})
     if sub_agents_cfg and "tools" not in overrides:
-        overrides = {**overrides, "tools": _compile_sub_agents(cfg, sub_agents_cfg, overrides)}
+        overrides = {
+            **overrides,
+            "tools": _compile_sub_agents(cfg, sub_agents_cfg, overrides),
+        }
 
     # Step 0a: Build ToolGateway from guard config (if present)
     guard_cfg = cfg.get("guard") or {}
@@ -261,6 +292,7 @@ def build_agent(cfg: Dict[str, Any], overrides: Dict = None, _depth: int = 0) ->
     hooks_cfg = cfg.get("hooks", {})
     if hooks_cfg:
         from lambdagent.hooks import compile_hooks_from_config
+
         hooks_registry = compile_hooks_from_config(hooks_cfg)
         overrides = {**overrides, "_hooks": hooks_registry}
 
@@ -294,7 +326,10 @@ def build_agent(cfg: Dict[str, Any], overrides: Dict = None, _depth: int = 0) ->
 # SubAgent compiler (multi-agent orchestrator support)
 # ============================================================
 
-def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dict[str, Any]:
+
+def _compile_sub_agents(
+    cfg: Dict, sub_agents_cfg: Dict, overrides: Dict
+) -> Dict[str, Any]:
     """
     Compile subAgents section into callable tool functions.
 
@@ -320,7 +355,10 @@ def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dic
     # Optional: register as Skills for reuse
     try:
         from lambdagent.skills import Skill, SkillSignature, SkillPack, SkillRegistry
-        pack = SkillPack(name="subAgents", description="Auto-compiled sub-agents", version="1.0.0")
+
+        pack = SkillPack(
+            name="subAgents", description="Auto-compiled sub-agents", version="1.0.0"
+        )
         registry = SkillRegistry()
         has_skills = True
     except ImportError:
@@ -335,7 +373,9 @@ def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dic
         agent_yml = os.path.join(config_dir, rel_path) if rel_path else ""
 
         # Resolve source: inline > file > placeholder
-        has_inline = inline_cfg and isinstance(inline_cfg, dict) and "type" in inline_cfg
+        has_inline = (
+            inline_cfg and isinstance(inline_cfg, dict) and "type" in inline_cfg
+        )
         has_file = rel_path and os.path.isfile(agent_yml)
 
         if not has_inline and not has_file:
@@ -365,6 +405,7 @@ def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dic
                 if isinstance(input_str, str):
                     try:
                         import json as _json
+
                         data = _json.loads(input_str)
                         task = data.get("task", input_str)
                     except (ValueError, AttributeError):
@@ -386,6 +427,7 @@ def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dic
 
         # Register as Skill for reuse
         if has_skills:
+
             class _LazySubAgent(Term):
                 def __init__(self, name, path, inline):
                     super().__init__(name)
@@ -423,6 +465,7 @@ def _compile_sub_agents(cfg: Dict, sub_agents_cfg: Dict, overrides: Dict) -> Dic
     # silently returning a misleading "[not available]" string.
     try:
         from agentexample.agent67v2.tools.tool_search import tool_search
+
         tools["ToolSearch"] = lambda x: tool_search.apply(x)
     except ImportError:
         pass
@@ -491,18 +534,25 @@ def _create_provider(model_cfg: Dict):
 
     if provider_name == "claude-code":
         from lambdagent.providers.claude_code_provider import ClaudeCodeProvider
+
         config.model = model_name or "sonnet"
         return ClaudeCodeProvider(config), use_conversation
 
     if provider_name == "anthropic":
         from lambdagent.providers.anthropic_provider import AnthropicProvider
+
         config.model = model_name or "claude-sonnet-4-20250514"
         return AnthropicProvider(config), use_conversation
 
     # OpenAI-compatible: ollama, openai, dashscope, deepseek, moonshot, zhipu
     from lambdagent.providers.openai_compat_provider import OpenAICompatProvider
+
     if not model_name:
-        _defaults = {"openai": "gpt-4o", "ollama": "qwen2.5:7b", "dashscope": "qwen-max"}
+        _defaults = {
+            "openai": "gpt-4o",
+            "ollama": "qwen2.5:7b",
+            "dashscope": "qwen-max",
+        }
         config.model = _defaults.get(provider_name, "gpt-4o")
     # Context window hints for smaller models
     _ctx_windows = {"ollama": 32000, "deepseek": 64000, "moonshot": 128000}
@@ -535,7 +585,10 @@ def _compile_lam(cfg: Dict, name_suffix: str = "", overrides: Dict = None) -> "T
 
         if use_conversation:
             from lambdagent.conversation import ConversationLam
-            max_history = model_cfg.get("maxHistoryTokens", min(provider.context_window // 2, 80000))
+
+            max_history = model_cfg.get(
+                "maxHistoryTokens", min(provider.context_window // 2, 80000)
+            )
             model_name = model_cfg.get("name", "") or provider.default_model
             temperature = model_cfg.get("temperature", 0.0)
             max_tokens = model_cfg.get("maxTokens", 4096)
@@ -573,6 +626,7 @@ def _generate_tool_schema_docs(cfg: Dict) -> str:
     instead of guessing (which causes VALIDATION_ERROR → hallucination).
     """
     import inspect
+
     try:
         from lambdagent.builtin_tools.registry import BUILTIN_TOOLS
     except ImportError:
@@ -587,26 +641,30 @@ def _generate_tool_schema_docs(cfg: Dict) -> str:
 
     for name in tool_names:
         if name == "terminate":
-            lines.append(f'- **terminate**: `{{"action":"terminate","input":{{"summary":"结果摘要"}}}}`')
+            lines.append(
+                f'- **terminate**: `{{"action":"terminate","input":{{"summary":"结果摘要"}}}}`'
+            )
             continue
         tool = BUILTIN_TOOLS.get(name)
         if not tool:
             continue
-        schema_cls = getattr(tool, 'schema', None)
+        schema_cls = getattr(tool, "schema", None)
         if not schema_cls:
             continue
         try:
             sig = inspect.signature(schema_cls.__init__)
             params = []
             for pname, param in sig.parameters.items():
-                if pname == 'self':
+                if pname == "self":
                     continue
                 if param.default is inspect.Parameter.empty:
                     params.append(f'"{pname}": ...')  # required
                 else:
                     params.append(f'"{pname}": {json.dumps(param.default)}')
             param_str = ", ".join(params)
-            lines.append(f'- **{name}**: `{{"action":"{name}","input":{{{param_str}}}}}`')
+            lines.append(
+                f'- **{name}**: `{{"action":"{name}","input":{{{param_str}}}}}`'
+            )
         except Exception:
             continue
 
@@ -659,7 +717,7 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
     _last_observation = [None]  # Latest tool observation for session-resume mode
 
     # Detect if ClaudeLam supports session persistence (--resume)
-    _has_session = hasattr(think, '_session_id')
+    _has_session = hasattr(think, "_session_id")
 
     def react_step(state):
         """
@@ -693,7 +751,7 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
             remaining = max_steps - step
             llm_input = (
                 f"[工具执行结果]\n{obs}\n\n"
-                f"[步骤 {step+1}/{max_steps}，剩余 {remaining} 步]\n"
+                f"[步骤 {step + 1}/{max_steps}，剩余 {remaining} 步]\n"
                 f"请基于结果决定下一步。输出一个JSON工具调用。\n"
                 f"注意：工具名是 ReadFile/WriteFile/EditFile/Bash/ListFiles（不是 Read/Write/Edit）。"
             )
@@ -710,8 +768,16 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
         # Streaming: emit think event
         if _on_step:
             from lambdagent.agentruntime.react_engine import StepEvent, STEP_THINK
+
             try:
-                _on_step(StepEvent(type=STEP_THINK, step=step, content=str(thought), duration_ms=think_ms))
+                _on_step(
+                    StepEvent(
+                        type=STEP_THINK,
+                        step=step,
+                        content=str(thought),
+                        duration_ms=think_ms,
+                    )
+                )
             except Exception:
                 pass
 
@@ -727,13 +793,43 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
                 all_inputs = " ".join(e["input"] for e in _tool_log)
                 all_tools = [e["tool"] for e in _tool_log]
 
-                wants_code = any(kw in user_lower for kw in ["补充", "实现", "完成", "修改", "写", "代码", "implement", "fix", "write", "code"])
+                wants_code = any(
+                    kw in user_lower
+                    for kw in [
+                        "补充",
+                        "实现",
+                        "完成",
+                        "修改",
+                        "写",
+                        "代码",
+                        "implement",
+                        "fix",
+                        "write",
+                        "code",
+                    ]
+                )
                 wants_test = any(kw in user_lower for kw in ["测试", "test"])
-                wants_commit = any(kw in user_lower for kw in ["提交", "推送", "commit", "push"])
+                wants_commit = any(
+                    kw in user_lower for kw in ["提交", "推送", "commit", "push"]
+                )
 
-                wrote_code = ("WriteFile" in all_tools or "Bash" in all_tools) and "[OK]" in all_obs
-                ran_tests = ("mvn test" in all_inputs or "pytest" in all_inputs or "npm test" in all_inputs) and ("BUILD SUCCESS" in all_obs or " passed" in all_obs.lower() or "Tests run:" in all_obs)
-                did_commit = "git commit" in all_inputs and ("[master" in all_obs or "[main" in all_obs or "create mode" in all_obs)
+                wrote_code = (
+                    "WriteFile" in all_tools or "Bash" in all_tools
+                ) and "[OK]" in all_obs
+                ran_tests = (
+                    "mvn test" in all_inputs
+                    or "pytest" in all_inputs
+                    or "npm test" in all_inputs
+                ) and (
+                    "BUILD SUCCESS" in all_obs
+                    or " passed" in all_obs.lower()
+                    or "Tests run:" in all_obs
+                )
+                did_commit = "git commit" in all_inputs and (
+                    "[master" in all_obs
+                    or "[main" in all_obs
+                    or "create mode" in all_obs
+                )
                 did_push = "git push" in all_inputs
 
                 missing = []
@@ -753,14 +849,17 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
                         + "\n".join(f"  - {m}" for m in missing)
                         + "\n请立即用工具执行这些操作。"
                     )
-                    return f"{_user_input[0]}\n[Step {step+1}] pending"
+                    return f"{_user_input[0]}\n[Step {step + 1}] pending"
 
             if verbose:
                 print(f"  B[{step}] terminate (base case)")
             if _on_step:
                 from lambdagent.agentruntime.react_engine import StepEvent, STEP_ANSWER
+
                 try:
-                    _on_step(StepEvent(type=STEP_ANSWER, step=step, content=str(thought)))
+                    _on_step(
+                        StepEvent(type=STEP_ANSWER, step=step, content=str(thought))
+                    )
                 except Exception:
                     pass
             return str(thought)
@@ -771,8 +870,16 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
         # Streaming: emit tool_call event
         if _on_step:
             from lambdagent.agentruntime.react_engine import StepEvent, STEP_TOOL_CALL
+
             try:
-                _on_step(StepEvent(type=STEP_TOOL_CALL, step=step, content=str(tool_input)[:500], tool=tool_name))
+                _on_step(
+                    StepEvent(
+                        type=STEP_TOOL_CALL,
+                        step=step,
+                        content=str(tool_input)[:500],
+                        tool=tool_name,
+                    )
+                )
             except Exception:
                 pass
 
@@ -783,28 +890,52 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
                 tool_input_val = json.dumps(tool_input, ensure_ascii=False)
             else:
                 tool_input_val = tool_input or str(thought)
-            observation = _sanitize_tool_output(str(_timeout_call(selected_tool, tool_input_val, tool_timeout)))
+            observation = _sanitize_tool_output(
+                str(_timeout_call(selected_tool, tool_input_val, tool_timeout))
+            )
         except Exception as e:
             observation = f"[TOOL_ERROR] {e}"
         tool_ms = (time.time() - t0) * 1000
 
         if verbose:
-            print(f"  B[{step}] Tool:{tool_name} ({tool_ms:.0f}ms): {observation[:60]}...")
+            print(
+                f"  B[{step}] Tool:{tool_name} ({tool_ms:.0f}ms): {observation[:60]}..."
+            )
 
         # Record to tool log
-        _tool_log.append({"tool": tool_name, "input": str(tool_input_val)[:200], "observation": observation[:500]})
+        _tool_log.append(
+            {
+                "tool": tool_name,
+                "input": str(tool_input_val)[:200],
+                "observation": observation[:500],
+            }
+        )
 
         # Streaming: emit tool_result event
         if _on_step:
             from lambdagent.agentruntime.react_engine import StepEvent, STEP_TOOL_RESULT
+
             try:
-                _on_step(StepEvent(type=STEP_TOOL_RESULT, step=step, content=observation[:1000], tool=tool_name))
+                _on_step(
+                    StepEvent(
+                        type=STEP_TOOL_RESULT,
+                        step=step,
+                        content=observation[:1000],
+                        tool=tool_name,
+                    )
+                )
             except Exception:
                 pass
 
         # Log to context
-        ctx.log(f"Tool:{tool_name}", "", str(tool_input)[:200], observation[:200],
-                think_ms, think.model if hasattr(think, 'model') else "")
+        ctx.log(
+            f"Tool:{tool_name}",
+            "",
+            str(tool_input)[:200],
+            observation[:200],
+            think_ms,
+            think.model if hasattr(think, "model") else "",
+        )
 
         # ── Phase 5: Prepare next state ──
         # Store observation for session-resume mode
@@ -813,7 +944,7 @@ def _compile_react(cfg: Dict, overrides: Dict) -> Term:
         # Return state with step marker (for stop_condition detection)
         if _has_session:
             # Session mode: minimal state (Claude has full memory via --resume)
-            return f"{_user_input[0]}\n[Step {step+1}] {tool_name} done"
+            return f"{_user_input[0]}\n[Step {step + 1}] {tool_name} done"
         else:
             # Stateless mode: full compressed state (backward compatible)
             return _compress_state(str(state), str(thought), tool_name, observation)
@@ -857,7 +988,9 @@ def _compile_chain(cfg: Dict, overrides: Dict) -> Term:
             name=step_cfg.get("name", f"step_{i}"),
             prompt=step_cfg.get("prompt", ""),
             model=_resolve_model(step_model),
-            temperature=step_model.get("temperature", base_model.get("temperature", 0.0)),
+            temperature=step_model.get(
+                "temperature", base_model.get("temperature", 0.0)
+            ),
             max_tokens=step_model.get("maxTokens", base_model.get("maxTokens", 1024)),
         )
 
@@ -877,8 +1010,7 @@ def _compile_chain(cfg: Dict, overrides: Dict) -> Term:
     # Paper III T-Compose: 静态类型检查 (仅当步骤有类型标注时)
     agent_types = [s.agent_type for s in stages]
     has_type_annotations = any(
-        at.input_type != T_ANY or at.output_type != T_ANY
-        for at in agent_types
+        at.input_type != T_ANY or at.output_type != T_ANY for at in agent_types
     )
     if has_type_annotations:
         try:
@@ -968,7 +1100,9 @@ def _compile_parallel(cfg: Dict, overrides: Dict) -> Term:
     # Merge strategy
     merge = par_cfg.get("merge", "tuple")
     if merge == "concat":
-        par = par >> Tool("concat", lambda results: "\n\n".join(str(r) for r in results))
+        par = par >> Tool(
+            "concat", lambda results: "\n\n".join(str(r) for r in results)
+        )
     elif merge == "custom":
         merge_prompt = par_cfg.get("mergePrompt", "Synthesize the following results.")
         merge_model = cfg.get("model", {})
@@ -978,10 +1112,16 @@ def _compile_parallel(cfg: Dict, overrides: Dict) -> Term:
             model=_resolve_model(merge_model),
             temperature=merge_model.get("temperature", 0.0),
         )
-        par = par >> Tool("format_for_merge",
-                          lambda results: "\n\n---\n\n".join(
-                              f"[Agent {i+1}]:\n{r}" for i, r in enumerate(results)
-                          )) >> merge_lam
+        par = (
+            par
+            >> Tool(
+                "format_for_merge",
+                lambda results: "\n\n---\n\n".join(
+                    f"[Agent {i + 1}]:\n{r}" for i, r in enumerate(results)
+                ),
+            )
+            >> merge_lam
+        )
 
     return par
 
@@ -989,6 +1129,7 @@ def _compile_parallel(cfg: Dict, overrides: Dict) -> Term:
 # ============================================================
 # Tool compilation
 # ============================================================
+
 
 def _compile_tools(cfg: Dict, overrides: Dict) -> Dict[str, Tool]:
     """Compile MCP + local tools -> Dict[str, Tool]
@@ -1000,8 +1141,15 @@ def _compile_tools(cfg: Dict, overrides: Dict) -> Dict[str, Tool]:
 
     # S04: Tool reference whitelist (block arbitrary imports)
     _TOOL_WHITELIST = {
-        "terminate", "shell", "search", "read_file", "write_file",
-        "list_files", "run_code", "web_search", "calculator",
+        "terminate",
+        "shell",
+        "search",
+        "read_file",
+        "write_file",
+        "list_files",
+        "run_code",
+        "web_search",
+        "calculator",
     }
     tool_whitelist = overrides.get("_tool_whitelist", _TOOL_WHITELIST)
 
@@ -1025,6 +1173,7 @@ def _compile_tools(cfg: Dict, overrides: Dict) -> Dict[str, Tool]:
 
     # Local tools — resolve built-in tools first, then custom, then placeholder
     from lambdagent.builtin_tools.registry import get_builtin_tool
+
     local = mcp_cfg.get("localTools", [])
     for tool_name in local:
         if tool_name in custom_tools:
@@ -1034,7 +1183,9 @@ def _compile_tools(cfg: Dict, overrides: Dict) -> Dict[str, Tool]:
             if builtin:
                 tools[tool_name] = builtin
             else:
-                tools[tool_name] = Tool(tool_name, fn=lambda x, tn=tool_name: f"[local:{tn}]({x})")
+                tools[tool_name] = Tool(
+                    tool_name, fn=lambda x, tn=tool_name: f"[local:{tn}]({x})"
+                )
 
     # S04: Validate tool references if whitelist enforcement is enabled
     if overrides.get("_enforce_tool_whitelist", False):
@@ -1069,42 +1220,52 @@ def _compile_mcp_caller(server_name: str, tool_name: str, cfg: Dict) -> Callable
         import urllib.error
 
         full_url = f"{url.rstrip('/')}{endpoint}"
-        body = json.dumps({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": {"input": input_text} if isinstance(input_text, str) else input_text,
+        body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": {"input": input_text}
+                    if isinstance(input_text, str)
+                    else input_text,
+                },
             }
-        }).encode("utf-8")
+        ).encode("utf-8")
 
         req_headers = {"Content-Type": "application/json"}
         req_headers.update(headers)
 
         for attempt in range(1 + retry_count):
             try:
-                req = urllib.request.Request(full_url, data=body, headers=req_headers, method="POST")
+                req = urllib.request.Request(
+                    full_url, data=body, headers=req_headers, method="POST"
+                )
                 with urllib.request.urlopen(req, timeout=timeout) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     if "result" in data:
                         result = data["result"]
                         if isinstance(result, dict):
-                            return result.get("content", [{}])[0].get("text", str(result))
+                            return result.get("content", [{}])[0].get(
+                                "text", str(result)
+                            )
                         return str(result)
                     elif "error" in data:
                         return f"[MCP_ERROR: {data['error']}]"
                     return str(data)
             except urllib.error.URLError as e:
                 if attempt < retry_count:
-                    delay = min(2 ** attempt, 30)
+                    delay = min(2**attempt, 30)
                     time.sleep(delay)
                     continue
                 return f"[MCP_TIMEOUT: {server_name}/{tool_name}] {e}"
             except Exception as e:
                 return f"[MCP_ERROR: {server_name}/{tool_name}] {e}"
 
-        return f"[MCP_FAILED: {server_name}/{tool_name}] after {retry_count + 1} attempts"
+        return (
+            f"[MCP_FAILED: {server_name}/{tool_name}] after {retry_count + 1} attempts"
+        )
 
     return call_mcp
 
@@ -1114,19 +1275,62 @@ def _compile_mcp_caller(server_name: str, tool_name: str, cfg: Dict) -> Callable
 # ============================================================
 
 _SAFE_FUNCS = {
-    "len": len, "str": str, "int": int, "float": float, "bool": bool,
-    "abs": abs, "min": min, "max": max, "sum": sum,
-    "all": all, "any": any, "isinstance": isinstance,
+    "len": len,
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "abs": abs,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "all": all,
+    "any": any,
+    "isinstance": isinstance,
 }
 _SAFE_NODES = (
-    ast.Expression, ast.BoolOp, ast.BinOp, ast.UnaryOp, ast.Compare,
-    ast.IfExp, ast.Constant, ast.Name, ast.Load,
-    ast.Subscript, ast.Slice, ast.Index if hasattr(ast, "Index") else ast.Slice,
-    ast.List, ast.Tuple, ast.Dict, ast.Set,
-    ast.And, ast.Or, ast.Not, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod,
-    ast.Pow, ast.FloorDiv, ast.BitAnd, ast.BitOr, ast.BitXor,
-    ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Is, ast.IsNot,
-    ast.In, ast.NotIn, ast.USub, ast.UAdd, ast.Invert,
+    ast.Expression,
+    ast.BoolOp,
+    ast.BinOp,
+    ast.UnaryOp,
+    ast.Compare,
+    ast.IfExp,
+    ast.Constant,
+    ast.Name,
+    ast.Load,
+    ast.Subscript,
+    ast.Slice,
+    ast.Index if hasattr(ast, "Index") else ast.Slice,
+    ast.List,
+    ast.Tuple,
+    ast.Dict,
+    ast.Set,
+    ast.And,
+    ast.Or,
+    ast.Not,
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.Mod,
+    ast.Pow,
+    ast.FloorDiv,
+    ast.BitAnd,
+    ast.BitOr,
+    ast.BitXor,
+    ast.Eq,
+    ast.NotEq,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+    ast.Is,
+    ast.IsNot,
+    ast.In,
+    ast.NotIn,
+    ast.USub,
+    ast.UAdd,
+    ast.Invert,
     ast.Call,  # restricted via node walk
 )
 
@@ -1152,17 +1356,26 @@ def _safe_eval(expr: str, x):
                 return False
             # Calls must be to a whitelisted Name only (no chained calls or attrs).
             if isinstance(node, ast.Call):
-                if not isinstance(node.func, ast.Name) or node.func.id not in _SAFE_FUNCS:
+                if (
+                    not isinstance(node.func, ast.Name)
+                    or node.func.id not in _SAFE_FUNCS
+                ):
                     return False
             # Names must reference x or a whitelisted callable.
-            if isinstance(node, ast.Name) and node.id != "x" and node.id not in _SAFE_FUNCS:
+            if (
+                isinstance(node, ast.Name)
+                and node.id != "x"
+                and node.id not in _SAFE_FUNCS
+            ):
                 return False
         # Disable builtins explicitly in case of any miss.
-        return bool(eval(  # noqa: S307 — AST-validated above
-            compile(tree, "<guard.validator>", "eval"),
-            {"__builtins__": {}},
-            {"x": x, **_SAFE_FUNCS},
-        ))
+        return bool(
+            eval(  # noqa: S307 — AST-validated above
+                compile(tree, "<guard.validator>", "eval"),
+                {"__builtins__": {}},
+                {"x": x, **_SAFE_FUNCS},
+            )
+        )
     except Exception:
         return False
 
@@ -1207,8 +1420,12 @@ def _build_gateway(guard_cfg: Dict, overrides: Dict):
         return None
 
     has_security = any(
-        guard_cfg.get(field) for field in
-        ("dangerousCommandBlock", "highRiskConfirmation", "maxOutputLength")
+        guard_cfg.get(field)
+        for field in (
+            "dangerousCommandBlock",
+            "highRiskConfirmation",
+            "maxOutputLength",
+        )
     )
     if not has_security:
         return None
@@ -1246,6 +1463,7 @@ def _compile_memory(agent: Term, memory_cfg: Dict, overrides: Dict) -> Term:
 # Tool call extraction (JSON > XML > Keyword)
 # ============================================================
 
+
 def _extract_tool_call(thought: str, tools: Dict[str, Tool]):
     """
     Extract tool call from LLM output.
@@ -1253,7 +1471,7 @@ def _extract_tool_call(thought: str, tools: Dict[str, Tool]):
     Priority: JSON > XML > keyword
     """
     # Try JSON block: ```json ... ```
-    json_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', thought, re.DOTALL)
+    json_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", thought, re.DOTALL)
     if json_block:
         result = _parse_json_action(json_block.group(1), tools)
         if result:
@@ -1267,11 +1485,11 @@ def _extract_tool_call(thought: str, tools: Dict[str, Tool]):
             return result
 
     # Try XML: <action>name</action>
-    xml_action = re.search(r'<action>\s*(\w+)\s*</action>', thought)
+    xml_action = re.search(r"<action>\s*(\w+)\s*</action>", thought)
     if xml_action:
         tool_name = xml_action.group(1)
         if tool_name in tools:
-            xml_input = re.search(r'<input>(.*?)</input>', thought, re.DOTALL)
+            xml_input = re.search(r"<input>(.*?)</input>", thought, re.DOTALL)
             inp = xml_input.group(1).strip() if xml_input else thought
             try:
                 inp = json.loads(inp)
@@ -1296,7 +1514,12 @@ def _parse_json_action(json_str: str, tools: Dict[str, Tool]):
     if not tool_name or tool_name not in tools:
         return None
 
-    tool_input = data.get("input") or data.get("args") or data.get("arguments") or data.get("answer", "")
+    tool_input = (
+        data.get("input")
+        or data.get("args")
+        or data.get("arguments")
+        or data.get("answer", "")
+    )
     return tools[tool_name], tool_input
 
 
@@ -1304,9 +1527,11 @@ def _parse_json_action(json_str: str, tools: Dict[str, Tool]):
 # Timeout helper
 # ============================================================
 
+
 def _timeout_call(tool: Tool, input_val: Any, timeout_secs: int) -> Any:
     """Call tool with process-level timeout via threading."""
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(tool, input_val)
         try:
@@ -1318,6 +1543,7 @@ def _timeout_call(tool: Tool, input_val: Any, timeout_secs: int) -> Any:
 # ============================================================
 # Model resolution
 # ============================================================
+
 
 def _resolve_model(model_cfg: Dict) -> str:
     """Resolve model config to model ID string."""

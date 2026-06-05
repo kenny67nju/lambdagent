@@ -1,4 +1,5 @@
 """fromconfig.schema — YAML schema validation"""
+
 from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
@@ -16,7 +17,13 @@ def validate_schema(cfg: Dict[str, Any]) -> List[Tuple[str, str, str]]:
     else:
         valid_types = ("simple", "react", "chain", "router", "parallel")
         if cfg["type"] not in valid_types:
-            errors.append(("ERROR", "S002", f"Invalid type '{cfg['type']}'. Must be one of {valid_types}"))
+            errors.append(
+                (
+                    "ERROR",
+                    "S002",
+                    f"Invalid type '{cfg['type']}'. Must be one of {valid_types}",
+                )
+            )
 
     # Required: systemPrompt (except router/parallel which may not need top-level)
     agent_type = cfg.get("type", "simple")
@@ -49,7 +56,9 @@ def validate_schema(cfg: Dict[str, Any]) -> List[Tuple[str, str, str]]:
         par_cfg = cfg.get("parallel", {})
         agents = par_cfg.get("agents", [])
         if len(agents) < 2:
-            errors.append(("ERROR", "S008", "parallel.agents must have at least 2 agents"))
+            errors.append(
+                ("ERROR", "S008", "parallel.agents must have at least 2 agents")
+            )
 
     # Model validation
     model_cfg = cfg.get("model", {})
@@ -63,23 +72,31 @@ def validate_schema(cfg: Dict[str, Any]) -> List[Tuple[str, str, str]]:
         engine = runtime_cfg.get("engine", "recursive")
         valid_engines = ("recursive", "cek", "adaptive")
         if engine not in valid_engines:
-            errors.append(("ERROR", "S011",
-                           f"Invalid runtime.engine '{engine}'. "
-                           f"Must be one of {valid_engines}"))
+            errors.append(
+                (
+                    "ERROR",
+                    "S011",
+                    f"Invalid runtime.engine '{engine}'. "
+                    f"Must be one of {valid_engines}",
+                )
+            )
 
         cost_budget = runtime_cfg.get("costBudget")
         if cost_budget is not None:
             if not isinstance(cost_budget, (int, float)) or cost_budget <= 0:
-                errors.append(("ERROR", "S012",
-                               "runtime.costBudget must be a positive number"))
+                errors.append(
+                    ("ERROR", "S012", "runtime.costBudget must be a positive number")
+                )
 
         max_steps = runtime_cfg.get("maxSteps")
         if max_steps is not None:
             if not isinstance(max_steps, int) or max_steps <= 0:
-                errors.append(("ERROR", "S013",
-                               "runtime.maxSteps must be a positive integer"))
+                errors.append(
+                    ("ERROR", "S013", "runtime.maxSteps must be a positive integer")
+                )
             if isinstance(max_steps, int) and max_steps > 100000:
-                errors.append(("WARN", "S014",
-                               f"runtime.maxSteps={max_steps} is unusually high"))
+                errors.append(
+                    ("WARN", "S014", f"runtime.maxSteps={max_steps} is unusually high")
+                )
 
     return errors

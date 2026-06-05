@@ -4,6 +4,7 @@ S28: YAML parser fuzz testing
 Feed malicious/malformed YAML to from_config and lint_config.
 All should raise controlled errors, not crash.
 """
+
 from __future__ import annotations
 
 import os
@@ -32,6 +33,7 @@ def _cleanup(path: str):
 
 # ── Deeply nested YAML (1000 levels) ──
 
+
 class TestDeeplyNestedYAML:
     def test_from_config_deeply_nested(self):
         nested = "a:\n"
@@ -40,7 +42,9 @@ class TestDeeplyNestedYAML:
         nested += "  " * 1001 + "c: 1\n"
         path = _write_yaml(nested)
         try:
-            with pytest.raises((CompileError, SchemaError, RecursionError, yaml.YAMLError, Exception)):
+            with pytest.raises(
+                (CompileError, SchemaError, RecursionError, yaml.YAMLError, Exception)
+            ):
                 from_config(path)
         finally:
             _cleanup(path)
@@ -57,13 +61,20 @@ class TestDeeplyNestedYAML:
                 result = lint_config(path)
                 # If it returns, it should be a list of LintResult or similar
                 assert isinstance(result, list)
-            except (CompileError, SchemaError, RecursionError, yaml.YAMLError, Exception):
+            except (
+                CompileError,
+                SchemaError,
+                RecursionError,
+                yaml.YAMLError,
+                Exception,
+            ):
                 pass  # Controlled error is acceptable
         finally:
             _cleanup(path)
 
 
 # ── YAML bomb (billion laughs) ──
+
 
 class TestYAMLBomb:
     def test_from_config_billion_laughs(self):
@@ -78,13 +89,16 @@ f: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e]
 """
         path = _write_yaml(bomb)
         try:
-            with pytest.raises((CompileError, SchemaError, MemoryError, yaml.YAMLError, Exception)):
+            with pytest.raises(
+                (CompileError, SchemaError, MemoryError, yaml.YAMLError, Exception)
+            ):
                 from_config(path)
         finally:
             _cleanup(path)
 
 
 # ── Binary content in YAML ──
+
 
 class TestBinaryContent:
     def test_from_config_binary(self):
@@ -93,8 +107,15 @@ class TestBinaryContent:
         with os.fdopen(fd, "wb") as f:
             f.write(binary_content)
         try:
-            with pytest.raises((CompileError, SchemaError, UnicodeDecodeError,
-                                yaml.YAMLError, Exception)):
+            with pytest.raises(
+                (
+                    CompileError,
+                    SchemaError,
+                    UnicodeDecodeError,
+                    yaml.YAMLError,
+                    Exception,
+                )
+            ):
                 from_config(path)
         finally:
             _cleanup(path)
@@ -108,14 +129,20 @@ class TestBinaryContent:
             try:
                 result = lint_config(path)
                 assert isinstance(result, list)
-            except (CompileError, SchemaError, UnicodeDecodeError,
-                    yaml.YAMLError, Exception):
+            except (
+                CompileError,
+                SchemaError,
+                UnicodeDecodeError,
+                yaml.YAMLError,
+                Exception,
+            ):
                 pass  # Controlled error is acceptable
         finally:
             _cleanup(path)
 
 
 # ── Unicode edge cases ──
+
 
 class TestUnicodeEdgeCases:
     def test_from_config_unicode_surrogates(self):
@@ -127,7 +154,13 @@ class TestUnicodeEdgeCases:
             # The key is it must NOT crash with an unhandled exception.
             try:
                 from_config(path)
-            except (CompileError, SchemaError, yaml.YAMLError, ValueError, UnicodeError):
+            except (
+                CompileError,
+                SchemaError,
+                yaml.YAMLError,
+                ValueError,
+                UnicodeError,
+            ):
                 pass  # Controlled rejection is fine
             # If it succeeds, that's also acceptable (YAML treats \ud800 as literal text)
         finally:
@@ -159,12 +192,14 @@ class TestUnicodeEdgeCases:
 
 # ── Empty/null configs ──
 
+
 class TestEmptyNullConfigs:
     def test_from_config_empty_file(self):
         path = _write_yaml("")
         try:
-            with pytest.raises((CompileError, SchemaError, TypeError,
-                                AttributeError, Exception)):
+            with pytest.raises(
+                (CompileError, SchemaError, TypeError, AttributeError, Exception)
+            ):
                 from_config(path)
         finally:
             _cleanup(path)
@@ -172,8 +207,9 @@ class TestEmptyNullConfigs:
     def test_from_config_null(self):
         path = _write_yaml("null")
         try:
-            with pytest.raises((CompileError, SchemaError, TypeError,
-                                AttributeError, Exception)):
+            with pytest.raises(
+                (CompileError, SchemaError, TypeError, AttributeError, Exception)
+            ):
                 from_config(path)
         finally:
             _cleanup(path)
@@ -195,8 +231,7 @@ class TestEmptyNullConfigs:
             try:
                 result = lint_config(path)
                 assert isinstance(result, list)
-            except (CompileError, SchemaError, TypeError,
-                    AttributeError, Exception):
+            except (CompileError, SchemaError, TypeError, AttributeError, Exception):
                 pass
         finally:
             _cleanup(path)
@@ -207,14 +242,14 @@ class TestEmptyNullConfigs:
             try:
                 result = lint_config(path)
                 assert isinstance(result, list)
-            except (CompileError, SchemaError, TypeError,
-                    AttributeError, Exception):
+            except (CompileError, SchemaError, TypeError, AttributeError, Exception):
                 pass
         finally:
             _cleanup(path)
 
 
 # ── Extremely long strings ──
+
 
 class TestExtremelyLongStrings:
     def test_from_config_long_name(self):
@@ -256,6 +291,7 @@ class TestExtremelyLongStrings:
 
 
 # ── Malformed YAML syntax ──
+
 
 class TestMalformedYAML:
     def test_from_config_invalid_yaml(self):

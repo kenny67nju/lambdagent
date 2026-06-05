@@ -19,6 +19,7 @@ Lambda 语义:
     - guard.maxOutputLength 之前声明但从未检查 → 现在截断输出
     - 工具调用无审计日志 → 现在每次调用写入 audit trail
 """
+
 from __future__ import annotations
 
 import json
@@ -37,19 +38,20 @@ from .core import Term, Context, ValidationError
 # 命令风险分类
 # ════════════════════════════════════════════════════════════
 
+
 class RiskLevel(Enum):
-    SAFE = "safe"             # 只读操作，无副作用
-    LOW = "low"               # 轻微副作用（写文件到工作目录）
-    MEDIUM = "medium"         # 中等风险（安装包、修改配置）
-    HIGH = "high"             # 高危操作（删除文件、系统命令）
-    CRITICAL = "critical"     # 极危操作（rm -rf、格式化、sudo）
+    SAFE = "safe"  # 只读操作，无副作用
+    LOW = "low"  # 轻微副作用（写文件到工作目录）
+    MEDIUM = "medium"  # 中等风险（安装包、修改配置）
+    HIGH = "high"  # 高危操作（删除文件、系统命令）
+    CRITICAL = "critical"  # 极危操作（rm -rf、格式化、sudo）
 
 
 class Action(Enum):
-    ALLOW = "allow"           # 放行
-    BLOCK = "block"           # 拦截
-    CONFIRM = "confirm"       # 需要人工确认
-    LOG_ONLY = "log_only"     # 仅记录，不拦截
+    ALLOW = "allow"  # 放行
+    BLOCK = "block"  # 拦截
+    CONFIRM = "confirm"  # 需要人工确认
+    LOG_ONLY = "log_only"  # 仅记录，不拦截
 
 
 # ════════════════════════════════════════════════════════════
@@ -61,7 +63,10 @@ CRITICAL_PATTERNS = [
     # 文件系统破坏
     (r"rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?/\s*$", "rm -rf /"),
     (r"rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?~", "rm home directory"),
-    (r"rm\s+-[a-zA-Z]*r[a-zA-Z]*\s+/(?:usr|etc|var|boot|sys|proc)", "rm system directory"),
+    (
+        r"rm\s+-[a-zA-Z]*r[a-zA-Z]*\s+/(?:usr|etc|var|boot|sys|proc)",
+        "rm system directory",
+    ),
     (r"find\s+/\s+.*-delete", "find / -delete"),
     (r"find\s+/\s+.*-exec\s+rm", "find / -exec rm"),
     (r"mkfs\.", "format filesystem"),
@@ -125,9 +130,15 @@ MEDIUM_RISK_PATTERNS = [
 ]
 
 # 编译正则（一次编译多次使用）
-_COMPILED_CRITICAL = [(re.compile(p, re.IGNORECASE), desc) for p, desc in CRITICAL_PATTERNS]
-_COMPILED_HIGH = [(re.compile(p, re.IGNORECASE), desc) for p, desc in HIGH_RISK_PATTERNS]
-_COMPILED_MEDIUM = [(re.compile(p, re.IGNORECASE), desc) for p, desc in MEDIUM_RISK_PATTERNS]
+_COMPILED_CRITICAL = [
+    (re.compile(p, re.IGNORECASE), desc) for p, desc in CRITICAL_PATTERNS
+]
+_COMPILED_HIGH = [
+    (re.compile(p, re.IGNORECASE), desc) for p, desc in HIGH_RISK_PATTERNS
+]
+_COMPILED_MEDIUM = [
+    (re.compile(p, re.IGNORECASE), desc) for p, desc in MEDIUM_RISK_PATTERNS
+]
 
 
 def classify_command(command: str) -> tuple[RiskLevel, str]:
@@ -153,11 +164,42 @@ def classify_command(command: str) -> tuple[RiskLevel, str]:
 
     # 只读命令 → SAFE
     safe_prefixes = (
-        "ls", "cat", "head", "tail", "grep", "rg", "find", "which", "where",
-        "echo", "printf", "date", "pwd", "whoami", "hostname", "uname",
-        "wc", "sort", "uniq", "diff", "file", "stat", "du", "df",
-        "ps", "top", "htop", "env", "printenv", "id", "groups",
-        "git status", "git log", "git diff", "git show", "git branch",
+        "ls",
+        "cat",
+        "head",
+        "tail",
+        "grep",
+        "rg",
+        "find",
+        "which",
+        "where",
+        "echo",
+        "printf",
+        "date",
+        "pwd",
+        "whoami",
+        "hostname",
+        "uname",
+        "wc",
+        "sort",
+        "uniq",
+        "diff",
+        "file",
+        "stat",
+        "du",
+        "df",
+        "ps",
+        "top",
+        "htop",
+        "env",
+        "printenv",
+        "id",
+        "groups",
+        "git status",
+        "git log",
+        "git diff",
+        "git show",
+        "git branch",
     )
     first_word = cmd.split()[0] if cmd.split() else ""
     if first_word in [p.split()[0] for p in safe_prefixes]:
@@ -202,7 +244,11 @@ def classify_tool_call(tool_name: str, tool_input: Any) -> tuple[RiskLevel, str]
             return RiskLevel.SAFE, f"file {action}"
         elif action in ("write", "append", "create"):
             path = str(data.get("path", ""))
-            if path.startswith("/etc") or path.startswith("/usr") or path.startswith("/sys"):
+            if (
+                path.startswith("/etc")
+                or path.startswith("/usr")
+                or path.startswith("/sys")
+            ):
                 return RiskLevel.HIGH, f"file write to system path: {path}"
             return RiskLevel.LOW, f"file {action}"
         elif action in ("delete", "remove"):
@@ -236,6 +282,7 @@ def classify_tool_call(tool_name: str, tool_input: Any) -> tuple[RiskLevel, str]
 # 安全策略
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class GatewayPolicy:
     """
@@ -246,25 +293,26 @@ class GatewayPolicy:
       highRiskConfirmation: true    → confirm_high_risk = True
       maxOutputLength: 3000         → max_output_length = 3000
     """
+
     # 拦截策略
-    block_dangerous: bool = True          # 拦截 CRITICAL + HIGH 级命令
-    confirm_high_risk: bool = False       # HIGH 级操作需要确认（非 block）
-    block_medium: bool = False            # 拦截 MEDIUM 级操作
+    block_dangerous: bool = True  # 拦截 CRITICAL + HIGH 级命令
+    confirm_high_risk: bool = False  # HIGH 级操作需要确认（非 block）
+    block_medium: bool = False  # 拦截 MEDIUM 级操作
 
     # 输出限制
-    max_output_length: int = 0            # 0 = 不限制
+    max_output_length: int = 0  # 0 = 不限制
 
     # 白名单/黑名单
-    allowed_tools: Set[str] = field(default_factory=set)    # 空 = 允许所有
-    blocked_tools: Set[str] = field(default_factory=set)    # 始终拦截
+    allowed_tools: Set[str] = field(default_factory=set)  # 空 = 允许所有
+    blocked_tools: Set[str] = field(default_factory=set)  # 始终拦截
     allowed_paths: List[str] = field(default_factory=list)  # 允许访问的路径前缀
     blocked_paths: List[str] = field(default_factory=list)  # 禁止访问的路径前缀
     allowed_hosts: List[str] = field(default_factory=list)  # S19: 允许访问的主机名
     blocked_hosts: List[str] = field(default_factory=list)  # S19: 禁止访问的主机名
 
     # 审计
-    audit_log: bool = True                # 记录所有调用
-    audit_file: Optional[str] = None      # 审计日志文件路径
+    audit_log: bool = True  # 记录所有调用
+    audit_file: Optional[str] = None  # 审计日志文件路径
 
     # 确认回调
     confirm_callback: Optional[Callable[[str, str, str], bool]] = None
@@ -284,19 +332,28 @@ class GatewayPolicy:
     @classmethod
     def permissive(cls) -> "GatewayPolicy":
         """宽松策略：只拦截 CRITICAL，仅日志。"""
-        return cls(block_dangerous=True, confirm_high_risk=False,
-                   block_medium=False, audit_log=True)
+        return cls(
+            block_dangerous=True,
+            confirm_high_risk=False,
+            block_medium=False,
+            audit_log=True,
+        )
 
     @classmethod
     def strict(cls) -> "GatewayPolicy":
         """严格策略：拦截所有危险操作。"""
-        return cls(block_dangerous=True, confirm_high_risk=True,
-                   block_medium=True, audit_log=True)
+        return cls(
+            block_dangerous=True,
+            confirm_high_risk=True,
+            block_medium=True,
+            audit_log=True,
+        )
 
 
 # ════════════════════════════════════════════════════════════
 # 审计日志
 # ════════════════════════════════════════════════════════════
+
 
 class AuditLog:
     """工具调用审计日志。"""
@@ -305,10 +362,16 @@ class AuditLog:
         self._entries: List[Dict] = []
         self._log_file = log_file
 
-    def record(self, tool_name: str, tool_input: str,
-               risk_level: RiskLevel, action: Action,
-               reason: str, result: Optional[str] = None,
-               duration_ms: float = 0):
+    def record(
+        self,
+        tool_name: str,
+        tool_input: str,
+        risk_level: RiskLevel,
+        action: Action,
+        reason: str,
+        result: Optional[str] = None,
+        duration_ms: float = 0,
+    ):
         entry = {
             "timestamp": time.time(),
             "tool": tool_name,
@@ -357,6 +420,7 @@ class AuditLog:
 # ════════════════════════════════════════════════════════════
 # ToolGateway — 核心网关
 # ════════════════════════════════════════════════════════════
+
 
 class ToolGateway:
     """
@@ -407,7 +471,10 @@ class ToolGateway:
             for blocked_path in policy.blocked_paths:
                 blocked_abs = os.path.abspath(blocked_path)
                 if resolved.startswith(blocked_abs):
-                    return Action.BLOCK, f"blocked path: {resolved} (matches {blocked_path})"
+                    return (
+                        Action.BLOCK,
+                        f"blocked path: {resolved} (matches {blocked_path})",
+                    )
             # Check allowed paths (if set, path must be within at least one)
             if policy.allowed_paths:
                 allowed = False
@@ -428,7 +495,9 @@ class ToolGateway:
             if policy.allowed_hosts:
                 allowed = False
                 for allowed_host in policy.allowed_hosts:
-                    if hostname == allowed_host or hostname.endswith(f".{allowed_host}"):
+                    if hostname == allowed_host or hostname.endswith(
+                        f".{allowed_host}"
+                    ):
                         allowed = True
                         break
                 if not allowed:
@@ -456,6 +525,7 @@ class ToolGateway:
     def wrap(self, tool: Term) -> "GatedTool":
         """将普通 Tool 包裹为 GatedTool。"""
         from .primitives import Tool as BaseTool
+
         if isinstance(tool, GatedTool):
             return tool  # 已经包裹过
         if isinstance(tool, BaseTool):
@@ -496,6 +566,7 @@ class ToolGateway:
     def _extract_hostnames(input_str: str) -> List[str]:
         """S19: Extract hostnames from URLs in tool input."""
         from urllib.parse import urlparse
+
         hostnames = []
         for match in re.finditer(r'https?://[^\s"\'<>]+', input_str):
             try:
@@ -511,8 +582,10 @@ class ToolGateway:
 # GatedTool — 经过权限检查的 Tool
 # ════════════════════════════════════════════════════════════
 
+
 class ToolBlockedError(ValidationError):
     """工具调用被安全策略拦截。"""
+
     def __init__(self, tool_name: str, reason: str):
         self.tool_name = tool_name
         self.reason = reason
@@ -545,8 +618,12 @@ class GatedTool(Term):
         if action == Action.BLOCK:
             duration = (time.time() - t0) * 1000
             self.gateway.audit.record(
-                self._name, input_str, classify_tool_call(self._name, input)[0],
-                Action.BLOCK, reason, duration_ms=duration,
+                self._name,
+                input_str,
+                classify_tool_call(self._name, input)[0],
+                Action.BLOCK,
+                reason,
+                duration_ms=duration,
             )
             blocked_msg = f"[BLOCKED] Tool '{self._name}': {reason}"
             ctx.log(self._name, self._trace_id, input, blocked_msg, duration)
@@ -567,11 +644,16 @@ class GatedTool(Term):
             if not confirmed:
                 duration = (time.time() - t0) * 1000
                 self.gateway.audit.record(
-                    self._name, input_str, RiskLevel.HIGH,
-                    Action.BLOCK, f"confirmation denied: {reason}",
+                    self._name,
+                    input_str,
+                    RiskLevel.HIGH,
+                    Action.BLOCK,
+                    f"confirmation denied: {reason}",
                     duration_ms=duration,
                 )
-                blocked_msg = f"[BLOCKED] Tool '{self._name}' requires confirmation: {reason}"
+                blocked_msg = (
+                    f"[BLOCKED] Tool '{self._name}' requires confirmation: {reason}"
+                )
                 ctx.log(self._name, self._trace_id, input, blocked_msg, duration)
                 return blocked_msg
 
@@ -582,8 +664,13 @@ class GatedTool(Term):
             duration = (time.time() - t0) * 1000
             error_msg = f"[ERROR] {type(e).__name__}: {e}"
             self.gateway.audit.record(
-                self._name, input_str, classify_tool_call(self._name, input)[0],
-                Action.ALLOW, reason, result=error_msg, duration_ms=duration,
+                self._name,
+                input_str,
+                classify_tool_call(self._name, input)[0],
+                Action.ALLOW,
+                reason,
+                result=error_msg,
+                duration_ms=duration,
             )
             ctx.log(self._name, self._trace_id, input, error_msg, duration)
             raise
@@ -598,8 +685,13 @@ class GatedTool(Term):
         if self.gateway.policy.audit_log:
             risk_level = classify_tool_call(self._name, input)[0]
             self.gateway.audit.record(
-                self._name, input_str, risk_level,
-                action, reason, result=result_str, duration_ms=duration,
+                self._name,
+                input_str,
+                risk_level,
+                action,
+                reason,
+                result=result_str,
+                duration_ms=duration,
             )
 
         ctx.log(self._name, self._trace_id, input, result_str, duration)

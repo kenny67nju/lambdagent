@@ -10,6 +10,7 @@ PATH so user-supplied bash-style commands (``&&``, ``$VAR``, single-quote
 quoting, heredocs) keep working. Pure ``cmd``-syntax also works for users
 who explicitly want it.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,8 +28,23 @@ _session_cwd = os.getcwd()
 _cwd_lock = threading.Lock()
 
 # Interactive commands that should be rejected
-_INTERACTIVE_CMDS = {"vim", "vi", "nano", "emacs", "less", "more", "top", "htop",
-                     "ssh", "telnet", "ftp", "python", "node", "irb", "ghci"}
+_INTERACTIVE_CMDS = {
+    "vim",
+    "vi",
+    "nano",
+    "emacs",
+    "less",
+    "more",
+    "top",
+    "htop",
+    "ssh",
+    "telnet",
+    "ftp",
+    "python",
+    "node",
+    "irb",
+    "ghci",
+}
 
 
 def _get_cwd() -> str:
@@ -46,25 +62,39 @@ def _set_cwd(path: str):
 # A06: Bash
 # ════════════════════════════════════════════════════════════
 
+
 class BashSchema:
-    def __init__(self, command: str, timeout: int = 120, working_dir: str = "",
-                 run_in_background: bool = False):
+    def __init__(
+        self,
+        command: str,
+        timeout: int = 120,
+        working_dir: str = "",
+        run_in_background: bool = False,
+    ):
         if not command or not isinstance(command, str):
             raise ValueError("command is required")
         if timeout < 1 or timeout > 600:
             raise ValueError("timeout must be between 1 and 600 seconds")
         # Reject interactive commands
-        first_word = command.strip().split()[0].split("/")[-1] if command.strip() else ""
+        first_word = (
+            command.strip().split()[0].split("/")[-1] if command.strip() else ""
+        )
         if first_word in _INTERACTIVE_CMDS:
-            raise ValueError(f"Interactive command '{first_word}' is not supported. Use non-interactive alternatives.")
+            raise ValueError(
+                f"Interactive command '{first_word}' is not supported. Use non-interactive alternatives."
+            )
         self.command = command
         self.timeout = timeout
         self.working_dir = working_dir
         self.run_in_background = run_in_background
 
     def dict(self):
-        return {"command": self.command, "timeout": self.timeout,
-                "working_dir": self.working_dir, "run_in_background": self.run_in_background}
+        return {
+            "command": self.command,
+            "timeout": self.timeout,
+            "working_dir": self.working_dir,
+            "run_in_background": self.run_in_background,
+        }
 
 
 def run_bash(input_val: Any) -> str:
@@ -76,7 +106,9 @@ def run_bash(input_val: Any) -> str:
     # Reject interactive commands
     first_word = command.strip().split()[0].split("/")[-1] if command.strip() else ""
     if first_word in _INTERACTIVE_CMDS:
-        raise ValueError(f"Interactive command '{first_word}' is not supported. Use non-interactive alternatives.")
+        raise ValueError(
+            f"Interactive command '{first_word}' is not supported. Use non-interactive alternatives."
+        )
     timeout = params.get("timeout", 120)
     working_dir = params.get("working_dir", "") or _get_cwd()
     background = params.get("run_in_background", False)
@@ -84,7 +116,9 @@ def run_bash(input_val: Any) -> str:
     # Handle pure cd commands — update session CWD
     # Only intercept simple "cd <path>", not chained commands like "cd x && git init"
     stripped = command.strip()
-    is_pure_cd = stripped.startswith("cd ") and not any(op in stripped for op in ["&&", "||", ";", "|", "\n"])
+    is_pure_cd = stripped.startswith("cd ") and not any(
+        op in stripped for op in ["&&", "||", ";", "|", "\n"]
+    )
     if is_pure_cd:
         target = stripped[3:].strip().strip("'\"")
         if not os.path.isabs(target):
@@ -103,8 +137,11 @@ def run_bash(input_val: Any) -> str:
         # Background execution
         try:
             proc = _popen_shell(
-                command, cwd=working_dir, env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                command,
+                cwd=working_dir,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
             return f"[BACKGROUND] PID={proc.pid}, command='{command[:60]}'"
         except Exception as e:
@@ -113,8 +150,12 @@ def run_bash(input_val: Any) -> str:
     # Foreground execution
     try:
         result = _run_shell(
-            command, cwd=working_dir, env=env,
-            capture_output=True, text=True, timeout=timeout,
+            command,
+            cwd=working_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
         stdout = result.stdout
         stderr = result.stderr
@@ -122,17 +163,25 @@ def run_bash(input_val: Any) -> str:
         # Smart truncation: keep head + tail
         max_len = 50000
         if len(stdout) > max_len:
-            head = stdout[:max_len // 2]
-            tail = stdout[-(max_len // 2):]
+            head = stdout[: max_len // 2]
+            tail = stdout[-(max_len // 2) :]
             stdout = f"{head}\n\n... [{len(result.stdout) - max_len} chars truncated] ...\n\n{tail}"
 
         output = stdout
         if result.returncode != 0:
             if stderr:
-                output = f"{stdout}\n[STDERR] {stderr.strip()}" if stdout else f"[STDERR] {stderr.strip()}"
+                output = (
+                    f"{stdout}\n[STDERR] {stderr.strip()}"
+                    if stdout
+                    else f"[STDERR] {stderr.strip()}"
+                )
             output = f"[EXIT:{result.returncode}] {output}"
 
-        return output.rstrip() if output.strip() else f"[OK] (no output, exit code {result.returncode})"
+        return (
+            output.rstrip()
+            if output.strip()
+            else f"[OK] (no output, exit code {result.returncode})"
+        )
 
     except subprocess.TimeoutExpired:
         return f"[TIMEOUT] Command timed out after {timeout}s: {command[:80]}"
@@ -144,18 +193,26 @@ def run_bash(input_val: Any) -> str:
 # A07: Git tools
 # ════════════════════════════════════════════════════════════
 
+
 def _git(args: list, cwd: str = "") -> str:
     """Run git command and return output."""
     cwd = cwd or _get_cwd()
     try:
         result = subprocess.run(
-            ["git"] + args, cwd=cwd,
-            capture_output=True, text=True, timeout=30,
+            ["git"] + args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         output = result.stdout.strip()
         if result.returncode != 0:
             err = result.stderr.strip()
-            return f"[GIT_ERROR] {err}" if err else f"[GIT_ERROR] exit code {result.returncode}"
+            return (
+                f"[GIT_ERROR] {err}"
+                if err
+                else f"[GIT_ERROR] exit code {result.returncode}"
+            )
         return output or "[OK] (no output)"
     except FileNotFoundError:
         return "[ERROR] git not found. Install git first."
@@ -170,7 +227,11 @@ def git_status(input_val: Any) -> str:
 
 def git_diff(input_val: Any) -> str:
     """Git diff (staged + unstaged)."""
-    params = _parse_input(input_val) if isinstance(input_val, (dict, str)) and input_val else {}
+    params = (
+        _parse_input(input_val)
+        if isinstance(input_val, (dict, str)) and input_val
+        else {}
+    )
     staged = params.get("staged", False)
     file_path = params.get("file_path", "")
 
@@ -184,7 +245,11 @@ def git_diff(input_val: Any) -> str:
 
 def git_log(input_val: Any) -> str:
     """Git log (recent commits)."""
-    params = _parse_input(input_val) if isinstance(input_val, (dict, str)) and input_val else {}
+    params = (
+        _parse_input(input_val)
+        if isinstance(input_val, (dict, str)) and input_val
+        else {}
+    )
     n = params.get("n", 10)
     oneline = params.get("oneline", True)
 
@@ -216,7 +281,11 @@ def git_commit(input_val: Any) -> str:
 
 def git_branch(input_val: Any) -> str:
     """List, create, or switch branches."""
-    params = _parse_input(input_val) if isinstance(input_val, (dict, str)) and input_val else {}
+    params = (
+        _parse_input(input_val)
+        if isinstance(input_val, (dict, str)) and input_val
+        else {}
+    )
     action = params.get("action", "list")
     name = params.get("name", "")
 
@@ -234,12 +303,19 @@ def git_branch(input_val: Any) -> str:
 # Shared
 # ════════════════════════════════════════════════════════════
 
+
 def _parse_input(input_val: Any) -> dict:
     if isinstance(input_val, dict):
         # Extract nested "input" from ReAct format: {"action":"Bash","input":{...}}
         if "input" in input_val and ("action" in input_val or "tool" in input_val):
             inner = input_val["input"]
-            return json.loads(inner) if isinstance(inner, str) else inner if isinstance(inner, dict) else {"command": str(inner)}
+            return (
+                json.loads(inner)
+                if isinstance(inner, str)
+                else inner
+                if isinstance(inner, dict)
+                else {"command": str(inner)}
+            )
         return input_val
     if isinstance(input_val, str):
         try:

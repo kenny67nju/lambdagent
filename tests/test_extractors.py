@@ -16,34 +16,43 @@ from lambdagent.extractors import extract_config
 # Mock Framework Objects
 # ============================================================
 
+
 class MockLLM:
     model_name = "gpt-4o"
     temperature = 0.7
 
+
 class MockPrompt:
     template = "You are a helpful assistant."
+
 
 class MockLLMChain:
     llm = MockLLM()
     prompt = MockPrompt()
 
+
 class MockTool:
     def __init__(self, name):
         self.name = name
+
 
 class MockLangChainAgent:
     llm_chain = MockLLMChain()
     llm = MockLLM()
 
+
 class MockAgentExecutor:
     """Mimics LangChain AgentExecutor."""
+
     agent = MockLangChainAgent()
     tools = [MockTool("search"), MockTool("read_file"), MockTool("terminate")]
     max_iterations = 15
     name = "test-executor"
 
+
 class MockCrewAgent:
     """Mimics CrewAI Agent."""
+
     role = "Researcher"
     goal = "Find relevant papers"
     backstory = "Expert in ML"
@@ -51,20 +60,27 @@ class MockCrewAgent:
     tools = [MockTool("web_search")]
     max_iter = 20
 
+
 class MockTask:
     description = "Research AI safety papers"
     agent = MockCrewAgent()
 
+
 class MockCrew:
     """Mimics CrewAI Crew."""
+
     agents = [MockCrewAgent(), MockCrewAgent()]
     tasks = [MockTask()]
     process = "sequential"
     name = "test-crew"
-    def kickoff(self): pass
+
+    def kickoff(self):
+        pass
+
 
 class MockAutoGenAgent:
     """Mimics AutoGen AssistantAgent."""
+
     name = "assistant"
     system_message = "You are a coding assistant."
     llm_config = {"config_list": [{"model": "gpt-4o"}]}
@@ -72,13 +88,16 @@ class MockAutoGenAgent:
     _function_map = {"execute_code": lambda x: x}
     code_execution_config = None
 
+
 class MockGroupChat:
     agents = [MockAutoGenAgent(), MockAutoGenAgent()]
     max_round = 20
     is_termination_msg = None
 
+
 class MockGroupChatManager:
     """Mimics AutoGen GroupChatManager."""
+
     groupchat = MockGroupChat()
     _oai_messages = {}
 
@@ -86,6 +105,7 @@ class MockGroupChatManager:
 # ============================================================
 # Extractor Detection Tests
 # ============================================================
+
 
 class TestDetection:
     def test_langchain_detect_executor(self):
@@ -127,6 +147,7 @@ class TestDetection:
 # ============================================================
 # Extraction Tests
 # ============================================================
+
 
 class TestExtraction:
     def test_langchain_executor_config(self):
@@ -171,6 +192,7 @@ class TestExtraction:
 # Auto-Detection Tests
 # ============================================================
 
+
 class TestAutoDetect:
     def test_auto_langchain(self):
         config = extract_config(MockAgentExecutor())
@@ -211,6 +233,7 @@ lambdagent_guard = pytest.importorskip(
 class TestGuardCore:
     def test_runtime_monitor_cost_tracking(self):
         from lambdagent_guard.core import RuntimeMonitor, GuardConfig
+
         monitor = RuntimeMonitor(GuardConfig(cost_budget=0.10))
         monitor.on_step({"output": "step1", "tokens": 100, "cost_usd": 0.003})
         monitor.on_step({"output": "step2", "tokens": 200, "cost_usd": 0.006})
@@ -219,14 +242,24 @@ class TestGuardCore:
         assert monitor.step_count == 2
 
     def test_runtime_monitor_budget_exceeded(self):
-        from lambdagent_guard.core import RuntimeMonitor, GuardConfig, CostBudgetExceeded
+        from lambdagent_guard.core import (
+            RuntimeMonitor,
+            GuardConfig,
+            CostBudgetExceeded,
+        )
+
         monitor = RuntimeMonitor(GuardConfig(cost_budget=0.005))
         monitor.on_step({"output": "step1", "tokens": 100, "cost_usd": 0.003})
         with pytest.raises(CostBudgetExceeded):
             monitor.on_step({"output": "step2", "tokens": 200, "cost_usd": 0.006})
 
     def test_runtime_monitor_loop_detection(self):
-        from lambdagent_guard.core import RuntimeMonitor, GuardConfig, InfiniteLoopDetected
+        from lambdagent_guard.core import (
+            RuntimeMonitor,
+            GuardConfig,
+            InfiniteLoopDetected,
+        )
+
         monitor = RuntimeMonitor(GuardConfig(loop_window=5, loop_threshold=3))
         for _ in range(2):
             monitor.on_step({"output": "same output", "tokens": 10, "cost_usd": 0.001})
@@ -234,7 +267,12 @@ class TestGuardCore:
             monitor.on_step({"output": "same output", "tokens": 10, "cost_usd": 0.001})
 
     def test_runtime_monitor_empty_message(self):
-        from lambdagent_guard.core import RuntimeMonitor, GuardConfig, InfiniteLoopDetected
+        from lambdagent_guard.core import (
+            RuntimeMonitor,
+            GuardConfig,
+            InfiniteLoopDetected,
+        )
+
         monitor = RuntimeMonitor(GuardConfig(empty_message_detection=True))
         monitor.on_step({"output": "", "tokens": 0, "cost_usd": 0})
         monitor.on_step({"output": "  ", "tokens": 0, "cost_usd": 0})
@@ -243,6 +281,7 @@ class TestGuardCore:
 
     def test_guarded_result(self):
         from lambdagent_guard.core import RuntimeMonitor, GuardConfig
+
         monitor = RuntimeMonitor(GuardConfig(cost_budget=1.0))
         monitor.on_step({"output": "ok", "tokens": 500, "cost_usd": 0.05})
         result = monitor.result("final answer")
@@ -256,23 +295,27 @@ class TestGuardCore:
 # Guard Integration Tests (I11-I13)
 # ============================================================
 
+
 class TestGuardIntegration:
     def test_langchain_guard_attaches_monitor(self):
         from lambdagent_guard import guard_langchain
+
         executor = MockAgentExecutor()
         guarded = guard_langchain(executor, cost_budget=5.0)
-        assert hasattr(guarded, '_lambdagent_monitor')
+        assert hasattr(guarded, "_lambdagent_monitor")
 
     def test_crewai_guard_wraps_kickoff(self):
         from lambdagent_guard import guard_crewai
+
         crew = MockCrew()
         original = crew.kickoff
         guarded = guard_crewai(crew, cost_budget=10.0)
         assert guarded.kickoff != original  # wrapped
-        assert hasattr(guarded, '_lambdagent_monitor')
+        assert hasattr(guarded, "_lambdagent_monitor")
 
     def test_autogen_guard_attaches_monitor(self):
         from lambdagent_guard import guard_autogen
+
         manager = MockGroupChatManager()
         guarded = guard_autogen(manager, cost_budget=5.0)
-        assert hasattr(guarded, '_lambdagent_monitor')
+        assert hasattr(guarded, "_lambdagent_monitor")

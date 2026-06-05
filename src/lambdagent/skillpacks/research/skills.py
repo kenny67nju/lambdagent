@@ -11,6 +11,7 @@ Lambda 语义:
   experimenter:     λreproduction. {experiment_design, results, analysis}
   lab-notebook:     λexperiment. {notebook_path, summary, knowledge_base_entry}
 """
+
 from __future__ import annotations
 
 import json
@@ -69,10 +70,23 @@ PAPER_READER_PROMPT = """\
 PAPER_READER_CONFIG = {
     "type": "react",
     "name": "paper-reader",
-    "model": {"provider": "claude-code", "name": "sonnet", "temperature": 0.2, "maxTokens": 4096},
+    "model": {
+        "provider": "claude-code",
+        "name": "sonnet",
+        "temperature": 0.2,
+        "maxTokens": 4096,
+    },
     "systemPrompt": PAPER_READER_PROMPT,
-    "react": {"maxSteps": 10, "observationEnabled": True, "toolTimeout": 45, "thinkTimeout": 60},
-    "mcp": {"localTools": ["WebSearch", "WebFetch", "terminate"], "policy": {"mode": "auto"}},
+    "react": {
+        "maxSteps": 10,
+        "observationEnabled": True,
+        "toolTimeout": 45,
+        "thinkTimeout": 60,
+    },
+    "mcp": {
+        "localTools": ["WebSearch", "WebFetch", "terminate"],
+        "policy": {"mode": "auto"},
+    },
     "guard": {"maxOutputLength": 5000, "retry": 1, "fallback": "last"},
 }
 
@@ -116,15 +130,39 @@ CODE_REPRODUCER_PROMPT = """\
 CODE_REPRODUCER_CONFIG = {
     "type": "react",
     "name": "code-reproducer",
-    "model": {"provider": "claude-code", "name": "sonnet", "temperature": 0.2, "maxTokens": 4096},
+    "model": {
+        "provider": "claude-code",
+        "name": "sonnet",
+        "temperature": 0.2,
+        "maxTokens": 4096,
+    },
     "systemPrompt": CODE_REPRODUCER_PROMPT,
-    "react": {"maxSteps": 20, "observationEnabled": True, "toolTimeout": 120, "thinkTimeout": 60},
+    "react": {
+        "maxSteps": 20,
+        "observationEnabled": True,
+        "toolTimeout": 120,
+        "thinkTimeout": 60,
+    },
     "mcp": {
-        "localTools": ["Bash", "ReadFile", "WriteFile", "EditFile", "ListFiles",
-                       "SearchContent", "CodeSearch", "RunTests", "terminate"],
+        "localTools": [
+            "Bash",
+            "ReadFile",
+            "WriteFile",
+            "EditFile",
+            "ListFiles",
+            "SearchContent",
+            "CodeSearch",
+            "RunTests",
+            "terminate",
+        ],
         "policy": {"mode": "auto"},
     },
-    "guard": {"dangerousCommandBlock": True, "maxOutputLength": 5000, "retry": 1, "fallback": "last"},
+    "guard": {
+        "dangerousCommandBlock": True,
+        "maxOutputLength": 5000,
+        "retry": 1,
+        "fallback": "last",
+    },
 }
 
 
@@ -167,15 +205,38 @@ EXPERIMENTER_PROMPT = """\
 EXPERIMENTER_CONFIG = {
     "type": "react",
     "name": "experimenter",
-    "model": {"provider": "claude-code", "name": "sonnet", "temperature": 0.3, "maxTokens": 4096},
+    "model": {
+        "provider": "claude-code",
+        "name": "sonnet",
+        "temperature": 0.3,
+        "maxTokens": 4096,
+    },
     "systemPrompt": EXPERIMENTER_PROMPT,
-    "react": {"maxSteps": 25, "observationEnabled": True, "toolTimeout": 180, "thinkTimeout": 60},
+    "react": {
+        "maxSteps": 25,
+        "observationEnabled": True,
+        "toolTimeout": 180,
+        "thinkTimeout": 60,
+    },
     "mcp": {
-        "localTools": ["Bash", "ReadFile", "WriteFile", "EditFile", "ListFiles",
-                       "SearchContent", "RunTests", "terminate"],
+        "localTools": [
+            "Bash",
+            "ReadFile",
+            "WriteFile",
+            "EditFile",
+            "ListFiles",
+            "SearchContent",
+            "RunTests",
+            "terminate",
+        ],
         "policy": {"mode": "auto"},
     },
-    "guard": {"dangerousCommandBlock": True, "maxOutputLength": 8000, "retry": 1, "fallback": "last"},
+    "guard": {
+        "dangerousCommandBlock": True,
+        "maxOutputLength": 8000,
+        "retry": 1,
+        "fallback": "last",
+    },
 }
 
 
@@ -238,12 +299,31 @@ LAB_NOTEBOOK_PROMPT = """\
 LAB_NOTEBOOK_CONFIG = {
     "type": "react",
     "name": "lab-notebook",
-    "model": {"provider": "claude-code", "name": "sonnet", "temperature": 0.3, "maxTokens": 4096},
+    "model": {
+        "provider": "claude-code",
+        "name": "sonnet",
+        "temperature": 0.3,
+        "maxTokens": 4096,
+    },
     "systemPrompt": LAB_NOTEBOOK_PROMPT,
-    "react": {"maxSteps": 10, "observationEnabled": True, "toolTimeout": 30, "thinkTimeout": 60},
+    "react": {
+        "maxSteps": 10,
+        "observationEnabled": True,
+        "toolTimeout": 30,
+        "thinkTimeout": 60,
+    },
     "mcp": {
-        "localTools": ["WriteFile", "ReadFile", "DocGen", "KBCreate", "KBAdd", "KBSearch",
-                       "MemoryStore", "MemoryRecall", "terminate"],
+        "localTools": [
+            "WriteFile",
+            "ReadFile",
+            "DocGen",
+            "KBCreate",
+            "KBAdd",
+            "KBSearch",
+            "MemoryStore",
+            "MemoryRecall",
+            "terminate",
+        ],
         "policy": {"mode": "auto"},
     },
     "guard": {"maxOutputLength": 8000, "retry": 1, "fallback": "last"},
@@ -253,6 +333,7 @@ LAB_NOTEBOOK_CONFIG = {
 # ════════════════════════════════════════════════════════════
 # Skill 构建与注册
 # ════════════════════════════════════════════════════════════
+
 
 class _InlineConfigTerm(Term):
     """从内联 config dict 懒编译的 Term"""
@@ -265,6 +346,7 @@ class _InlineConfigTerm(Term):
     def apply(self, input_val, ctx=None):
         if self._compiled is None:
             from lambdagent.fromconfig.compiler import build_agent
+
             self._compiled = build_agent(self._config, {})
         ctx = ctx or Context()
         return self._compiled.apply(str(input_val), ctx)
@@ -314,28 +396,32 @@ def build_pack() -> SkillPack:
     skills = {}
 
     skills["paper-reader"] = _build_skill(
-        "paper-reader", PAPER_READER_CONFIG,
+        "paper-reader",
+        PAPER_READER_CONFIG,
         "论文阅读: 搜索→阅读→提取关键信息",
         ["paper", "read", "search", "论文", "阅读", "文献"],
     )
     pack.add(skills["paper-reader"])
 
     skills["code-reproducer"] = _build_skill(
-        "code-reproducer", CODE_REPRODUCER_CONFIG,
+        "code-reproducer",
+        CODE_REPRODUCER_CONFIG,
         "代码复现: 克隆仓库→理解代码→运行复现→对比结果",
         ["code", "reproduce", "复现", "代码", "实现"],
     )
     pack.add(skills["code-reproducer"])
 
     skills["experimenter"] = _build_skill(
-        "experimenter", EXPERIMENTER_CONFIG,
+        "experimenter",
+        EXPERIMENTER_CONFIG,
         "实验设计与执行: 消融实验→对比实验→结果分析",
         ["experiment", "run", "analysis", "实验", "分析"],
     )
     pack.add(skills["experimenter"])
 
     skills["lab-notebook"] = _build_skill(
-        "lab-notebook", LAB_NOTEBOOK_CONFIG,
+        "lab-notebook",
+        LAB_NOTEBOOK_CONFIG,
         "研究记录: 整理笔记→结构化报告→保存知识库",
         ["notebook", "record", "write", "笔记", "记录", "知识库"],
     )

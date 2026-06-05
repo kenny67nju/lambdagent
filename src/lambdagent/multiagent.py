@@ -34,24 +34,29 @@ from .core import Term, Context, LambdagentError
 # 异常
 # ════════════════════════════════════════════════════════════
 
+
 class ChannelClosed(LambdagentError):
     """通道已关闭"""
+
     pass
 
 
 class HandoffError(LambdagentError):
     """委派目标不存在"""
+
     pass
 
 
 class GroupChatError(LambdagentError):
     """群组对话错误"""
+
     pass
 
 
 # ════════════════════════════════════════════════════════════
 # 1. Channel: π-calculus 通道
 # ════════════════════════════════════════════════════════════
+
 
 class Channel:
     """
@@ -70,8 +75,12 @@ class Channel:
     线程安全: 底层使用 queue.Queue，支持多生产者多消费者。
     """
 
-    def __init__(self, name: str = "", capacity: int = 0,
-                 allowed_agents: Optional[Set[str]] = None):
+    def __init__(
+        self,
+        name: str = "",
+        capacity: int = 0,
+        allowed_agents: Optional[Set[str]] = None,
+    ):
         """
         Args:
             name: 通道名称（调试用）
@@ -83,15 +92,21 @@ class Channel:
         self._closed = False
         self._lock = threading.Lock()
         self.history: List[Tuple[str, Any, float]] = []  # (direction, msg, timestamp)
-        self.allowed_agents: Optional[Set[str]] = set(allowed_agents) if allowed_agents else None
+        self.allowed_agents: Optional[Set[str]] = (
+            set(allowed_agents) if allowed_agents else None
+        )
 
     def _check_access(self, agent_name: Optional[str] = None) -> None:
         """S15: Check if agent is authorized for this channel."""
         if self.allowed_agents is not None and agent_name not in self.allowed_agents:
             raise PermissionError(f"Agent not authorized for channel '{self.name}'")
 
-    def send(self, message: Any, timeout: Optional[float] = None,
-             agent_name: Optional[str] = None) -> None:
+    def send(
+        self,
+        message: Any,
+        timeout: Optional[float] = None,
+        agent_name: Optional[str] = None,
+    ) -> None:
         """
         c!(v) — 发送消息到通道。
 
@@ -114,8 +129,9 @@ class Channel:
         except queue.Full:
             raise ChannelClosed(f"Channel '{self.name}' send timeout")
 
-    def receive(self, timeout: Optional[float] = None,
-                agent_name: Optional[str] = None) -> Any:
+    def receive(
+        self, timeout: Optional[float] = None, agent_name: Optional[str] = None
+    ) -> Any:
         """
         c?(x) — 从通道接收消息。
 
@@ -163,6 +179,7 @@ class Channel:
 # Send / Receive: 通道通信的 Term 封装
 # ════════════════════════════════════════════════════════════
 
+
 class Send(Term):
     """
     向通道发送消息: c!(agent(x))
@@ -199,8 +216,12 @@ class Receive(Term):
     阻塞等待通道消息，可选地传给 handler 处理。
     """
 
-    def __init__(self, channel: Channel, handler: Optional[Term] = None,
-                 timeout: Optional[float] = 30.0):
+    def __init__(
+        self,
+        channel: Channel,
+        handler: Optional[Term] = None,
+        timeout: Optional[float] = 30.0,
+    ):
         name = f"Recv({channel.name})"
         if handler:
             name = f"Recv({channel.name})>>{handler._name}"
@@ -218,13 +239,16 @@ class Receive(Term):
         else:
             result = msg
         elapsed = (time.time() - t0) * 1000
-        ctx.log(self._name, self._trace_id, f"channel={self.channel.name}", result, elapsed)
+        ctx.log(
+            self._name, self._trace_id, f"channel={self.channel.name}", result, elapsed
+        )
         return result
 
 
 # ════════════════════════════════════════════════════════════
 # 2. SharedMemory: 共享环境 Γ_shared
 # ════════════════════════════════════════════════════════════
+
 
 class SharedMemory:
     """
@@ -240,8 +264,9 @@ class SharedMemory:
     类型安全: append_only=True 时，已有 key 不可修改类型（对应 Σ' ⊇ Σ）。
     """
 
-    def __init__(self, store: Optional[Dict[str, Any]] = None,
-                 append_only: bool = False):
+    def __init__(
+        self, store: Optional[Dict[str, Any]] = None, append_only: bool = False
+    ):
         """
         Args:
             store: 初始共享存储
@@ -330,6 +355,7 @@ class _SharedMemoryAgent(Term):
 # 3. GroupChat: 群组对话
 # ════════════════════════════════════════════════════════════
 
+
 class GroupChat(Term):
     """
     多 Agent 群组对话: 多个 Agent 轮流发言直到达成共识。
@@ -398,17 +424,21 @@ class GroupChat(Term):
             # 发言者执行 = speaker(state)
             t0 = time.time()
             # 构造带有对话历史的输入 (smart context window)
-            speaker_input = self._build_speaker_input(speaker._name, conversation, input, round_idx)
+            speaker_input = self._build_speaker_input(
+                speaker._name, conversation, input, round_idx
+            )
 
             response = speaker.apply(speaker_input, ctx)
             elapsed = (time.time() - t0) * 1000
 
             # 记录对话
-            conversation.append({
-                "speaker": speaker._name,
-                "content": str(response),
-                "round": round_idx,
-            })
+            conversation.append(
+                {
+                    "speaker": speaker._name,
+                    "content": str(response),
+                    "round": round_idx,
+                }
+            )
 
             # 更新 state = state ++ msg
             state = f"{state}\n[{speaker._name}]: {response}"
@@ -416,7 +446,10 @@ class GroupChat(Term):
             # 记录 β-规约
             ctx.log(
                 f"GroupChat.round[{round_idx}]:{speaker._name}",
-                self._trace_id, speaker_input[:100], str(response)[:100], elapsed
+                self._trace_id,
+                speaker_input[:100],
+                str(response)[:100],
+                elapsed,
             )
 
             # 检查终止条件 = base case
@@ -428,18 +461,30 @@ class GroupChat(Term):
             t0 = time.time()
             summary = self.summary_agent.apply(state, ctx)
             elapsed = (time.time() - t0) * 1000
-            ctx.log("GroupChat.summary", self._trace_id, state[:100], str(summary)[:100], elapsed)
+            ctx.log(
+                "GroupChat.summary",
+                self._trace_id,
+                state[:100],
+                str(summary)[:100],
+                elapsed,
+            )
             return summary
 
         total_elapsed = (time.time() - t0_total) * 1000
-        ctx.log(self._name, self._trace_id, str(input)[:100],
-                f"{len(conversation)} rounds", total_elapsed)
+        ctx.log(
+            self._name,
+            self._trace_id,
+            str(input)[:100],
+            f"{len(conversation)} rounds",
+            total_elapsed,
+        )
 
         # 返回最后一条消息
         return conversation[-1]["content"] if conversation else state
 
-    def _build_speaker_input(self, speaker_name: str, conversation: list,
-                             original_input: Any, round_idx: int) -> str:
+    def _build_speaker_input(
+        self, speaker_name: str, conversation: list, original_input: Any, round_idx: int
+    ) -> str:
         """Build context-aware input for the next speaker.
 
         For short conversations (<= 6 messages), return full history.
@@ -453,8 +498,7 @@ class GroupChat(Term):
 
         if len(conversation) <= 6:
             history = "\n".join(
-                f"[{msg['speaker']}]: {msg['content']}"
-                for msg in conversation
+                f"[{msg['speaker']}]: {msg['content']}" for msg in conversation
             )
             return (
                 f"[Conversation History]\n{history}\n\n"
@@ -483,10 +527,7 @@ class GroupChat(Term):
         # Sort by round to maintain chronological order
         merged.sort(key=lambda m: (m["round"], conversation.index(m)))
 
-        history = "\n".join(
-            f"[{msg['speaker']}]: {msg['content']}"
-            for msg in merged
-        )
+        history = "\n".join(f"[{msg['speaker']}]: {msg['content']}" for msg in merged)
         omitted = len(conversation) - len(merged)
         note = f"  ... ({omitted} messages omitted) ...\n" if omitted > 0 else ""
 
@@ -503,6 +544,7 @@ class GroupChat(Term):
                 return self.agent_list[round_idx % len(self.agent_list)]
             elif self.scheduler == "random":
                 import random
+
                 return random.choice(self.agent_list)
             else:
                 raise GroupChatError(f"Unknown scheduler: {self.scheduler}")
@@ -520,7 +562,14 @@ class GroupChat(Term):
     @staticmethod
     def _default_termination(state: str, round_num: int) -> bool:
         """默认终止条件: 包含终止关键词"""
-        terminators = ["CONSENSUS", "DONE", "TERMINATE", "FINAL ANSWER", "达成共识", "结束"]
+        terminators = [
+            "CONSENSUS",
+            "DONE",
+            "TERMINATE",
+            "FINAL ANSWER",
+            "达成共识",
+            "结束",
+        ]
         state_upper = state.upper()
         return any(t in state_upper for t in terminators)
 
@@ -528,6 +577,7 @@ class GroupChat(Term):
 # ════════════════════════════════════════════════════════════
 # 4. Handoff: 动态委派
 # ════════════════════════════════════════════════════════════
+
 
 class Handoff(Term):
     """
@@ -594,7 +644,10 @@ class Handoff(Term):
             else:
                 # 模糊匹配
                 for name, a in self.registry.items():
-                    if name.lower() in target_name.lower() or target_name.lower() in name.lower():
+                    if (
+                        name.lower() in target_name.lower()
+                        or target_name.lower() in name.lower()
+                    ):
                         agent = a
                         target_name = name
                         break
@@ -612,14 +665,20 @@ class Handoff(Term):
         # 执行目标 Agent
         result = agent.apply(input, ctx)
         elapsed = (time.time() - t0) * 1000
-        ctx.log(f"Handoff→{target_name}", self._trace_id, str(input)[:100],
-                str(result)[:100], elapsed)
+        ctx.log(
+            f"Handoff→{target_name}",
+            self._trace_id,
+            str(input)[:100],
+            str(result)[:100],
+            elapsed,
+        )
         return result
 
 
 # ════════════════════════════════════════════════════════════
 # 5. AsyncPar: 真并行执行
 # ════════════════════════════════════════════════════════════
+
 
 class AsyncPar(Term):
     """
@@ -640,9 +699,13 @@ class AsyncPar(Term):
         例: AsyncPar(research, critique) — 研究和批评同时进行
     """
 
-    def __init__(self, *agents: Term, max_workers: Optional[int] = None,
-                 timeout: Optional[float] = 120.0,
-                 check_store_independence: bool = True):
+    def __init__(
+        self,
+        *agents: Term,
+        max_workers: Optional[int] = None,
+        timeout: Optional[float] = 120.0,
+        check_store_independence: bool = True,
+    ):
         """
         Args:
             agents: 要并行执行的 Agent
@@ -674,6 +737,7 @@ class AsyncPar(Term):
         # Paper II Prop. 30: 存储独立性检查
         if self._check_store_independence:
             from .store_analysis import check_store_independence
+
             check_store_independence(self.agents)
 
         results = [None] * len(self.agents)
@@ -709,15 +773,25 @@ class AsyncPar(Term):
                 )
 
         elapsed = (time.time() - t0) * 1000
-        ctx.log(self._name, self._trace_id, str(input)[:100],
-                f"{len(results)} results in {elapsed:.0f}ms", elapsed)
+        ctx.log(
+            self._name,
+            self._trace_id,
+            str(input)[:100],
+            f"{len(results)} results in {elapsed:.0f}ms",
+            elapsed,
+        )
 
         return tuple(results)
 
     def __or__(self, other: Term) -> AsyncPar:
         """展平: (f ∥ g) | h = AsyncPar(f, g, h)"""
         if isinstance(other, AsyncPar):
-            return AsyncPar(*self.agents, *other.agents,
-                           max_workers=self.max_workers, timeout=self.timeout)
-        return AsyncPar(*self.agents, other,
-                       max_workers=self.max_workers, timeout=self.timeout)
+            return AsyncPar(
+                *self.agents,
+                *other.agents,
+                max_workers=self.max_workers,
+                timeout=self.timeout,
+            )
+        return AsyncPar(
+            *self.agents, other, max_workers=self.max_workers, timeout=self.timeout
+        )

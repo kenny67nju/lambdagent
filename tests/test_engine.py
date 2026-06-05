@@ -13,19 +13,26 @@ from lambdagent.extensions import Par, Route, Guard, Memory
 from lambdagent.cek_machine import CostVector, ZERO_COST
 
 from lambdagent.agentruntime.engine import (
-    EngineMode, EngineResult, UnifiedTraceRecord,
-    CostBudgetExceeded, InfiniteLoopDetected, MaxStepsExceeded,
+    EngineMode,
+    EngineResult,
+    UnifiedTraceRecord,
+    CostBudgetExceeded,
+    InfiniteLoopDetected,
+    MaxStepsExceeded,
 )
 from lambdagent.agentruntime.recursive_engine import RecursiveEngine
 from lambdagent.agentruntime.cek_engine import CEKEngine
 from lambdagent.agentruntime.adaptive_engine import (
-    AdaptiveEngine, assess_complexity, Complexity,
+    AdaptiveEngine,
+    assess_complexity,
+    Complexity,
 )
 
 
 # ============================================================
 # Helpers
 # ============================================================
+
 
 def make_tool(name, fn):
     """Create a simple deterministic Tool."""
@@ -44,6 +51,7 @@ def run_both(term, input_val):
 # ============================================================
 # E07-1: Basic construct consistency (both engines same result)
 # ============================================================
+
 
 class TestDualEngineConsistency:
     """Both engines must produce identical values for deterministic terms."""
@@ -104,6 +112,7 @@ class TestDualEngineConsistency:
     def test_loop_result_based_termination(self):
         """Loop terminates when result contains 'DONE' — engine-agnostic."""
         call_count = {"n": 0}
+
         def body(x):
             call_count["n"] += 1
             if call_count["n"] >= 3:
@@ -187,6 +196,7 @@ class TestDualEngineConsistency:
 # E07-2: EngineResult format tests
 # ============================================================
 
+
 class TestEngineResultFormat:
     """Both engines produce valid EngineResult with correct metadata."""
 
@@ -241,6 +251,7 @@ class TestEngineResultFormat:
 # E07-3: CEK-specific features
 # ============================================================
 
+
 class TestCEKFeatures:
     """Features unique to CEKEngine."""
 
@@ -255,6 +266,7 @@ class TestCEKFeatures:
         """CEKEngine raises MaxStepsExceeded on too many steps."""
         # Create a loop that runs many iterations
         counter = {"n": 0}
+
         def body(x):
             counter["n"] += 1
             return str(x) + "."
@@ -293,6 +305,7 @@ class TestCEKFeatures:
 # ============================================================
 # E07-4: AdaptiveEngine selection logic
 # ============================================================
+
 
 class TestAdaptiveEngine:
     """AdaptiveEngine correctly selects between Recursive and CEK."""
@@ -365,47 +378,60 @@ class TestAdaptiveEngine:
 # E07-5: Schema validation
 # ============================================================
 
+
 class TestSchemaValidation:
     """runtime.engine field validation in schema.py."""
 
     def test_valid_engine_modes(self):
         from lambdagent.fromconfig.schema import validate_schema
+
         for mode in ("recursive", "cek", "adaptive"):
-            errors = validate_schema({
-                "type": "simple",
-                "systemPrompt": "test",
-                "runtime": {"engine": mode},
-            })
+            errors = validate_schema(
+                {
+                    "type": "simple",
+                    "systemPrompt": "test",
+                    "runtime": {"engine": mode},
+                }
+            )
             engine_errors = [e for e in errors if "S011" in e[1]]
             assert len(engine_errors) == 0, f"Mode '{mode}' should be valid"
 
     def test_invalid_engine_mode(self):
         from lambdagent.fromconfig.schema import validate_schema
-        errors = validate_schema({
-            "type": "simple",
-            "systemPrompt": "test",
-            "runtime": {"engine": "turbo"},
-        })
+
+        errors = validate_schema(
+            {
+                "type": "simple",
+                "systemPrompt": "test",
+                "runtime": {"engine": "turbo"},
+            }
+        )
         engine_errors = [e for e in errors if "S011" in e[1]]
         assert len(engine_errors) == 1
 
     def test_invalid_cost_budget(self):
         from lambdagent.fromconfig.schema import validate_schema
-        errors = validate_schema({
-            "type": "simple",
-            "systemPrompt": "test",
-            "runtime": {"engine": "cek", "costBudget": -1},
-        })
+
+        errors = validate_schema(
+            {
+                "type": "simple",
+                "systemPrompt": "test",
+                "runtime": {"engine": "cek", "costBudget": -1},
+            }
+        )
         budget_errors = [e for e in errors if "S012" in e[1]]
         assert len(budget_errors) == 1
 
     def test_valid_cost_budget(self):
         from lambdagent.fromconfig.schema import validate_schema
-        errors = validate_schema({
-            "type": "simple",
-            "systemPrompt": "test",
-            "runtime": {"engine": "cek", "costBudget": 5.0},
-        })
+
+        errors = validate_schema(
+            {
+                "type": "simple",
+                "systemPrompt": "test",
+                "runtime": {"engine": "cek", "costBudget": 5.0},
+            }
+        )
         budget_errors = [e for e in errors if "S012" in e[1]]
         assert len(budget_errors) == 0
 
@@ -413,6 +439,7 @@ class TestSchemaValidation:
 # ============================================================
 # E07-6: Extended consistency — nested constructs
 # ============================================================
+
 
 class TestNestedConsistency:
     """Both engines handle nested compositions correctly."""
@@ -430,7 +457,9 @@ class TestNestedConsistency:
 
     def test_compose_with_route(self):
         """Compose >> Route pipeline — both engines agree."""
-        classifier = make_tool("classify", lambda x: "upper" if "up" in str(x) else "lower")
+        classifier = make_tool(
+            "classify", lambda x: "upper" if "up" in str(x) else "lower"
+        )
         routes = {
             "upper": make_tool("up", lambda x: str(x).upper()),
             "lower": make_tool("lo", lambda x: str(x).lower()),
@@ -443,6 +472,7 @@ class TestNestedConsistency:
     def test_guard_retry_with_failing_first(self):
         """Guard retries then succeeds — both engines agree on final value."""
         call_count = {"n": 0}
+
         def flaky(x):
             call_count["n"] += 1
             if call_count["n"] <= 1:
@@ -451,13 +481,17 @@ class TestNestedConsistency:
 
         # Reset for recursive engine
         call_count["n"] = 0
-        term_r = Guard(make_tool("flaky", flaky), validator=lambda x: "VALID" in str(x), retry=3)
+        term_r = Guard(
+            make_tool("flaky", flaky), validator=lambda x: "VALID" in str(x), retry=3
+        )
         ctx_r = Context()
         r = RecursiveEngine().execute(term_r, "test", ctx_r)
 
         # Reset for CEK engine
         call_count["n"] = 0
-        term_c = Guard(make_tool("flaky", flaky), validator=lambda x: "VALID" in str(x), retry=3)
+        term_c = Guard(
+            make_tool("flaky", flaky), validator=lambda x: "VALID" in str(x), retry=3
+        )
         ctx_c = Context()
         c = CEKEngine().execute(term_c, "test", ctx_c)
 
@@ -525,7 +559,9 @@ class TestNestedConsistency:
         """All engine results have non-negative cost across constructs."""
         terms = [
             make_tool("id", lambda x: x),
-            Compose(make_tool("a", lambda x: x + "A"), make_tool("b", lambda x: x + "B")),
+            Compose(
+                make_tool("a", lambda x: x + "A"), make_tool("b", lambda x: x + "B")
+            ),
             Pair(make_tool("l", lambda x: "L"), make_tool("r", lambda x: "R")),
             Guard(make_tool("g", lambda x: "ok"), validator=lambda x: True, retry=1),
         ]

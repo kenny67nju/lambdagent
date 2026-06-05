@@ -1,4 +1,5 @@
 """agentruntime.termination — Y combinator base case detection"""
+
 from __future__ import annotations
 from typing import List, Optional
 
@@ -13,8 +14,12 @@ class TerminationOracle:
     """
 
     DEFAULT_SIGNALS = [
-        "final answer:", "task complete", "task is done",
-        "i have completed", "here is the result:", "in conclusion,",
+        "final answer:",
+        "task complete",
+        "task is done",
+        "i have completed",
+        "here is the result:",
+        "in conclusion,",
     ]
 
     def __init__(self, signals: List[str] = None, implicit_detection: bool = True):

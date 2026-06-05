@@ -4,6 +4,7 @@ lambdagent.observability — Structured observability for agent execution
 Provides OpenTelemetry-compatible tracing for β-reductions.
 Works without otel dependency (graceful degradation to no-op).
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from typing import Any, Dict, Optional
 @dataclass
 class SpanRecord:
     """A single tracing span."""
+
     name: str
     start_time: float
     end_time: float = 0
@@ -57,6 +59,7 @@ class AgentTracer:
         """Try to initialize OpenTelemetry tracer. No-op if not installed."""
         try:
             from opentelemetry import trace
+
             self._otel_tracer = trace.get_tracer(self.service_name)
         except ImportError:
             pass
@@ -100,31 +103,44 @@ class AgentTracer:
             if otel_span:
                 try:
                     for k, v in record.attributes.items():
-                        otel_span.set_attribute(str(k), str(v) if not isinstance(v, (int, float, bool)) else v)
+                        otel_span.set_attribute(
+                            str(k),
+                            str(v) if not isinstance(v, (int, float, bool)) else v,
+                        )
                     otel_span.end()
                 except Exception:
                     pass
 
-    def record_reduction(self, term_name: str, term_type: str, input_val: Any,
-                        output_val: Any, duration_ms: float, model: str = "",
-                        tokens: int = 0, parent_id: str = None):
+    def record_reduction(
+        self,
+        term_name: str,
+        term_type: str,
+        input_val: Any,
+        output_val: Any,
+        duration_ms: float,
+        model: str = "",
+        tokens: int = 0,
+        parent_id: str = None,
+    ):
         """Record a β-reduction as a span."""
-        self.spans.append(SpanRecord(
-            name=f"reduce.{term_type}.{term_name}",
-            start_time=time.time() - duration_ms / 1000,
-            end_time=time.time(),
-            span_id=self._next_id(),
-            parent_id=parent_id,
-            attributes={
-                "term.name": term_name,
-                "term.type": term_type,
-                "input.length": len(str(input_val)),
-                "output.length": len(str(output_val)),
-                "model": model,
-                "tokens.used": tokens,
-                "duration_ms": duration_ms,
-            },
-        ))
+        self.spans.append(
+            SpanRecord(
+                name=f"reduce.{term_type}.{term_name}",
+                start_time=time.time() - duration_ms / 1000,
+                end_time=time.time(),
+                span_id=self._next_id(),
+                parent_id=parent_id,
+                attributes={
+                    "term.name": term_name,
+                    "term.type": term_type,
+                    "input.length": len(str(input_val)),
+                    "output.length": len(str(output_val)),
+                    "model": model,
+                    "tokens.used": tokens,
+                    "duration_ms": duration_ms,
+                },
+            )
+        )
 
     def export_json(self) -> list:
         """Export all spans as JSON-serializable list."""

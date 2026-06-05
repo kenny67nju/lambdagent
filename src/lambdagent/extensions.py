@@ -20,6 +20,7 @@ from .core import Term, Context, RouteError, ValidationError
 # Par: 并行执行
 # ============================================================
 
+
 class Par(Term):
     """
     并行求值: PAR(f, g) = λx. (f(x), g(x))
@@ -41,7 +42,10 @@ class Par(Term):
         results = [None] * len(self.agents)
         forked_ctxs = [ctx.fork() for _ in self.agents]
         with ThreadPoolExecutor(max_workers=len(self.agents)) as pool:
-            futures = {pool.submit(a.apply, input, forked_ctxs[i]): i for i, a in enumerate(self.agents)}
+            futures = {
+                pool.submit(a.apply, input, forked_ctxs[i]): i
+                for i, a in enumerate(self.agents)
+            }
             for future in as_completed(futures):
                 idx = futures[future]
                 results[idx] = future.result()
@@ -60,6 +64,7 @@ class Par(Term):
 # ============================================================
 # Route: 多路分发（广义 Church 布尔）
 # ============================================================
+
 
 class Route(Term):
     """
@@ -106,6 +111,7 @@ class Route(Term):
 # Memory: 有状态 Agent（环境扩展）
 # ============================================================
 
+
 class Memory(Term):
     """
     有状态 Agent: 扩展环境 Γ 加入持久记忆。
@@ -142,6 +148,7 @@ class Memory(Term):
 # ============================================================
 # Guard: 输出验证（依赖类型）
 # ============================================================
+
 
 class Guard(Term):
     """
