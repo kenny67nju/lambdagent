@@ -103,25 +103,17 @@ Issues = "https://github.com/kenny67nju/lambdagent/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib"
 filterwarnings = [
     "ignore::DeprecationWarning:lambdagent.from_config",
     "ignore::DeprecationWarning:lambdagent.lint",
 ]
 
 [tool.setuptools]
-package-dir = {"lambdagent" = "."}
-packages = [
-    "lambdagent",
-    "lambdagent.agentruntime",
-    "lambdagent.builtin_tools",
-    "lambdagent.cli",
-    "lambdagent.extractors",
-    "lambdagent.fromconfig",
-    "lambdagent.providers",
-    "lambdagent.skillpacks",
-    "lambdagent.skillpacks.research",
-]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["lambdagent*"]
 
 [tool.setuptools.package-data]
 lambdagent = ["py.typed"]
