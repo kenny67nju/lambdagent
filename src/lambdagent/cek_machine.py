@@ -33,9 +33,11 @@ from enum import Enum, auto
 # Values and Cost
 # ============================================================
 
+
 @dataclass(frozen=True)
 class CostVector:
     """Cost vector c = (tokens, latency_s, money_usd)"""
+
     tokens: int = 0
     latency: float = 0.0
     money: float = 0.0
@@ -56,6 +58,7 @@ ZERO_COST = CostVector()
 
 class CostMonotonicityViolation(RuntimeError):
     """Paper II Proposition 23: cost must be monotonically non-decreasing."""
+
     pass
 
 
@@ -63,11 +66,12 @@ class CostMonotonicityViolation(RuntimeError):
 # Labels (observable actions)
 # ============================================================
 
+
 class LabelKind(Enum):
-    TAU = auto()       # silent / internal
-    LLM = auto()       # LLM oracle call
-    TOOL = auto()      # tool oracle call
-    MEM = auto()       # memory store update
+    TAU = auto()  # silent / internal
+    LLM = auto()  # LLM oracle call
+    TOOL = auto()  # tool oracle call
+    MEM = auto()  # memory store update
 
 
 @dataclass(frozen=True)
@@ -90,19 +94,23 @@ TAU = Label(LabelKind.TAU)
 # Continuation Frames (K)
 # ============================================================
 
+
 class Kont:
     """Base class for continuation frames."""
+
     pass
 
 
 class HaltK(Kont):
     """Top-level: machine is done."""
+
     def __repr__(self):
         return "halt"
 
 
 class CompK(Kont):
     """Composition: apply g to result of f."""
+
     def __init__(self, g_term, prev: Kont):
         self.g_term = g_term
         self.prev = prev
@@ -113,6 +121,7 @@ class CompK(Kont):
 
 class LoopK(Kont):
     """Loop: check condition after body evaluation."""
+
     def __init__(self, body, cond, remaining: int, prev: Kont):
         self.body = body
         self.cond = cond
@@ -125,6 +134,7 @@ class LoopK(Kont):
 
 class PairLK(Kont):
     """Pair: left branch done, need to start right."""
+
     def __init__(self, g_term, input_val, prev: Kont):
         self.g_term = g_term
         self.input_val = input_val
@@ -136,6 +146,7 @@ class PairLK(Kont):
 
 class PairRK(Kont):
     """Pair: right branch evaluating, left value stored."""
+
     def __init__(self, left_val, prev: Kont):
         self.left_val = left_val
         self.prev = prev
@@ -146,6 +157,7 @@ class PairRK(Kont):
 
 class GuardK(Kont):
     """Guard: check predicate on result."""
+
     def __init__(self, predicate, retries: int, agent_term, input_val, prev: Kont):
         self.predicate = predicate
         self.retries = retries
@@ -159,6 +171,7 @@ class GuardK(Kont):
 
 class MemK(Kont):
     """Memory: store result after inner computation."""
+
     def __init__(self, store_key: str, prev: Kont):
         self.store_key = store_key
         self.prev = prev
@@ -169,6 +182,7 @@ class MemK(Kont):
 
 class IfK(Kont):
     """If: condition evaluated, dispatch to then/else based on result."""
+
     def __init__(self, then_term, else_term, input_val, prev: Kont):
         self.then_term = then_term
         self.else_term = else_term
@@ -181,6 +195,7 @@ class IfK(Kont):
 
 class RouteK(Kont):
     """Route: classifier evaluated, dispatch to route based on label."""
+
     def __init__(self, routes: dict, default, input_val, prev: Kont):
         self.routes = routes
         self.default = default
@@ -195,6 +210,7 @@ class RouteK(Kont):
 # CEK Machine State
 # ============================================================
 
+
 @dataclass
 class CEKState:
     """
@@ -206,11 +222,12 @@ class CEKState:
     store: memory store (dict)
     cost: cumulative cost vector
     """
-    control: Any           # Term or value
-    env: Dict[str, Any]    # environment
-    kont: Kont             # continuation stack
+
+    control: Any  # Term or value
+    env: Dict[str, Any]  # environment
+    kont: Kont  # continuation stack
     store: Dict[str, Any]  # memory store
-    cost: CostVector       # cumulative cost
+    cost: CostVector  # cumulative cost
 
     def is_terminal(self) -> bool:
         """Terminal if control is a value and continuation is halt."""
@@ -221,6 +238,7 @@ class CEKState:
         """Values are non-Term Python objects (str, int, dict, tuple, etc.)
         Auxiliary CEK terms (_AppTerm, _FstTerm, _SndTerm, _LoopState) are NOT values."""
         from .core import Term
+
         if isinstance(x, (Term, _AppTerm, _FstTerm, _SndTerm, _LoopState)):
             return False
         return True
@@ -235,21 +253,24 @@ class CEKState:
 # Transition Trace Entry
 # ============================================================
 
+
 @dataclass
 class Transition:
     """Record of one CEK transition."""
+
     step: int
-    rule: str               # e.g. "C-Comp", "C-Lam", "C-CompRet"
+    rule: str  # e.g. "C-Comp", "C-Lam", "C-CompRet"
     label: Label
-    state_before: str       # string repr of state before
-    state_after: str        # string repr of state after
+    state_before: str  # string repr of state before
+    state_after: str  # string repr of state after
     cost_delta: CostVector  # cost added in this step
-    duration_ms: float      # wall-clock time
+    duration_ms: float  # wall-clock time
 
 
 # ============================================================
 # Agent CEK Machine
 # ============================================================
+
 
 class AgentCEKMachine:
     """
@@ -269,9 +290,12 @@ class AgentCEKMachine:
         result = machine.state.control
     """
 
-    def __init__(self, store: Dict[str, Any] | None = None,
-                 handler=None,
-                 check_cost_monotonicity: bool = True):
+    def __init__(
+        self,
+        store: Dict[str, Any] | None = None,
+        handler=None,
+        check_cost_monotonicity: bool = True,
+    ):
         """
         Args:
             store: initial memory store
@@ -379,6 +403,7 @@ class AgentCEKMachine:
         Each C-Lam and C-Tool step is an await point.
         """
         import asyncio
+
         self.load(term, input_val)
         while not self.state.is_terminal():
             if self.step_count >= max_steps:
@@ -398,7 +423,11 @@ class AgentCEKMachine:
             return {"tokens": 0, "latency_s": 0.0, "money_usd": 0.0, "steps": 0}
         c = self.state.cost
         # Per-step cost breakdown
-        per_step = [(t.step, t.rule, t.cost_delta) for t in self.trace if t.cost_delta.tokens > 0 or t.cost_delta.latency > 0]
+        per_step = [
+            (t.step, t.rule, t.cost_delta)
+            for t in self.trace
+            if t.cost_delta.tokens > 0 or t.cost_delta.latency > 0
+        ]
         return {
             "tokens": c.tokens,
             "latency_s": c.latency,
@@ -413,7 +442,9 @@ class AgentCEKMachine:
         """Print the full transition trace."""
         for t in self.trace:
             cost_str = f" +{t.cost_delta}" if t.cost_delta.tokens > 0 else ""
-            print(f"  [{t.step:3d}] {t.rule:<16s} {t.label}{cost_str}  ({t.duration_ms:.1f}ms)")
+            print(
+                f"  [{t.step:3d}] {t.rule:<16s} {t.label}{cost_str}  ({t.duration_ms:.1f}ms)"
+            )
 
     # ── Internal dispatch ─────────────────────────────────────
 
@@ -450,7 +481,9 @@ class AgentCEKMachine:
 
         # ── Term that needs to be applied but has no operand ──
         # This shouldn't happen in well-formed programs
-        raise RuntimeError(f"CEK stuck: control is {type(ctrl).__name__}, not a value or application")
+        raise RuntimeError(
+            f"CEK stuck: control is {type(ctrl).__name__}, not a value or application"
+        )
 
     def _dispatch_app(self, op, arg) -> Tuple[str, Label]:
         """Dispatch an application (op arg)."""
@@ -465,22 +498,25 @@ class AgentCEKMachine:
         if isinstance(op, Lam) or _is_claude_lam(op):
             t0 = time.time()
             handler = self._handler
-            if handler is not None and not isinstance(handler, _passthrough_handler_types()):
+            if handler is not None and not isinstance(
+                handler, _passthrough_handler_types()
+            ):
                 # Use handler for LLM effect
                 result = handler.handle_llm(
-                    getattr(op, 'prompt', ''), str(arg),
-                    getattr(op, 'model', 'unknown'),
-                    temperature=getattr(op, 'temperature', 0.0),
-                    max_tokens=getattr(op, 'max_tokens', 1024),
+                    getattr(op, "prompt", ""),
+                    str(arg),
+                    getattr(op, "model", "unknown"),
+                    temperature=getattr(op, "temperature", 0.0),
+                    max_tokens=getattr(op, "max_tokens", 1024),
                 )
-                if hasattr(op, 'output_parser'):
+                if hasattr(op, "output_parser"):
                     result = op.output_parser(result)
             else:
                 ctx = Context(bindings=s.env, memory=s.store)
                 result = op.apply(arg, ctx)
             elapsed = time.time() - t0
 
-            model_name = getattr(op, 'model', 'claude-code')
+            model_name = getattr(op, "model", "claude-code")
             tokens = 0  # handler may not report tokens; real calls update via trace
             cost_llm = CostVector(
                 tokens=tokens,
@@ -497,7 +533,9 @@ class AgentCEKMachine:
         if isinstance(op, Tool):
             t0 = time.time()
             handler = self._handler
-            if handler is not None and not isinstance(handler, _passthrough_handler_types()):
+            if handler is not None and not isinstance(
+                handler, _passthrough_handler_types()
+            ):
                 result = handler.handle_tool(op._name, op.fn, arg)
             else:
                 ctx = Context(bindings=s.env, memory=s.store)
@@ -512,7 +550,7 @@ class AgentCEKMachine:
 
         # ── C-Comp: push compK, evaluate f(v) ──
         if isinstance(op, Compose):
-            stages = op.stages if hasattr(op, 'stages') else [op.f, op.g]
+            stages = op.stages if hasattr(op, "stages") else [op.f, op.g]
             if len(stages) == 2:
                 f, g = stages
                 s.control = _AppTerm(f, arg)
@@ -584,8 +622,8 @@ class AgentCEKMachine:
 
         # ── C-Pair: evaluate left branch, push pairLK ──
         if isinstance(op, (Pair, Par)):
-            f = op.first if hasattr(op, 'first') else op.f
-            g = op.second if hasattr(op, 'second') else op.g
+            f = op.first if hasattr(op, "first") else op.f
+            g = op.second if hasattr(op, "second") else op.g
             s.control = _AppTerm(f, arg)
             s.kont = PairLK(g, arg, s.kont)
             return "C-Pair", TAU
@@ -665,7 +703,9 @@ class AgentCEKMachine:
             elif k.retries > 0:
                 # Retry: re-evaluate inner agent
                 s.control = _AppTerm(k.agent_term, k.input_val)
-                s.kont = GuardK(k.predicate, k.retries - 1, k.agent_term, k.input_val, k.prev)
+                s.kont = GuardK(
+                    k.predicate, k.retries - 1, k.agent_term, k.input_val, k.prev
+                )
                 return "C-GuardRetry", TAU
             else:
                 s.control = None  # unit
@@ -683,6 +723,7 @@ class AgentCEKMachine:
         # ── C-IfRet: condition evaluated, dispatch to then/else ──
         if isinstance(k, IfK):
             from .primitives import If
+
             is_true = If._is_truthy(val) if isinstance(val, str) else bool(val)
             if is_true:
                 s.control = _AppTerm(k.then_term, k.input_val)
@@ -725,8 +766,10 @@ class AgentCEKMachine:
 # Internal helper terms (not part of source syntax)
 # ============================================================
 
+
 class _AppTerm:
     """Application: operator applied to operand. Auxiliary term for CEK."""
+
     def __init__(self, operator, operand):
         self.operator = operator
         self.operand = operand
@@ -737,18 +780,21 @@ class _AppTerm:
 
 class _FstTerm:
     """Fst projection. Auxiliary term for CEK."""
+
     def __init__(self, inner):
         self.inner = inner
 
 
 class _SndTerm:
     """Snd projection. Auxiliary term for CEK."""
+
     def __init__(self, inner):
         self.inner = inner
 
 
 class _LoopState:
     """Represents a Loop with reduced remaining count. Auxiliary for CEK."""
+
     def __init__(self, body, cond, remaining: int):
         self.body = body
         self.condition = cond
@@ -764,7 +810,7 @@ def _term_repr(t) -> str:
         return f'"{s}"'
     if isinstance(t, tuple):
         return f"({_term_repr(t[0])}, {_term_repr(t[1])})"
-    if hasattr(t, '_name'):
+    if hasattr(t, "_name"):
         return t._name
     return repr(t)[:40]
 
@@ -772,7 +818,7 @@ def _term_repr(t) -> str:
 def _is_claude_lam(op) -> bool:
     """Check if op is a ClaudeLam instance (without importing it directly,
     to avoid hard dependency on agentexample)."""
-    return type(op).__name__ == 'ClaudeLam'
+    return type(op).__name__ == "ClaudeLam"
 
 
 def _passthrough_handler_types():
@@ -781,6 +827,7 @@ def _passthrough_handler_types():
     DESIGN-01: Use PassthroughHandler base class instead of listing individual types.
     """
     from .handlers import PassthroughHandler
+
     return (PassthroughHandler,)
 
 

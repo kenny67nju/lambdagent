@@ -7,6 +7,7 @@ WriteFile  λx. write(path, content)
 ListFiles  λx. glob(pattern)
 SearchContent  λx. grep(pattern, path)
 """
+
 from __future__ import annotations
 
 import json
@@ -20,9 +21,13 @@ from typing import Any, Dict, Optional
 # A01: ReadFile
 # ════════════════════════════════════════════════════════════
 
+
 class ReadFileSchema:
     """Validate ReadFile input."""
-    def __init__(self, file_path: str, offset: int = 0, limit: int = 2000, pages: str = ""):
+
+    def __init__(
+        self, file_path: str, offset: int = 0, limit: int = 2000, pages: str = ""
+    ):
         if not file_path or not isinstance(file_path, str):
             raise ValueError("file_path is required and must be a string")
         if not os.path.isabs(file_path):
@@ -33,8 +38,12 @@ class ReadFileSchema:
         self.pages = pages
 
     def dict(self):
-        return {"file_path": self.file_path, "offset": self.offset,
-                "limit": self.limit, "pages": self.pages}
+        return {
+            "file_path": self.file_path,
+            "offset": self.offset,
+            "limit": self.limit,
+            "pages": self.pages,
+        }
 
 
 def read_file(input_val: Any) -> str:
@@ -82,7 +91,7 @@ def read_file(input_val: Any) -> str:
     if total == 0:
         return f"[EMPTY] {path} (0 lines)"
 
-    selected = lines[offset:offset + limit]
+    selected = lines[offset : offset + limit]
     result_lines = []
     for i, line in enumerate(selected, start=offset + 1):
         result_lines.append(f"{i}\t{line.rstrip()}")
@@ -98,6 +107,7 @@ def _read_pdf(path: str, pages: str) -> str:
     """Read PDF file. Requires PyPDF2 or pdfplumber."""
     try:
         import PyPDF2
+
         with open(path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             total_pages = len(reader.pages)
@@ -113,7 +123,11 @@ def _read_pdf(path: str, pages: str) -> str:
                     text = reader.pages[i].extract_text() or ""
                     text_parts.append(f"--- Page {i + 1} ---\n{text}")
 
-            return "\n\n".join(text_parts) if text_parts else f"[PDF] {path} ({total_pages} pages, no text extracted)"
+            return (
+                "\n\n".join(text_parts)
+                if text_parts
+                else f"[PDF] {path} ({total_pages} pages, no text extracted)"
+            )
     except ImportError:
         return f"[PDF] {path}. Install PyPDF2 to read: pip install PyPDF2"
     except Exception as e:
@@ -162,8 +176,15 @@ def _parse_page_range(pages: str, total: int) -> range:
 # A02: EditFile
 # ════════════════════════════════════════════════════════════
 
+
 class EditFileSchema:
-    def __init__(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False):
+    def __init__(
+        self,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ):
         if not file_path:
             raise ValueError("file_path is required")
         if not old_string:
@@ -178,8 +199,12 @@ class EditFileSchema:
         self.replace_all = replace_all
 
     def dict(self):
-        return {"file_path": self.file_path, "old_string": self.old_string,
-                "new_string": self.new_string, "replace_all": self.replace_all}
+        return {
+            "file_path": self.file_path,
+            "old_string": self.old_string,
+            "new_string": self.new_string,
+            "replace_all": self.replace_all,
+        }
 
 
 def edit_file(input_val: Any) -> str:
@@ -201,8 +226,10 @@ def edit_file(input_val: Any) -> str:
         return f"[ERROR] old_string not found in {path}. Read the file first to get the exact text."
 
     if count > 1 and not replace_all:
-        return (f"[ERROR] old_string found {count} times in {path}. "
-                f"Provide more context to make it unique, or set replace_all=true.")
+        return (
+            f"[ERROR] old_string found {count} times in {path}. "
+            f"Provide more context to make it unique, or set replace_all=true."
+        )
 
     if replace_all:
         new_content = content.replace(old, new)
@@ -221,9 +248,18 @@ def edit_file(input_val: Any) -> str:
 # A03: WriteFile
 # ════════════════════════════════════════════════════════════
 
+
 class WriteFileSchema:
-    SENSITIVE_NAMES = {".env", "credentials.json", "secrets.json", ".aws/credentials",
-                       "id_rsa", "id_ed25519", ".npmrc", ".pypirc"}
+    SENSITIVE_NAMES = {
+        ".env",
+        "credentials.json",
+        "secrets.json",
+        ".aws/credentials",
+        "id_rsa",
+        "id_ed25519",
+        ".npmrc",
+        ".pypirc",
+    }
 
     def __init__(self, file_path: str, content: str):
         if not file_path:
@@ -261,6 +297,7 @@ def write_file(input_val: Any) -> str:
 # A04: ListFiles (Glob)
 # ════════════════════════════════════════════════════════════
 
+
 class ListFilesSchema:
     def __init__(self, pattern: str = "**/*", path: str = ".", max_results: int = 100):
         if not pattern:
@@ -270,11 +307,26 @@ class ListFilesSchema:
         self.max_results = min(max(1, max_results), 1000)
 
     def dict(self):
-        return {"pattern": self.pattern, "path": self.path, "max_results": self.max_results}
+        return {
+            "pattern": self.pattern,
+            "path": self.path,
+            "max_results": self.max_results,
+        }
 
 
-_IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox",
-                ".mypy_cache", ".pytest_cache", "dist", "build", ".eggs"}
+_IGNORE_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "dist",
+    "build",
+    ".eggs",
+}
 
 
 def list_files(input_val: Any) -> str:
@@ -285,6 +337,7 @@ def list_files(input_val: Any) -> str:
     max_results = params.get("max_results", 100)
 
     import glob as glob_mod
+
     full_pattern = os.path.join(base, pattern)
     matches = glob_mod.glob(full_pattern, recursive=True)
 
@@ -296,7 +349,9 @@ def list_files(input_val: Any) -> str:
             filtered.append(m)
 
     # Sort by modification time (newest first)
-    filtered.sort(key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0, reverse=True)
+    filtered.sort(
+        key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0, reverse=True
+    )
 
     if not filtered:
         return f"[NO_MATCH] No files matching '{pattern}' in {base}"
@@ -316,10 +371,18 @@ def list_files(input_val: Any) -> str:
 # A05: SearchContent (Grep)
 # ════════════════════════════════════════════════════════════
 
+
 class SearchContentSchema:
-    def __init__(self, pattern: str, path: str = ".", glob: str = "",
-                 file_type: str = "", context: int = 0,
-                 output_mode: str = "content", max_results: int = 50):
+    def __init__(
+        self,
+        pattern: str,
+        path: str = ".",
+        glob: str = "",
+        file_type: str = "",
+        context: int = 0,
+        output_mode: str = "content",
+        max_results: int = 50,
+    ):
         if not pattern:
             raise ValueError("pattern is required (regex)")
         self.pattern = pattern
@@ -327,13 +390,23 @@ class SearchContentSchema:
         self.glob = glob
         self.file_type = file_type
         self.context = min(max(0, context), 10)
-        self.output_mode = output_mode if output_mode in ("content", "files_only", "count") else "content"
+        self.output_mode = (
+            output_mode
+            if output_mode in ("content", "files_only", "count")
+            else "content"
+        )
         self.max_results = min(max(1, max_results), 500)
 
     def dict(self):
-        return {"pattern": self.pattern, "path": self.path, "glob": self.glob,
-                "file_type": self.file_type, "context": self.context,
-                "output_mode": self.output_mode, "max_results": self.max_results}
+        return {
+            "pattern": self.pattern,
+            "path": self.path,
+            "glob": self.glob,
+            "file_type": self.file_type,
+            "context": self.context,
+            "output_mode": self.output_mode,
+            "max_results": self.max_results,
+        }
 
 
 def search_content(input_val: Any) -> str:
@@ -350,7 +423,9 @@ def search_content(input_val: Any) -> str:
     # Try ripgrep first
     rg = _find_rg()
     if rg:
-        return _search_with_rg(rg, pattern, path, glob_filter, file_type, context, mode, max_results)
+        return _search_with_rg(
+            rg, pattern, path, glob_filter, file_type, context, mode, max_results
+        )
 
     # Fallback to Python
     return _search_with_python(pattern, path, glob_filter, context, mode, max_results)
@@ -359,6 +434,7 @@ def search_content(input_val: Any) -> str:
 def _find_rg() -> Optional[str]:
     """Find ripgrep binary across Linux / macOS / Windows."""
     import shutil
+
     found = shutil.which("rg")
     if found:
         return found
@@ -378,8 +454,16 @@ def _find_rg() -> Optional[str]:
     return None
 
 
-def _search_with_rg(rg: str, pattern: str, path: str, glob_filter: str,
-                    file_type: str, context: int, mode: str, max_results: int) -> str:
+def _search_with_rg(
+    rg: str,
+    pattern: str,
+    path: str,
+    glob_filter: str,
+    file_type: str,
+    context: int,
+    mode: str,
+    max_results: int,
+) -> str:
     cmd = [rg, "--no-heading", "-n"]
     if mode == "files_only":
         cmd.append("-l")
@@ -409,10 +493,12 @@ def _search_with_rg(rg: str, pattern: str, path: str, glob_filter: str,
         return f"[ERROR] rg failed: {e}"
 
 
-def _search_with_python(pattern: str, path: str, glob_filter: str,
-                        context: int, mode: str, max_results: int) -> str:
+def _search_with_python(
+    pattern: str, path: str, glob_filter: str, context: int, mode: str, max_results: int
+) -> str:
     """Fallback: pure Python regex search."""
     import glob as glob_mod
+
     if glob_filter:
         files = glob_mod.glob(os.path.join(path, glob_filter), recursive=True)
     else:
@@ -440,7 +526,9 @@ def _search_with_python(pattern: str, path: str, glob_filter: str,
                     elif mode == "count":
                         results.append(f"{os.path.relpath(fpath, path)}:{i}")
                     else:
-                        results.append(f"{os.path.relpath(fpath, path)}:{i}:{line.rstrip()}")
+                        results.append(
+                            f"{os.path.relpath(fpath, path)}:{i}:{line.rstrip()}"
+                        )
                     if len(results) >= max_results:
                         break
         except Exception:
@@ -460,6 +548,7 @@ def _search_with_python(pattern: str, path: str, glob_filter: str,
 # Shared helpers
 # ════════════════════════════════════════════════════════════
 
+
 def _parse_input(input_val: Any, schema_cls) -> dict:
     """Parse tool input: string→JSON→schema, or dict→schema."""
     if isinstance(input_val, dict):
@@ -468,18 +557,30 @@ def _parse_input(input_val: Any, schema_cls) -> dict:
         try:
             data = json.loads(input_val)
         except (json.JSONDecodeError, ValueError):
-            data = {"file_path": input_val} if "file" in schema_cls.__name__.lower() else {"pattern": input_val}
+            data = (
+                {"file_path": input_val}
+                if "file" in schema_cls.__name__.lower()
+                else {"pattern": input_val}
+            )
     else:
         data = {"file_path": str(input_val)}
 
     # Extract nested "input" from ReAct format: {"action":"Tool","input":{...}}
-    if isinstance(data, dict) and "input" in data and ("action" in data or "tool" in data):
+    if (
+        isinstance(data, dict)
+        and "input" in data
+        and ("action" in data or "tool" in data)
+    ):
         inner = data["input"]
         if isinstance(inner, str):
             try:
                 data = json.loads(inner)
             except (json.JSONDecodeError, ValueError):
-                data = {"file_path": inner} if "file" in schema_cls.__name__.lower() else {"pattern": inner}
+                data = (
+                    {"file_path": inner}
+                    if "file" in schema_cls.__name__.lower()
+                    else {"pattern": inner}
+                )
         elif isinstance(inner, dict):
             data = inner
         else:
@@ -501,6 +602,7 @@ def _parse_input(input_val: Any, schema_cls) -> dict:
         # 'path' → 'file_path' only when schema has file_path param (ReadFile, WriteFile, EditFile)
         if "path" in data and "file_path" not in data:
             import inspect
+
             params = inspect.signature(schema_cls.__init__).parameters
             if "file_path" in params and "path" not in params:
                 _ALIASES["path"] = "file_path"

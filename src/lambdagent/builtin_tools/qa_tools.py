@@ -100,17 +100,46 @@ def _get_skill(name: str):
 
     _skills_cache[name] = skill
     return skill
+
+
 SUPPORTED_EXTENSIONS = {
-    ".txt", ".md", ".py", ".js", ".ts", ".java", ".go", ".rs", ".c", ".cpp",
-    ".h", ".css", ".html", ".xml", ".json", ".yaml", ".yml", ".toml", ".ini",
-    ".sh", ".bat", ".sql", ".r", ".rb", ".php", ".swift", ".kt",
-    ".pdf", ".csv", ".log",
+    ".txt",
+    ".md",
+    ".py",
+    ".js",
+    ".ts",
+    ".java",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".css",
+    ".html",
+    ".xml",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".sh",
+    ".bat",
+    ".sql",
+    ".r",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".pdf",
+    ".csv",
+    ".log",
 }
 
 
 # ════════════════════════════════════════════════════════════
 # IngestFiles — 批量喂文件 (map_reduce pattern)
 # ════════════════════════════════════════════════════════════
+
 
 def ingest_files(input_val: Any) -> str:
     """
@@ -149,7 +178,9 @@ def ingest_files(input_val: Any) -> str:
 
     for filepath in files:
         try:
-            result = _ingest_single_file(filepath, collection, chunk_size, chunk_overlap)
+            result = _ingest_single_file(
+                filepath, collection, chunk_size, chunk_overlap
+            )
             results.append(result)
             total_chunks += result["chunks"]
         except Exception as e:
@@ -182,8 +213,11 @@ def _collect_files(path: str) -> List[str]:
 
     # Glob 模式
     if "*" in path or "?" in path:
-        return [f for f in glob.glob(path, recursive=True)
-                if os.path.isfile(f) and _is_supported(f)]
+        return [
+            f
+            for f in glob.glob(path, recursive=True)
+            if os.path.isfile(f) and _is_supported(f)
+        ]
 
     # 单文件
     if os.path.isfile(path):
@@ -194,8 +228,12 @@ def _collect_files(path: str) -> List[str]:
         files = []
         for root, dirs, filenames in os.walk(path):
             # 跳过隐藏目录和常见忽略目录
-            dirs[:] = [d for d in dirs if not d.startswith('.')
-                       and d not in ('node_modules', '__pycache__', '.git', 'venv')]
+            dirs[:] = [
+                d
+                for d in dirs
+                if not d.startswith(".")
+                and d not in ("node_modules", "__pycache__", ".git", "venv")
+            ]
             for name in sorted(filenames):
                 full = os.path.join(root, name)
                 if _is_supported(full):
@@ -214,17 +252,30 @@ def _is_supported(filepath: str) -> bool:
 def _detect_chunk_strategy(filepath: str) -> str:
     """根据文件类型选择分块策略。"""
     ext = os.path.splitext(filepath)[1].lower()
-    if ext in ('.py', '.js', '.ts', '.java', '.go', '.rs', '.c', '.cpp',
-               '.rb', '.php', '.swift', '.kt'):
+    if ext in (
+        ".py",
+        ".js",
+        ".ts",
+        ".java",
+        ".go",
+        ".rs",
+        ".c",
+        ".cpp",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+    ):
         return "paragraph"  # 代码文件按空行分段（近似函数边界）
-    elif ext in ('.md', '.html', '.xml'):
-        return "heading"    # Markdown/HTML 按标题分块
+    elif ext in (".md", ".html", ".xml"):
+        return "heading"  # Markdown/HTML 按标题分块
     else:
         return "paragraph"  # 默认按段落
 
 
-def _ingest_single_file(filepath: str, collection: str,
-                         chunk_size: int, chunk_overlap: int) -> Dict:
+def _ingest_single_file(
+    filepath: str, collection: str, chunk_size: int, chunk_overlap: int
+) -> Dict:
     """处理单个文件: read → chunk → index。"""
     ext = os.path.splitext(filepath)[1].lower()
     filename = os.path.basename(filepath)
@@ -241,27 +292,32 @@ def _ingest_single_file(filepath: str, collection: str,
 
     # 分块
     strategy = _detect_chunk_strategy(filepath)
-    chunks = ChunkSplitter.split(content, strategy=strategy,
-                                  chunk_size=chunk_size, overlap=chunk_overlap)
+    chunks = ChunkSplitter.split(
+        content, strategy=strategy, chunk_size=chunk_size, overlap=chunk_overlap
+    )
 
     if not chunks:
         return {"file": filename, "type": ext, "chunks": 0}
 
     # 索引 — 每个块带元数据
     for i, chunk in enumerate(chunks):
-        kb_manage(json.dumps({
-            "action": "add",
-            "name": collection,
-            "content": chunk,
-            "metadata": {
-                "source": filename,
-                "file_path": filepath,
-                "file_type": ext,
-                "chunk_index": i,
-                "total_chunks": len(chunks),
-                "strategy": strategy,
-            },
-        }))
+        kb_manage(
+            json.dumps(
+                {
+                    "action": "add",
+                    "name": collection,
+                    "content": chunk,
+                    "metadata": {
+                        "source": filename,
+                        "file_path": filepath,
+                        "file_type": ext,
+                        "chunk_index": i,
+                        "total_chunks": len(chunks),
+                        "strategy": strategy,
+                    },
+                }
+            )
+        )
 
     return {"file": filename, "type": ext, "chunks": len(chunks)}
 
@@ -270,13 +326,14 @@ def _read_pdf(filepath: str) -> str:
     """读取 PDF 文件。"""
     try:
         import PyPDF2
+
         with open(filepath, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             pages = []
             for i, page in enumerate(reader.pages):
                 text = page.extract_text()
                 if text:
-                    pages.append(f"[Page {i+1}]\n{text}")
+                    pages.append(f"[Page {i + 1}]\n{text}")
             return "\n\n".join(pages)
     except ImportError:
         return f"[ERROR] 需要安装 PyPDF2 才能读取 PDF: pip install PyPDF2"
@@ -289,18 +346,26 @@ def _ensure_kb(collection: str):
     try:
         info = kb_manage(json.dumps({"action": "info", "name": collection}))
         if "not found" in info.lower() or "不存在" in info:
-            kb_manage(json.dumps({
-                "action": "create",
-                "name": collection,
-                "description": f"QA Agent 知识库: {collection}",
-            }))
+            kb_manage(
+                json.dumps(
+                    {
+                        "action": "create",
+                        "name": collection,
+                        "description": f"QA Agent 知识库: {collection}",
+                    }
+                )
+            )
     except Exception:
         try:
-            kb_manage(json.dumps({
-                "action": "create",
-                "name": collection,
-                "description": f"QA Agent 知识库: {collection}",
-            }))
+            kb_manage(
+                json.dumps(
+                    {
+                        "action": "create",
+                        "name": collection,
+                        "description": f"QA Agent 知识库: {collection}",
+                    }
+                )
+            )
         except Exception:
             pass  # 可能已存在
 
@@ -308,6 +373,7 @@ def _ensure_kb(collection: str):
 # ════════════════════════════════════════════════════════════
 # QueryKnowledge — 问答 (pipeline + review pattern)
 # ════════════════════════════════════════════════════════════
+
 
 def query_knowledge(input_val: Any) -> str:
     """
@@ -331,12 +397,16 @@ def query_knowledge(input_val: Any) -> str:
     top_k = params.get("top_k", 5)
 
     # Step 1: 检索 (context-retriever skill)
-    search_result = kb_manage(json.dumps({
-        "action": "search",
-        "name": collection,
-        "query": query,
-        "top_k": top_k,
-    }))
+    search_result = kb_manage(
+        json.dumps(
+            {
+                "action": "search",
+                "name": collection,
+                "query": query,
+                "top_k": top_k,
+            }
+        )
+    )
 
     # 解析检索结果
     try:
@@ -365,7 +435,7 @@ def query_knowledge(input_val: Any) -> str:
     sources = []
     for i, r in enumerate(results):
         content = r.get("content", r.get("text", str(r)))
-        source = r.get("metadata", {}).get("source", r.get("source", f"块{i+1}"))
+        source = r.get("metadata", {}).get("source", r.get("source", f"块{i + 1}"))
         chunk_idx = r.get("metadata", {}).get("chunk_index", "")
         score = r.get("score", r.get("relevance", 0))
 
@@ -373,13 +443,14 @@ def query_knowledge(input_val: Any) -> str:
         if chunk_idx:
             source_label = f"{source} #块{chunk_idx}"
 
-        context_parts.append(f"[参考 {i+1} | 来源: {source_label}]\n{content}")
+        context_parts.append(f"[参考 {i + 1} | 来源: {source_label}]\n{content}")
         sources.append({"source": source, "chunk": chunk_idx, "score": score})
 
     context = "\n\n---\n\n".join(context_parts)
 
     # Step 3: 生成回答 (answer-generator skill — LLM 调用)
     from lambdagent.core import Context
+
     ctx = Context()
 
     answer_prompt = f"参考文档:\n{context}\n\n问题: {query}"
@@ -434,7 +505,7 @@ def query_knowledge(input_val: Any) -> str:
         pass  # 核查失败不阻塞回答
 
     # 组装最终输出
-    source_list = ', '.join(set(s['source'] for s in sources))
+    source_list = ", ".join(set(s["source"] for s in sources))
     status = "✅ 已通过事实核查" if verified else "⚠️ 未经事实核查验证"
 
     return (
@@ -449,6 +520,7 @@ def query_knowledge(input_val: Any) -> str:
 # ════════════════════════════════════════════════════════════
 # ListKnowledge — 查看已索引文件
 # ════════════════════════════════════════════════════════════
+
 
 def list_knowledge(input_val: Any) -> str:
     """
@@ -472,6 +544,7 @@ def list_knowledge(input_val: Any) -> str:
 # ════════════════════════════════════════════════════════════
 # RemoveKnowledge — 删除文件索引
 # ════════════════════════════════════════════════════════════
+
 
 def remove_knowledge(input_val: Any) -> str:
     """
@@ -505,6 +578,7 @@ def remove_knowledge(input_val: Any) -> str:
 # ════════════════════════════════════════════════════════════
 # DeepAnalysis — 复杂推理 (SubAgent 编排, fan_out_merge pattern)
 # ════════════════════════════════════════════════════════════
+
 
 def deep_analysis(input_val: Any) -> str:
     """
@@ -541,12 +615,16 @@ def deep_analysis(input_val: Any) -> str:
     retrieval_results = {}
 
     def _retrieve(sub_query: str) -> Dict:
-        result = kb_manage(json.dumps({
-            "action": "search",
-            "name": collection,
-            "query": sub_query,
-            "top_k": 5,
-        }))
+        result = kb_manage(
+            json.dumps(
+                {
+                    "action": "search",
+                    "name": collection,
+                    "query": sub_query,
+                    "top_k": 5,
+                }
+            )
+        )
         return {"query": sub_query, "result": result}
 
     with ThreadPoolExecutor(max_workers=min(len(sub_queries), 4)) as pool:
@@ -561,10 +639,7 @@ def deep_analysis(input_val: Any) -> str:
     # Step 3: 组装分析上下文
     analysis_context = []
     for i, (sq, result) in enumerate(retrieval_results.items()):
-        analysis_context.append(
-            f"## 检索维度 {i+1}: {sq}\n\n"
-            f"检索结果:\n{result}\n"
-        )
+        analysis_context.append(f"## 检索维度 {i + 1}: {sq}\n\n检索结果:\n{result}\n")
 
     full_context = "\n---\n\n".join(analysis_context)
 
@@ -584,10 +659,7 @@ def deep_analysis(input_val: Any) -> str:
         analysis = analyzer.apply(analyze_prompt, ctx)
     except Exception as e:
         # LLM 不可用时降级为返回原始检索素材
-        analysis = (
-            f"⚠️ 深度分析 LLM 不可用 ({e})，返回原始检索素材:\n\n"
-            f"{full_context}"
-        )
+        analysis = f"⚠️ 深度分析 LLM 不可用 ({e})，返回原始检索素材:\n\n{full_context}"
 
     # Step 5: 综合 (synthesizer skill — LLM 调用)
     try:

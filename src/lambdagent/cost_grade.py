@@ -33,6 +33,7 @@ from .core import Term
 # CostGrade (Paper III Definition 11)
 # ============================================================
 
+
 @dataclass(frozen=True)
 class CostGrade:
     """
@@ -58,11 +59,12 @@ class CostGrade:
           10 步循环不是"10 次独立实验都要成功"
           而是"10 步里至少走对一条路，且不出致命错误"
     """
-    probability: float = 1.0    # p: 端到端成功概率
-    tokens: int = 0             # t: token 数上界
-    latency: float = 0.0        # l: 延迟上界 (秒)
-    money: float = 0.0          # m: 成本上界 (USD)
-    p_fatal: float = 0.0        # 单步致命失败率 (用于迭代计算)
+
+    probability: float = 1.0  # p: 端到端成功概率
+    tokens: int = 0  # t: token 数上界
+    latency: float = 0.0  # l: 延迟上界 (秒)
+    money: float = 0.0  # m: 成本上界 (USD)
+    p_fatal: float = 0.0  # 单步致命失败率 (用于迭代计算)
 
     def __repr__(self) -> str:
         return (
@@ -81,6 +83,7 @@ class CostGrade:
 # ============================================================
 # 分级组合规则 (Paper III Definition 12)
 # ============================================================
+
 
 def grade_serial(g1: CostGrade, g2: CostGrade) -> CostGrade:
     """
@@ -195,9 +198,21 @@ def grade_guard(g: CostGrade, retries: int) -> CostGrade:
 
 # 每个模型的默认成本参数
 _MODEL_COSTS: Dict[str, Dict[str, float]] = {
-    "claude-sonnet-4-20250514": {"tokens_per_call": 800, "latency": 2.0, "price_per_1k": 0.003},
-    "claude-opus-4-20250514": {"tokens_per_call": 1200, "latency": 5.0, "price_per_1k": 0.015},
-    "claude-haiku-4-5-20251001": {"tokens_per_call": 500, "latency": 0.5, "price_per_1k": 0.00025},
+    "claude-sonnet-4-20250514": {
+        "tokens_per_call": 800,
+        "latency": 2.0,
+        "price_per_1k": 0.003,
+    },
+    "claude-opus-4-20250514": {
+        "tokens_per_call": 1200,
+        "latency": 5.0,
+        "price_per_1k": 0.015,
+    },
+    "claude-haiku-4-5-20251001": {
+        "tokens_per_call": 500,
+        "latency": 0.5,
+        "price_per_1k": 0.00025,
+    },
     "gpt-4": {"tokens_per_call": 1000, "latency": 3.0, "price_per_1k": 0.03},
     "gpt-4o": {"tokens_per_call": 800, "latency": 1.5, "price_per_1k": 0.0025},
     "qwen3-max": {"tokens_per_call": 600, "latency": 1.0, "price_per_1k": 0.001},
@@ -223,15 +238,17 @@ def _get_model_cost(model: str) -> Dict[str, float]:
 # ============================================================
 
 # 致命失败率: API 错误 / 解析异常 / 工具崩溃 — 导致管道无法继续
-_DEFAULT_LLM_FATAL_RATE = 0.01     # LLM 每次调用 1% 致命失败 (API 500/超时)
-_DEFAULT_TOOL_FATAL_RATE = 0.02    # Tool 每次调用 2% 致命失败 (文件不存在/异常)
+_DEFAULT_LLM_FATAL_RATE = 0.01  # LLM 每次调用 1% 致命失败 (API 500/超时)
+_DEFAULT_TOOL_FATAL_RATE = 0.02  # Tool 每次调用 2% 致命失败 (文件不存在/异常)
 
 # 单步成功概率: 用于 Guard 的"通过验证"概率
-_DEFAULT_LLM_SUCCESS_PROB = 0.95   # LLM 单次生成有用结果的概率
+_DEFAULT_LLM_SUCCESS_PROB = 0.95  # LLM 单次生成有用结果的概率
 _DEFAULT_TOOL_SUCCESS_PROB = 0.98  # Tool 单次返回正确结果的概率
 
 
-def estimate_cost(term: Term, model_costs: Dict[str, Dict[str, float]] | None = None) -> CostGrade:
+def estimate_cost(
+    term: Term, model_costs: Dict[str, Dict[str, float]] | None = None
+) -> CostGrade:
     """
     静态估算 Agent 的最坏情况成本。
 
@@ -330,6 +347,7 @@ def estimate_cost(term: Term, model_costs: Dict[str, Dict[str, float]] | None = 
         # 多智能体扩展等 — 尝试分析
         try:
             from .multiagent import AsyncPar
+
             if isinstance(term, AsyncPar):
                 grades = [estimate_cost(a) for a in term.agents]
                 result = grades[0]
@@ -342,8 +360,12 @@ def estimate_cost(term: Term, model_costs: Dict[str, Dict[str, float]] | None = 
     return CostGrade()  # 未知 term → 零成本（保守下界）
 
 
-def validate_cost(predicted: CostGrade, actual_tokens: int, actual_money: float,
-                  deviation_threshold: float = 2.0) -> Dict[str, Any]:
+def validate_cost(
+    predicted: CostGrade,
+    actual_tokens: int,
+    actual_money: float,
+    deviation_threshold: float = 2.0,
+) -> Dict[str, Any]:
     """
     DESIGN-08: Cross-validate cost prediction against actual execution.
 
@@ -353,7 +375,12 @@ def validate_cost(predicted: CostGrade, actual_tokens: int, actual_money: float,
         - deviation_money: float (actual/predicted ratio)
         - alert: str or None (warning message if deviation exceeds threshold)
     """
-    result: Dict[str, Any] = {"valid": True, "deviation_tokens": 0.0, "deviation_money": 0.0, "alert": None}
+    result: Dict[str, Any] = {
+        "valid": True,
+        "deviation_tokens": 0.0,
+        "deviation_money": 0.0,
+        "alert": None,
+    }
 
     if predicted.tokens > 0:
         result["deviation_tokens"] = actual_tokens / predicted.tokens
@@ -370,7 +397,9 @@ def validate_cost(predicted: CostGrade, actual_tokens: int, actual_money: float,
         if result["deviation_money"] > deviation_threshold:
             result["valid"] = False
             if result["alert"]:
-                result["alert"] += f" Money: ${actual_money:.4f} vs predicted ${predicted.money:.4f}."
+                result["alert"] += (
+                    f" Money: ${actual_money:.4f} vs predicted ${predicted.money:.4f}."
+                )
             else:
                 result["alert"] = (
                     f"COST_ANOMALY: Actual cost (${actual_money:.4f}) is "

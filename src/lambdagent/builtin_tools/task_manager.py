@@ -3,6 +3,7 @@ lambdagent.builtin_tools.task_manager — Task management for agent sessions
 
 Simple in-memory task tracking with JSON persistence.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,7 +43,9 @@ class TaskManager:
     def create(self, subject: str, description: str = "", **metadata) -> Task:
         self._counter += 1
         task_id = str(self._counter)
-        task = Task(id=task_id, subject=subject, description=description, metadata=metadata)
+        task = Task(
+            id=task_id, subject=subject, description=description, metadata=metadata
+        )
         self._tasks[task_id] = task
         self._save()
         return task
@@ -92,6 +95,7 @@ class TaskManager:
 # Tool functions for agent use
 _default_manager = TaskManager()
 
+
 def task_create(input_val: Any) -> str:
     params = _parse(input_val)
     subject = params.get("subject", "")
@@ -99,6 +103,7 @@ def task_create(input_val: Any) -> str:
         return "[ERROR] subject is required"
     task = _default_manager.create(subject, params.get("description", ""))
     return f"[OK] Task #{task.id} created: {task.subject}"
+
 
 def task_update(input_val: Any) -> str:
     params = _parse(input_val)
@@ -118,6 +123,7 @@ def task_update(input_val: Any) -> str:
         return f"[ERROR] Task #{task_id} not found"
     return f"[OK] Task #{task_id} updated: status={task.status if task_id in _default_manager._tasks else 'deleted'}"
 
+
 def task_list(input_val: Any) -> str:
     params = _parse(input_val) if input_val else {}
     status = params.get("status", "")
@@ -126,9 +132,12 @@ def task_list(input_val: Any) -> str:
         return "[EMPTY] No tasks."
     lines = []
     for t in tasks:
-        marker = {"pending": "[ ]", "in_progress": "[~]", "completed": "[x]"}.get(t.status, "[?]")
+        marker = {"pending": "[ ]", "in_progress": "[~]", "completed": "[x]"}.get(
+            t.status, "[?]"
+        )
         lines.append(f"  #{t.id} {marker} {t.subject}")
     return "\n".join(lines)
+
 
 def _parse(input_val: Any) -> dict:
     if isinstance(input_val, dict):

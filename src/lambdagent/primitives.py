@@ -22,6 +22,7 @@ from .core import Term, Context, TraceEntry
 # Lam: λ 抽象 — 核心构造，创建 Agent
 # ============================================================
 
+
 class Lam(Term):
     """
     Lambda 抽象: λx.body
@@ -53,43 +54,48 @@ class Lam(Term):
     def _get_client(self):
         if self._client is None:
             provider = self._detect_provider()
-            if provider == 'anthropic':
+            if provider == "anthropic":
                 import anthropic
-                self._client = ('anthropic', anthropic.Anthropic())
-            elif provider == 'openai':
+
+                self._client = ("anthropic", anthropic.Anthropic())
+            elif provider == "openai":
                 import openai
-                self._client = ('openai', openai.OpenAI())
-            elif provider == 'ollama':
-                self._client = ('ollama', None)
+
+                self._client = ("openai", openai.OpenAI())
+            elif provider == "ollama":
+                self._client = ("ollama", None)
             else:
-                self._client = ('dashscope', None)
+                self._client = ("dashscope", None)
         return self._client
 
     def _detect_provider(self) -> str:
         m = self.model.lower()
         # Explicit provider prefix takes priority
-        if m.startswith('dashscope/'):
-            return 'dashscope'
-        if m.startswith('anthropic/'):
-            return 'anthropic'
-        if m.startswith('openai/'):
-            return 'openai'
-        if m.startswith('ollama/'):
-            return 'ollama'
+        if m.startswith("dashscope/"):
+            return "dashscope"
+        if m.startswith("anthropic/"):
+            return "anthropic"
+        if m.startswith("openai/"):
+            return "openai"
+        if m.startswith("ollama/"):
+            return "ollama"
         # Auto-detect by model name
-        if 'claude' in m or 'anthropic' in m:
-            return 'anthropic'
-        elif 'gpt' in m or 'openai' in m:
-            return 'openai'
-        elif 'qwen' in m or 'glm' in m or 'llama' in m or 'ollama' in m:
+        if "claude" in m or "anthropic" in m:
+            return "anthropic"
+        elif "gpt" in m or "openai" in m:
+            return "openai"
+        elif "qwen" in m or "glm" in m or "llama" in m or "ollama" in m:
             # 检测 Ollama 是否在运行
             try:
                 import urllib.request
-                with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2):
-                    return 'ollama'
+
+                with urllib.request.urlopen(
+                    "http://localhost:11434/api/tags", timeout=2
+                ):
+                    return "ollama"
             except Exception:
                 pass
-        return 'dashscope'
+        return "dashscope"
 
     def apply(self, input: Any, ctx: Context | None = None) -> Any:
         """β-规约: (λ_D x) → F_{M,D}(x)
@@ -100,20 +106,30 @@ class Lam(Term):
         t0 = time.time()
 
         # S17: Enforce token budget hard limit before LLM call
-        token_budget = ctx.bindings.get("__token_budget__") if hasattr(ctx, 'bindings') else None
+        token_budget = (
+            ctx.bindings.get("__token_budget__") if hasattr(ctx, "bindings") else None
+        )
         if token_budget is not None:
-            estimated = token_budget.estimate_cost(str(input)) if hasattr(token_budget, 'estimate_cost') else 0
+            estimated = (
+                token_budget.estimate_cost(str(input))
+                if hasattr(token_budget, "estimate_cost")
+                else 0
+            )
             token_budget.enforce_before_call(estimated)
 
         # Paper III: 检查效果处理器
         # DESIGN-01: Use PassthroughHandler base class for isinstance check
         from .handlers import get_current_handler, PassthroughHandler
+
         handler = get_current_handler()
         if handler is not None and not isinstance(handler, PassthroughHandler):
             # 使用 handler 处理 LLM 效果（如 TestHandler 的 Mock）
             raw = handler.handle_llm(
-                self.prompt, str(input), self.model,
-                temperature=self.temperature, max_tokens=self.max_tokens,
+                self.prompt,
+                str(input),
+                self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
             )
         else:
             raw = self._call_llm(str(input))
@@ -124,6 +140,7 @@ class Lam(Term):
 
         # Report cost to TraceHandler if active
         from .handlers import TraceHandler
+
         if handler is not None and isinstance(handler, TraceHandler):
             handler.handle_cost(0, duration, self.model)
 
@@ -133,7 +150,7 @@ class Lam(Term):
         """自回归解码 = 一步 β-规约. 支持 Anthropic/OpenAI/DashScope."""
         provider, client = self._get_client()
 
-        if provider == 'anthropic':
+        if provider == "anthropic":
             response = client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
@@ -143,7 +160,7 @@ class Lam(Term):
             )
             return response.content[0].text.strip()
 
-        elif provider == 'openai':
+        elif provider == "openai":
             response = client.chat.completions.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
@@ -155,25 +172,32 @@ class Lam(Term):
             )
             return response.choices[0].message.content.strip()
 
-        elif provider == 'ollama':
+        elif provider == "ollama":
             # Ollama local model via HTTP
             import json, urllib.request
+
             url = "http://localhost:11434/api/chat"
-            body = json.dumps({
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": self.prompt},
-                    {"role": "user", "content": input_text},
-                ],
-                "options": {
-                    "temperature": self.temperature,
-                    "num_predict": self.max_tokens,
+            body = json.dumps(
+                {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": self.prompt},
+                        {"role": "user", "content": input_text},
+                    ],
+                    "options": {
+                        "temperature": self.temperature,
+                        "num_predict": self.max_tokens,
+                    },
+                    "stream": False,
+                }
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
                 },
-                "stream": False,
-            }).encode("utf-8")
-            req = urllib.request.Request(url, data=body, headers={
-                "Content-Type": "application/json",
-            })
+            )
             with urllib.request.urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read())
                 return data.get("message", {}).get("content", "").strip()
@@ -181,24 +205,31 @@ class Lam(Term):
         else:
             # DashScope via HTTP
             import os, json, urllib.request
+
             api_key = os.environ.get("DASHSCOPE_API_KEY", "")
             if not api_key:
                 raise RuntimeError("DASHSCOPE_API_KEY not set")
             model_name = self.model.replace("dashscope/", "")
             url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-            body = json.dumps({
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": self.prompt},
-                    {"role": "user", "content": input_text},
-                ],
-                "temperature": self.temperature,
-                "max_tokens": self.max_tokens,
-            }).encode("utf-8")
-            req = urllib.request.Request(url, data=body, headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            })
+            body = json.dumps(
+                {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": self.prompt},
+                        {"role": "user", "content": input_text},
+                    ],
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
+                }
+            ).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                },
+            )
             with urllib.request.urlopen(req, timeout=120) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"].strip()
@@ -207,6 +238,7 @@ class Lam(Term):
 # ============================================================
 # Compose: 函数组合 f >> g = λx. g(f(x))
 # ============================================================
+
 
 class Compose(Term):
     """
@@ -245,6 +277,7 @@ class Compose(Term):
 # If: Church 布尔条件分支
 # ============================================================
 
+
 class If(Term):
     """
     Church 条件: IF cond THEN then_ ELSE else_
@@ -260,7 +293,7 @@ class If(Term):
         then_: Term,
         else_: Term,
     ):
-        cond_name = getattr(cond, '_name', 'cond')
+        cond_name = getattr(cond, "_name", "cond")
         super().__init__(f"If({cond_name})")
         self.cond = cond
         self.then_ = then_
@@ -291,6 +324,7 @@ class If(Term):
 # ============================================================
 # Loop: Y 组合子 — 递归/迭代
 # ============================================================
+
 
 class Loop(Term):
     """
@@ -328,6 +362,7 @@ class Loop(Term):
 # Pair / Fst / Snd: Church 有序对
 # ============================================================
 
+
 class Pair(Term):
     """
     Church 对: PAIR = λa.λb.λf. f a b
@@ -341,6 +376,7 @@ class Pair(Term):
         self.second = second
         # Paper III: Pair 输出类型 = (output(first), output(second))
         from .lam_types import T_TUPLE
+
         self._output_type = T_TUPLE(first.output_type, second.output_type)
 
     def apply(self, input: Any, ctx: Context | None = None) -> tuple:
@@ -352,6 +388,7 @@ class Pair(Term):
 
 class Fst(Term):
     """FST = λp. p TRUE — 取第一个元素"""
+
     def __init__(self):
         super().__init__("Fst")
 
@@ -367,6 +404,7 @@ class Fst(Term):
 
 class Snd(Term):
     """SND = λp. p FALSE — 取第二个元素"""
+
     def __init__(self):
         super().__init__("Snd")
 
@@ -383,6 +421,7 @@ class Snd(Term):
 # ============================================================
 # Tool: 外部函数 → Lambda 项
 # ============================================================
+
 
 class Tool(Term):
     """
@@ -405,6 +444,7 @@ class Tool(Term):
 
         # Paper III: 检查效果处理器
         from .handlers import get_current_handler, ProductionHandler
+
         handler = get_current_handler()
         if handler is not None and not isinstance(handler, ProductionHandler):
             result = handler.handle_tool(self._name, self.fn, input)

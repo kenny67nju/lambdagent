@@ -16,6 +16,7 @@ C) 组合未见过的函数：custom_f ∘ custom_g
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lambdagent import Dataset, Tool, Compose, Context
@@ -44,18 +45,24 @@ def main():
 
     encode_fn = Dataset(
         examples=[
-            ("0", "7"),    # 0*3+7=7
-            ("1", "10"),   # 1*3+7=10
-            ("2", "13"),   # 2*3+7=13
-            ("5", "22"),   # 5*3+7=22
+            ("0", "7"),  # 0*3+7=7
+            ("1", "10"),  # 1*3+7=10
+            ("2", "13"),  # 2*3+7=13
+            ("5", "22"),  # 5*3+7=22
             ("10", "37"),  # 10*3+7=37
         ],
         description="Apply the function to the input number. Output only the result number.",
     ).to_lam("custom_encode")
 
     test_cases_a = [
-        (3, 16), (4, 19), (7, 28), (8, 31),
-        (15, 52), (20, 67), (33, 106), (100, 307),
+        (3, 16),
+        (4, 19),
+        (7, 28),
+        (8, 31),
+        (15, 52),
+        (20, 67),
+        (33, 106),
+        (100, 307),
     ]
     for n, expected in test_cases_a:
         check(f"f({n})=n*3+7", str(expected), encode_fn(str(n), ctx))
@@ -68,18 +75,24 @@ def main():
 
     decode_fn = Dataset(
         examples=[
-            ("7", "0"),    # (7-7)/3=0
-            ("10", "1"),   # (10-7)/3=1
-            ("13", "2"),   # (13-7)/3=2
-            ("22", "5"),   # (22-7)/3=5
+            ("7", "0"),  # (7-7)/3=0
+            ("10", "1"),  # (10-7)/3=1
+            ("13", "2"),  # (13-7)/3=2
+            ("22", "5"),  # (22-7)/3=5
             ("37", "10"),  # (37-7)/3=10
         ],
         description="Apply the inverse function to the input number. Output only the result number.",
     ).to_lam("custom_decode")
 
     test_cases_b = [
-        (16, 3), (19, 4), (28, 7), (31, 8),
-        (52, 15), (67, 20), (106, 33), (307, 100),
+        (16, 3),
+        (19, 4),
+        (28, 7),
+        (31, 8),
+        (52, 15),
+        (67, 20),
+        (106, 33),
+        (307, 100),
     ]
     for n, expected in test_cases_b:
         check(f"g({n})=(n-7)/3", str(expected), decode_fn(str(n), ctx))
@@ -170,9 +183,9 @@ def main():
     # 汇总
     # ════════════════════════════════════════════
     total = passed + failed
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"实验 5 总计: {passed}/{total} 通过")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
 
 if __name__ == "__main__":

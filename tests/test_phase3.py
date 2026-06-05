@@ -8,6 +8,7 @@ Tests:
   - T21: Rate limiter
   - T22: Resilient MCP client
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,9 +20,11 @@ import pytest
 # T18: Observability (AgentTracer)
 # ════════════════════════════════════════════════════════════
 
+
 class TestObservability:
     def test_tracer_span(self):
         from lambdagent.observability import AgentTracer
+
         tracer = AgentTracer("test")
         with tracer.span("test_op", key="value") as span:
             time.sleep(0.01)
@@ -32,6 +35,7 @@ class TestObservability:
 
     def test_tracer_error_span(self):
         from lambdagent.observability import AgentTracer
+
         tracer = AgentTracer("test")
         with pytest.raises(ValueError):
             with tracer.span("failing_op") as span:
@@ -41,14 +45,17 @@ class TestObservability:
 
     def test_record_reduction(self):
         from lambdagent.observability import AgentTracer
+
         tracer = AgentTracer("test")
-        tracer.record_reduction("think", "Lam", "input", "output", 150.0,
-                                model="claude-3", tokens=500)
+        tracer.record_reduction(
+            "think", "Lam", "input", "output", 150.0, model="claude-3", tokens=500
+        )
         assert len(tracer.spans) == 1
         assert tracer.spans[0].attributes["tokens.used"] == 500
 
     def test_export_json(self):
         from lambdagent.observability import AgentTracer
+
         tracer = AgentTracer("test")
         with tracer.span("op1"):
             pass
@@ -59,6 +66,7 @@ class TestObservability:
 
     def test_summary(self):
         from lambdagent.observability import AgentTracer
+
         tracer = AgentTracer("test")
         with tracer.span("op1"):
             pass
@@ -70,9 +78,11 @@ class TestObservability:
 # T19: Token Budget
 # ════════════════════════════════════════════════════════════
 
+
 class TestTokenBudget:
     def test_basic_tracking(self):
         from lambdagent.token_budget import TokenBudget
+
         budget = TokenBudget(max_tokens=1000)
         assert budget.remaining == 1000
         budget.record(100, 50, model="claude-3")
@@ -81,6 +91,7 @@ class TestTokenBudget:
 
     def test_can_afford(self):
         from lambdagent.token_budget import TokenBudget
+
         budget = TokenBudget(max_tokens=100)
         assert budget.can_afford(50)
         assert budget.can_afford(99)
@@ -88,6 +99,7 @@ class TestTokenBudget:
 
     def test_budget_exhausted_error(self):
         from lambdagent.token_budget import TokenBudget, BudgetExhaustedError
+
         budget = TokenBudget(max_tokens=100)
         budget.record(60, 50)
         with pytest.raises(BudgetExhaustedError):
@@ -95,6 +107,7 @@ class TestTokenBudget:
 
     def test_by_model_tracking(self):
         from lambdagent.token_budget import TokenBudget
+
         budget = TokenBudget(max_tokens=10000)
         budget.record(100, 50, model="claude-3")
         budget.record(200, 100, model="gpt-4")
@@ -104,6 +117,7 @@ class TestTokenBudget:
 
     def test_estimate_cost(self):
         from lambdagent.token_budget import TokenBudget
+
         budget = TokenBudget()
         assert budget.estimate_cost("hello world") == 2  # 11 chars / 4
 
@@ -112,9 +126,11 @@ class TestTokenBudget:
 # T20: Tool concurrency safety
 # ════════════════════════════════════════════════════════════
 
+
 class TestConcurrentTools:
     def test_concurrent_tool_creation(self):
         from lambdagent.concurrent_tools import ConcurrentTool
+
         safe = ConcurrentTool("search", lambda x: x, concurrent_safe=True)
         unsafe = ConcurrentTool("write", lambda x: x, concurrent_safe=False)
         assert safe.concurrent_safe is True
@@ -122,6 +138,7 @@ class TestConcurrentTools:
 
     def test_partition_by_safety(self):
         from lambdagent.concurrent_tools import ConcurrentTool, partition_by_safety
+
         tools = [
             ConcurrentTool("read1", lambda x: x, concurrent_safe=True),
             ConcurrentTool("write1", lambda x: x, concurrent_safe=False),
@@ -133,6 +150,7 @@ class TestConcurrentTools:
 
     def test_helper_constructors(self):
         from lambdagent.concurrent_tools import read_tool, write_tool
+
         r = read_tool("search", lambda x: x)
         w = write_tool("save", lambda x: x)
         assert r.concurrent_safe is True
@@ -143,15 +161,18 @@ class TestConcurrentTools:
 # T21: Rate Limiter
 # ════════════════════════════════════════════════════════════
 
+
 class TestRateLimiter:
     def test_basic_acquire(self):
         from lambdagent.rate_limiter import RateLimiter
+
         limiter = RateLimiter(requests_per_minute=600)  # 10/sec
         wait = limiter.acquire()
         assert wait == 0.0
 
     def test_rate_limiting(self):
         from lambdagent.rate_limiter import RateLimiter
+
         limiter = RateLimiter(requests_per_minute=60)  # 1/sec
         # Drain all tokens
         for _ in range(60):
@@ -164,6 +185,7 @@ class TestRateLimiter:
 
     def test_async_acquire(self):
         from lambdagent.rate_limiter import RateLimiter
+
         limiter = RateLimiter(requests_per_minute=600)
 
         async def _run():
@@ -176,6 +198,7 @@ class TestRateLimiter:
 
     def test_summary(self):
         from lambdagent.rate_limiter import RateLimiter
+
         limiter = RateLimiter(60)
         limiter.acquire()
         s = limiter.summary()
@@ -186,18 +209,22 @@ class TestRateLimiter:
 # T22: Resilient MCP Client
 # ════════════════════════════════════════════════════════════
 
+
 class TestResilientMCP:
     def test_client_creation(self):
         from lambdagent.resilient_mcp import ResilientMCPClient
+
         client = ResilientMCPClient("http://localhost:8080", name="test")
         assert client.name == "test"
         assert client.full_url == "http://localhost:8080"
 
     def test_tool_cache(self):
         from lambdagent.resilient_mcp import ResilientMCPClient
+
         client = ResilientMCPClient("http://localhost:8080")
         # Manually set cache
         from lambdagent.resilient_mcp import MCPToolSchema
+
         client._tool_cache = [MCPToolSchema(name="test_tool", description="A test")]
         client._cache_time = time.time()
         tools = client.list_tools()
@@ -207,6 +234,7 @@ class TestResilientMCP:
     def test_call_tool_with_offline_server(self):
         from lambdagent.resilient_mcp import ResilientMCPClient
         from lambdagent.retry import RetryPolicy
+
         client = ResilientMCPClient(
             "http://localhost:99999",
             retry_policy=RetryPolicy(max_attempts=1, base_delay=0.01),
@@ -217,6 +245,7 @@ class TestResilientMCP:
 
     def test_summary(self):
         from lambdagent.resilient_mcp import ResilientMCPClient
+
         client = ResilientMCPClient("http://localhost:8080", name="test")
         s = client.summary()
         assert "test" in s

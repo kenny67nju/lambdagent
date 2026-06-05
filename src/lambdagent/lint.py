@@ -4,7 +4,9 @@ lambdagent.lint — v1 兼容层，已迁移到 lambdagent.fromconfig.lint (v2)
 请使用:
     from lambdagent.fromconfig import lint_config, format_lint
 """
+
 import warnings
+
 warnings.warn(
     "lambdagent.lint is deprecated (v1). "
     "Use lambdagent.fromconfig.lint (v2) instead: "

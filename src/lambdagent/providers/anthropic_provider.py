@@ -6,6 +6,7 @@ Uses the official anthropic SDK. Requires ANTHROPIC_API_KEY.
 L02: Added chat_typed() for ChatMessage/ChatResponse support,
 overrides provider_name and default_model properties.
 """
+
 from __future__ import annotations
 
 import os
@@ -27,7 +28,10 @@ class AnthropicProvider(LLMProvider):
             try:
                 import anthropic
             except ImportError:
-                raise ProviderError("anthropic package not installed: pip install anthropic", "anthropic")
+                raise ProviderError(
+                    "anthropic package not installed: pip install anthropic",
+                    "anthropic",
+                )
             api_key = self._api_key or os.environ.get("ANTHROPIC_API_KEY", "")
             if not api_key:
                 raise ProviderError("ANTHROPIC_API_KEY not set", "anthropic")
@@ -60,13 +64,21 @@ class AnthropicProvider(LLMProvider):
             )
             return response.content[0].text.strip()
         except Exception as e:
-            raise ProviderError(f"Anthropic API error: {e}", "anthropic", retryable="overloaded" in str(e).lower())
+            raise ProviderError(
+                f"Anthropic API error: {e}",
+                "anthropic",
+                retryable="overloaded" in str(e).lower(),
+            )
 
     # ── L02: Unified interface overrides ──
 
-    def chat_typed(self, messages: List[ChatMessage],
-                   model: str = "", temperature: float = 0.0,
-                   max_tokens: int = 4096) -> ChatResponse:
+    def chat_typed(
+        self,
+        messages: List[ChatMessage],
+        model: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
+    ) -> ChatResponse:
         """Typed chat with full response metadata."""
         client = self._get_client()
 
@@ -96,13 +108,21 @@ class AnthropicProvider(LLMProvider):
                 finish_reason=response.stop_reason or "",
             )
         except Exception as e:
-            raise ProviderError(f"Anthropic API error: {e}", "anthropic",
-                                retryable="overloaded" in str(e).lower())
+            raise ProviderError(
+                f"Anthropic API error: {e}",
+                "anthropic",
+                retryable="overloaded" in str(e).lower(),
+            )
 
-    async def achat(self, messages: List[ChatMessage],
-                    model: str = "", temperature: float = 0.0,
-                    max_tokens: int = 4096) -> ChatResponse:
+    async def achat(
+        self,
+        messages: List[ChatMessage],
+        model: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 4096,
+    ) -> ChatResponse:
         import asyncio
+
         return await asyncio.get_event_loop().run_in_executor(
             None, lambda: self.chat_typed(messages, model, temperature, max_tokens)
         )

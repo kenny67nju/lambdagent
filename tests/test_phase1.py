@@ -10,6 +10,7 @@ Tests:
   - T07: CancellationToken
   - T08: Workspace isolation
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,19 +21,24 @@ import time
 import pytest
 from unittest.mock import MagicMock, patch
 
+
 # Helper for running async tests without pytest-asyncio auto mode
 def run_async(coro):
     """Run async test in a new event loop."""
     return asyncio.get_event_loop().run_until_complete(coro)
 
+
 # ════════════════════════════════════════════════════════════
 # T05: Retry + CircuitBreaker
 # ════════════════════════════════════════════════════════════
 
+
 class TestRetryPolicy:
     def test_sync_retry_success(self):
         from lambdagent.retry import RetryPolicy, with_retry_sync
+
         call_count = 0
+
         def flaky():
             nonlocal call_count
             call_count += 1
@@ -47,6 +53,7 @@ class TestRetryPolicy:
 
     def test_sync_retry_exhausted(self):
         from lambdagent.retry import RetryPolicy, with_retry_sync
+
         def always_fail():
             raise ConnectionError("permanent")
 
@@ -56,7 +63,9 @@ class TestRetryPolicy:
 
     def test_async_retry_success(self):
         from lambdagent.retry import RetryPolicy, with_retry
+
         call_count = 0
+
         async def flaky():
             nonlocal call_count
             call_count += 1
@@ -73,6 +82,7 @@ class TestRetryPolicy:
 
     def test_async_retry_with_timeout(self):
         from lambdagent.retry import RetryPolicy, with_retry
+
         async def slow():
             await asyncio.sleep(10)
             return "never"
@@ -88,6 +98,7 @@ class TestRetryPolicy:
 class TestCircuitBreaker:
     def test_circuit_opens_after_failures(self):
         from lambdagent.retry import CircuitBreaker, CircuitOpenError
+
         cb = CircuitBreaker(failure_threshold=2, reset_timeout=60)
 
         def fail():
@@ -104,6 +115,7 @@ class TestCircuitBreaker:
 
     def test_circuit_resets(self):
         from lambdagent.retry import CircuitBreaker
+
         cb = CircuitBreaker(failure_threshold=2, reset_timeout=0.1)
 
         def fail():
@@ -125,9 +137,11 @@ class TestCircuitBreaker:
 # T07: CancellationToken
 # ════════════════════════════════════════════════════════════
 
+
 class TestCancellationToken:
     def test_basic_cancel(self):
         from lambdagent.cancellation import CancellationToken, CancelledError
+
         token = CancellationToken()
         assert not token.is_cancelled
         token.cancel("test")
@@ -137,6 +151,7 @@ class TestCancellationToken:
 
     def test_parent_child_propagation(self):
         from lambdagent.cancellation import CancellationToken
+
         parent = CancellationToken()
         child1 = parent.child()
         child2 = parent.child()
@@ -149,6 +164,7 @@ class TestCancellationToken:
 
     def test_child_cancel_doesnt_affect_parent(self):
         from lambdagent.cancellation import CancellationToken
+
         parent = CancellationToken()
         child = parent.child()
         child.cancel("local")
@@ -157,6 +173,7 @@ class TestCancellationToken:
 
     def test_null_token_never_cancels(self):
         from lambdagent.cancellation import NullCancellationToken
+
         token = NullCancellationToken()
         token.cancel("should not work")
         assert not token.is_cancelled
@@ -164,6 +181,7 @@ class TestCancellationToken:
 
     def test_callback_on_cancel(self):
         from lambdagent.cancellation import CancellationToken
+
         called = []
         token = CancellationToken()
         token.on_cancel(lambda: called.append("called"))
@@ -175,9 +193,11 @@ class TestCancellationToken:
 # T08: Workspace Isolation
 # ════════════════════════════════════════════════════════════
 
+
 class TestWorkspaceIsolation:
     def test_none_isolation(self):
         from lambdagent.isolation import WorkspaceManager, IsolationLevel
+
         with tempfile.TemporaryDirectory() as tmpdir:
             mgr = WorkspaceManager(tmpdir)
             ws = mgr.create("agent-1", IsolationLevel.NONE)
@@ -187,6 +207,7 @@ class TestWorkspaceIsolation:
 
     def test_directory_isolation(self):
         from lambdagent.isolation import WorkspaceManager, IsolationLevel
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a file in base dir
             with open(os.path.join(tmpdir, "test.txt"), "w") as f:
@@ -203,15 +224,24 @@ class TestWorkspaceIsolation:
     def test_worktree_isolation(self):
         """Test git worktree isolation (requires git repo)."""
         from lambdagent.isolation import WorkspaceManager, IsolationLevel
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # Init a git repo
             subprocess.run(["git", "init"], cwd=tmpdir, capture_output=True)
-            subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=tmpdir, capture_output=True)
-            subprocess.run(["git", "config", "user.name", "Test"], cwd=tmpdir, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@test.com"],
+                cwd=tmpdir,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"], cwd=tmpdir, capture_output=True
+            )
             with open(os.path.join(tmpdir, "file.txt"), "w") as f:
                 f.write("content")
             subprocess.run(["git", "add", "."], cwd=tmpdir, capture_output=True)
-            subprocess.run(["git", "commit", "-m", "init"], cwd=tmpdir, capture_output=True)
+            subprocess.run(
+                ["git", "commit", "-m", "init"], cwd=tmpdir, capture_output=True
+            )
 
             mgr = WorkspaceManager(tmpdir)
             ws = mgr.create("coder", IsolationLevel.WORKTREE)
@@ -229,6 +259,7 @@ class TestWorkspaceIsolation:
 
     def test_slug_validation(self):
         from lambdagent.isolation import WorkspaceManager
+
         mgr = WorkspaceManager(".")
         with pytest.raises(Exception):  # IsolationError or ValueError
             mgr._validate_slug("../escape")
@@ -239,6 +270,7 @@ class TestWorkspaceIsolation:
 # ════════════════════════════════════════════════════════════
 # T01: Async Term (aapply)
 # ════════════════════════════════════════════════════════════
+
 
 class TestAsyncTerm:
     def test_tool_aapply(self):
@@ -294,6 +326,7 @@ class TestAsyncTerm:
         from lambdagent.core import Context
 
         counter = [0]
+
         def inc(x):
             counter[0] += 1
             time.sleep(0.005)  # Small delay to let cancel_later run
@@ -320,9 +353,11 @@ class TestAsyncTerm:
 # T06: Configurable Timeouts
 # ════════════════════════════════════════════════════════════
 
+
 class TestConfigurableTimeouts:
     def test_timeout_config_defaults(self):
         from lambdagent.agentruntime.config import TimeoutConfig
+
         tc = TimeoutConfig()
         assert tc.llm_call == 120
         assert tc.tool_call == 30

@@ -19,25 +19,34 @@ import shutil
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from lambdagent import (
-    Tool, Context, Lam,
-    MCPServer, MCPTool,
-    Checkpoint, CheckpointManager, save_context, load_context,
+    Tool,
+    Context,
+    Lam,
+    MCPServer,
+    MCPTool,
+    Checkpoint,
+    CheckpointManager,
+    save_context,
+    load_context,
     SharedMemory,
 )
 
 
 def separator(title: str):
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  案例: {title}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 # ══════════════════════════════════════════════════════════════
 # 辅助: 模拟 MCP Server（本地 HTTP）
 # ══════════════════════════════════════════════════════════════
+
 
 class MockMCPHandler(BaseHTTPRequestHandler):
     """模拟 MCP Server，提供 3 个工具"""
@@ -46,17 +55,29 @@ class MockMCPHandler(BaseHTTPRequestHandler):
         "web_search": {
             "name": "web_search",
             "description": "Search the web for information",
-            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}},
+            "inputSchema": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+            },
         },
         "calculator": {
             "name": "calculator",
             "description": "Evaluate math expressions",
-            "inputSchema": {"type": "object", "properties": {"expression": {"type": "string"}}},
+            "inputSchema": {
+                "type": "object",
+                "properties": {"expression": {"type": "string"}},
+            },
         },
         "translator": {
             "name": "translator",
             "description": "Translate text between languages",
-            "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "target_lang": {"type": "string"}}},
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "target_lang": {"type": "string"},
+                },
+            },
         },
     }
 
@@ -68,7 +89,11 @@ class MockMCPHandler(BaseHTTPRequestHandler):
         req_id = body.get("id", "1")
 
         if method == "initialize":
-            result = {"protocolVersion": "2025-11-25", "capabilities": {}, "serverInfo": {"name": "mock-mcp"}}
+            result = {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {},
+                "serverInfo": {"name": "mock-mcp"},
+            }
         elif method == "tools/list":
             result = {"tools": list(self.TOOLS.values())}
         elif method == "tools/call":
@@ -87,22 +112,32 @@ class MockMCPHandler(BaseHTTPRequestHandler):
     def _call_tool(self, name, args):
         if name == "web_search":
             query = args.get("query", args.get("input", ""))
-            return {"content": [{"type": "text", "text":
-                f"Search results for '{query}':\n"
-                f"1. Wikipedia: {query} is a widely studied topic\n"
-                f"2. ArXiv: Recent advances in {query}\n"
-                f"3. GitHub: Open source projects related to {query}"}]}
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Search results for '{query}':\n"
+                        f"1. Wikipedia: {query} is a widely studied topic\n"
+                        f"2. ArXiv: Recent advances in {query}\n"
+                        f"3. GitHub: Open source projects related to {query}",
+                    }
+                ]
+            }
         elif name == "calculator":
             expr = args.get("expression", args.get("input", ""))
             try:
                 result = eval(expr, {"__builtins__": {}}, {})
                 return {"content": [{"type": "text", "text": f"{expr} = {result}"}]}
             except Exception:
-                return {"content": [{"type": "text", "text": f"Cannot evaluate: {expr}"}]}
+                return {
+                    "content": [{"type": "text", "text": f"Cannot evaluate: {expr}"}]
+                }
         elif name == "translator":
             text = args.get("text", args.get("input", ""))
             lang = args.get("target_lang", "Chinese")
-            return {"content": [{"type": "text", "text": f"[{lang}] Translated: {text}"}]}
+            return {
+                "content": [{"type": "text", "text": f"[{lang}] Translated: {text}"}]
+            }
         return {"content": [{"type": "text", "text": f"Unknown tool: {name}"}]}
 
     def log_message(self, format, *args):
@@ -121,6 +156,7 @@ def start_mock_mcp(port=19876):
 # ══════════════════════════════════════════════════════════════
 # 案例 1: MCP Client — 工具发现与调用
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_mcp_client():
     """
@@ -171,12 +207,16 @@ def demo_mcp_client():
         print(f"    calc('2**10 + 42'):")
         print(f"      {r2}")
 
-        r3 = trans_tool(json.dumps({"text": "Hello World", "target_lang": "Chinese"}), ctx)
+        r3 = trans_tool(
+            json.dumps({"text": "Hello World", "target_lang": "Chinese"}), ctx
+        )
         print(f"    translator('Hello World' → Chinese):")
         print(f"      {r3}")
 
         # 管道组合: MCP 工具参与 >>
-        pipeline = search_tool >> Tool("extract_first", lambda x: x.split("\n")[1] if "\n" in x else x)
+        pipeline = search_tool >> Tool(
+            "extract_first", lambda x: x.split("\n")[1] if "\n" in x else x
+        )
         r4 = pipeline("AI agents", ctx)
         print(f"\n  [管道] search >> extract_first:")
         print(f"    {r4}")
@@ -197,6 +237,7 @@ def demo_mcp_client():
 # ══════════════════════════════════════════════════════════════
 # 案例 2: Checkpoint — 断点保存/恢复
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_checkpoint_basic():
     """
@@ -227,8 +268,12 @@ def demo_checkpoint_basic():
         print(f"    追踪: {len(ctx.trace)} 步")
 
         # 保存
-        cp_path = save_context(ctx, os.path.join(tmpdir, "mid_checkpoint.json"),
-                               last_input=r2, description="研究分析完成，待综合")
+        cp_path = save_context(
+            ctx,
+            os.path.join(tmpdir, "mid_checkpoint.json"),
+            last_input=r2,
+            description="研究分析完成，待综合",
+        )
         print(f"\n  [Save] → {os.path.basename(cp_path)}")
 
         # 查看 checkpoint 内容
@@ -242,7 +287,9 @@ def demo_checkpoint_basic():
         print(f"    恢复记忆: session_id={ctx2.memory.get('session_id', '?')}")
 
         # 在恢复的 context 上继续
-        step3 = Tool("synthesize", lambda x: f"综合报告: 基于分析结果，建议投资。ROI 预估 3.2x")
+        step3 = Tool(
+            "synthesize", lambda x: f"综合报告: 基于分析结果，建议投资。ROI 预估 3.2x"
+        )
         r3 = step3(cp.last_input, ctx2)
         print(f"    Step 3 (续): {r3}")
         print(f"    总追踪: {len(ctx2.trace)} 步 (2 恢复 + 1 新增)")
@@ -261,6 +308,7 @@ def demo_checkpoint_basic():
 # 案例 3: CheckpointManager — 多版本管理
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_checkpoint_manager():
     """
     CheckpointManager: 自动保存多个版本，支持回退。
@@ -275,7 +323,9 @@ def demo_checkpoint_manager():
 
     tmpdir = tempfile.mkdtemp()
     try:
-        mgr = CheckpointManager(os.path.join(tmpdir, "research_agent"), max_checkpoints=5)
+        mgr = CheckpointManager(
+            os.path.join(tmpdir, "research_agent"), max_checkpoints=5
+        )
         ctx = Context()
 
         # 模拟多步执行，每步保存
@@ -290,7 +340,9 @@ def demo_checkpoint_manager():
         for name, output in steps:
             tool = Tool(name, lambda x, o=output: o)
             tool(f"input for {name}", ctx)
-            path = mgr.save(ctx, description=f"After {name}", last_input=f"input for {name}")
+            path = mgr.save(
+                ctx, description=f"After {name}", last_input=f"input for {name}"
+            )
             print(f"  [{name}] saved → {os.path.basename(path)}")
 
         # 列出所有 checkpoint
@@ -313,7 +365,7 @@ def demo_checkpoint_manager():
         rolled_ctx2 = mgr.rollback()
         print(f"    回退后: {len(rolled_ctx2.trace)} steps")
 
-        assert len(rolled_ctx.trace) == 4   # search + filter + summarize + critique
+        assert len(rolled_ctx.trace) == 4  # search + filter + summarize + critique
         assert len(rolled_ctx2.trace) == 3  # search + filter + summarize
 
     finally:
@@ -325,6 +377,7 @@ def demo_checkpoint_manager():
 # ══════════════════════════════════════════════════════════════
 # 案例 4: Checkpoint + SharedMemory
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_checkpoint_shared():
     """
@@ -357,6 +410,7 @@ def demo_checkpoint_shared():
 
         # 保存（含 SharedMemory）
         from lambdagent.checkpoint import save_context_with_shared
+
         cp_path = save_context_with_shared(
             ctx,
             shared_memories={"research": shared.read_all()},
@@ -379,7 +433,12 @@ def demo_checkpoint_shared():
         assert restored_shared.read("trend") == "上升"
 
         # 继续执行
-        reporter = Tool("report", lambda x: f"报告: 基于 {restored_shared.read('data_points')} 个数据点，趋势{restored_shared.read('trend')}")
+        reporter = Tool(
+            "report",
+            lambda x: (
+                f"报告: 基于 {restored_shared.read('data_points')} 个数据点，趋势{restored_shared.read('trend')}"
+            ),
+        )
         r = reporter("生成报告", ctx2)
         print(f"    Step 3 (续): {r}")
         print(f"    总追踪: {len(ctx2.trace)} 步")
@@ -393,6 +452,7 @@ def demo_checkpoint_shared():
 # ══════════════════════════════════════════════════════════════
 # 案例 5: MCP + Checkpoint 综合管道
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_mcp_checkpoint_pipeline():
     """
@@ -444,7 +504,9 @@ def demo_mcp_checkpoint_pipeline():
         print(f"    恢复: {len(ctx_restored.trace)} 步追踪")
 
         # Step 5: 继续执行
-        final = Tool("report", lambda x: f"最终报告: LLM Agent 市场预计 {r2}。研究完成。")
+        final = Tool(
+            "report", lambda x: f"最终报告: LLM Agent 市场预计 {r2}。研究完成。"
+        )
         r_final = final("生成报告", ctx_restored)
         print(f"  [Step 5] {r_final}")
 
@@ -481,6 +543,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ❌ {name} 失败: {e}")
             import traceback
+
             traceback.print_exc()
 
     print("\n" + "=" * 70)

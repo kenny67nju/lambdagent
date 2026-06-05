@@ -17,26 +17,39 @@ import os
 import time
 import json
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from lambdagent import (
-    Tool, Context,
-    Skill, SkillRegistry, skill, SkillAgent,
-    AgentCard, A2AServer, A2AClient,
-    skill_to_agent_card, registry_to_agent_card,
-    RAGTool, AgenticRAG, SimpleVectorStore, create_rag,
+    Tool,
+    Context,
+    Skill,
+    SkillRegistry,
+    skill,
+    SkillAgent,
+    AgentCard,
+    A2AServer,
+    A2AClient,
+    skill_to_agent_card,
+    registry_to_agent_card,
+    RAGTool,
+    AgenticRAG,
+    SimpleVectorStore,
+    create_rag,
 )
 
 
 def separator(title: str):
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  案例: {title}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 # ══════════════════════════════════════════════════════════════
 # 案例 1: A2A Agent Card 发布
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_agent_card():
     """
@@ -50,13 +63,17 @@ def demo_agent_card():
     SkillRegistry().clear()
 
     # 创建技能
-    @skill("code_review", "Review code for bugs and improvements",
-           tags=["code", "review"], version="2.0.0", author="lambdagent-team")
+    @skill(
+        "code_review",
+        "Review code for bugs and improvements",
+        tags=["code", "review"],
+        version="2.0.0",
+        author="lambdagent-team",
+    )
     def code_review(x):
         return f"Review of code:\n- No critical bugs found\n- Suggest: add type hints\n- Complexity: moderate"
 
-    @skill("code_explain", "Explain code in plain language",
-           tags=["code", "education"])
+    @skill("code_explain", "Explain code in plain language", tags=["code", "education"])
     def code_explain(x):
         return f"This code does: {x[:30]}... It's a function that processes input data."
 
@@ -96,6 +113,7 @@ def demo_agent_card():
 # 案例 2: A2A Server/Client 通信
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_a2a_communication():
     """
     A2A 端到端通信: Server 发布 Agent → Client 发现并调用。
@@ -107,20 +125,26 @@ def demo_a2a_communication():
     separator("2. A2A Server/Client 通信")
 
     # 创建 Agent
-    agent = Tool("math_tutor", lambda x:
-        f"Math Tutor says: The answer to '{x}' involves basic arithmetic. "
-        f"Let me explain step by step...")
+    agent = Tool(
+        "math_tutor",
+        lambda x: (
+            f"Math Tutor says: The answer to '{x}' involves basic arithmetic. "
+            f"Let me explain step by step..."
+        ),
+    )
 
     # 发布为 A2A Server
     card = AgentCard(
         name="math-tutor",
         description="A friendly math tutor that explains concepts step by step",
-        skills=[{
-            "id": "math_101",
-            "name": "basic_math",
-            "description": "Explain and solve basic math problems",
-            "tags": ["math", "education"],
-        }],
+        skills=[
+            {
+                "id": "math_101",
+                "name": "basic_math",
+                "description": "Explain and solve basic math problems",
+                "tags": ["math", "education"],
+            }
+        ],
     )
 
     server = A2AServer(agent, card=card, port=19878)
@@ -168,6 +192,7 @@ def demo_a2a_communication():
 # 案例 3: RAG 知识库检索
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_rag():
     """
     RAG: 从知识库检索相关文档，增强 Agent 的回答。
@@ -181,22 +206,38 @@ def demo_rag():
     # 构建知识库
     store = SimpleVectorStore()
     documents = [
-        ("Lambda calculus was invented by Alonzo Church in the 1930s as a formal system for expressing computation.",
-         {"source": "Wikipedia", "topic": "lambda calculus"}),
-        ("The Y combinator Y = λf.(λx.f(x x))(λx.f(x x)) enables recursion in lambda calculus without named functions.",
-         {"source": "SICP", "topic": "Y combinator"}),
-        ("Chain-of-Thought (CoT) prompting was introduced by Wei et al. 2022, showing that intermediate reasoning steps improve LLM performance.",
-         {"source": "NeurIPS 2022", "topic": "CoT"}),
-        ("The Model Context Protocol (MCP) is an open standard for connecting AI models to external tools and data sources.",
-         {"source": "Anthropic", "topic": "MCP"}),
-        ("ReAct agents combine reasoning and acting by interleaving thought and action steps in a loop.",
-         {"source": "ICLR 2023", "topic": "ReAct"}),
-        ("Type safety in programming languages ensures that well-typed programs don't go wrong at runtime.",
-         {"source": "Milner 1978", "topic": "type theory"}),
-        ("The terminate tool in a ReAct agent is the identity function λx.x, serving as the base case of the Y combinator.",
-         {"source": "lambdagent paper", "topic": "lambdagent"}),
-        ("Agent-to-Agent (A2A) protocol enables interoperability between AI agents from different frameworks.",
-         {"source": "Google 2025", "topic": "A2A"}),
+        (
+            "Lambda calculus was invented by Alonzo Church in the 1930s as a formal system for expressing computation.",
+            {"source": "Wikipedia", "topic": "lambda calculus"},
+        ),
+        (
+            "The Y combinator Y = λf.(λx.f(x x))(λx.f(x x)) enables recursion in lambda calculus without named functions.",
+            {"source": "SICP", "topic": "Y combinator"},
+        ),
+        (
+            "Chain-of-Thought (CoT) prompting was introduced by Wei et al. 2022, showing that intermediate reasoning steps improve LLM performance.",
+            {"source": "NeurIPS 2022", "topic": "CoT"},
+        ),
+        (
+            "The Model Context Protocol (MCP) is an open standard for connecting AI models to external tools and data sources.",
+            {"source": "Anthropic", "topic": "MCP"},
+        ),
+        (
+            "ReAct agents combine reasoning and acting by interleaving thought and action steps in a loop.",
+            {"source": "ICLR 2023", "topic": "ReAct"},
+        ),
+        (
+            "Type safety in programming languages ensures that well-typed programs don't go wrong at runtime.",
+            {"source": "Milner 1978", "topic": "type theory"},
+        ),
+        (
+            "The terminate tool in a ReAct agent is the identity function λx.x, serving as the base case of the Y combinator.",
+            {"source": "lambdagent paper", "topic": "lambdagent"},
+        ),
+        (
+            "Agent-to-Agent (A2A) protocol enables interoperability between AI agents from different frameworks.",
+            {"source": "Google 2025", "topic": "A2A"},
+        ),
     ]
 
     for text, meta in documents:
@@ -227,7 +268,9 @@ def demo_rag():
     parsed = json.loads(r)
     print(f"\n  [JSON 格式] {len(parsed)} 结果:")
     for item in parsed:
-        print(f"    rank={item['rank']}, score={item['score']:.3f}: {item['content'][:50]}...")
+        print(
+            f"    rank={item['rank']}, score={item['score']:.3f}: {item['content'][:50]}..."
+        )
 
     # create_rag 一行创建
     quick_rag = create_rag(["Python is great", "Java is verbose", "Rust is fast"])
@@ -242,6 +285,7 @@ def demo_rag():
 # 案例 4: AgenticRAG — 智能检索
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_agentic_rag():
     """
     AgenticRAG: Agent 自主决定何时检索。
@@ -255,23 +299,31 @@ def demo_agentic_rag():
     separator("4. AgenticRAG — 智能检索")
 
     # 知识库
-    rag = create_rag([
-        "lambdagent is a Python DSL that models AI agents as Lambda calculus terms.",
-        "The Y combinator enables recursion. terminate = λx.x is its base case.",
-        "MCP connects AI models to tools. A2A connects agents to agents.",
-        "Type Safety means well-typed programs don't go wrong.",
-    ])
+    rag = create_rag(
+        [
+            "lambdagent is a Python DSL that models AI agents as Lambda calculus terms.",
+            "The Y combinator enables recursion. terminate = λx.x is its base case.",
+            "MCP connects AI models to tools. A2A connects agents to agents.",
+            "Type Safety means well-typed programs don't go wrong.",
+        ]
+    )
 
     # QA Agent
-    qa = Tool("qa", lambda x:
-        f"Based on the context, here's my answer: {x[:50]}... "
-        f"This is a well-studied topic with clear theoretical foundations.")
+    qa = Tool(
+        "qa",
+        lambda x: (
+            f"Based on the context, here's my answer: {x[:50]}... "
+            f"This is a well-studied topic with clear theoretical foundations."
+        ),
+    )
 
     # Agentic RAG: 有问号 → 检索，否则直接回答
     agentic = AgenticRAG(
         agent=qa,
         rag=rag,
-        decider=lambda x: "?" in x or any(w in x.lower() for w in ["what", "how", "why", "explain"]),
+        decider=lambda x: (
+            "?" in x or any(w in x.lower() for w in ["what", "how", "why", "explain"])
+        ),
     )
 
     ctx = Context()
@@ -306,6 +358,7 @@ def demo_agentic_rag():
 # 案例 5: 综合案例 — A2A + RAG + Skills
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_full_p1():
     """
     综合案例: 知识增强的技能型 Agent 系统。
@@ -321,13 +374,15 @@ def demo_full_p1():
     SkillRegistry().clear()
 
     # ── Step 1: 构建知识库 ──
-    rag = create_rag([
-        "Python: dynamically typed, great for data science. Created 1991.",
-        "Rust: memory safe without GC. Created 2010. Growing fast in systems programming.",
-        "Go: simple concurrency model. Created 2009. Popular for microservices.",
-        "TypeScript: typed superset of JavaScript. Created 2012. Dominates web frontend.",
-        "Lambda calculus: formal computation model. Created 1930s by Alonzo Church.",
-    ])
+    rag = create_rag(
+        [
+            "Python: dynamically typed, great for data science. Created 1991.",
+            "Rust: memory safe without GC. Created 2010. Growing fast in systems programming.",
+            "Go: simple concurrency model. Created 2009. Popular for microservices.",
+            "TypeScript: typed superset of JavaScript. Created 2012. Dominates web frontend.",
+            "Lambda calculus: formal computation model. Created 1930s by Alonzo Church.",
+        ]
+    )
     print("  [1] 知识库: 5 篇文档")
 
     # ── Step 2: 创建 RAG 增强的技能 ──
@@ -337,7 +392,11 @@ def demo_full_p1():
         context = rag(x, ctx)
         return f"Comparison based on knowledge:\n{context}\n\nConclusion: Choose based on your use case."
 
-    @skill("lang_recommend", "Recommend a language for a task", tags=["code", "recommendation"])
+    @skill(
+        "lang_recommend",
+        "Recommend a language for a task",
+        tags=["code", "recommendation"],
+    )
     def lang_recommend(x):
         ctx = Context()
         context = rag(x, ctx)
@@ -360,10 +419,15 @@ def demo_full_p1():
     print(f"  [2] 技能: {len(SkillRegistry())} 个已注册")
 
     # ── Step 3: SkillAgent 自动选择 ──
-    selector = Tool("selector", lambda x:
-        "lang_compare" if any(w in x.lower() for w in ["compare", "vs", "versus", "difference"]) else
-        "lang_recommend" if any(w in x.lower() for w in ["recommend", "which", "best", "should"]) else
-        "lang_quiz"
+    selector = Tool(
+        "selector",
+        lambda x: (
+            "lang_compare"
+            if any(w in x.lower() for w in ["compare", "vs", "versus", "difference"])
+            else "lang_recommend"
+            if any(w in x.lower() for w in ["recommend", "which", "best", "should"])
+            else "lang_quiz"
+        ),
     )
     agent = SkillAgent(classifier=selector, registry=SkillRegistry())
 
@@ -432,6 +496,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ❌ {name} 失败: {e}")
             import traceback
+
             traceback.print_exc()
 
     print("\n" + "=" * 70)

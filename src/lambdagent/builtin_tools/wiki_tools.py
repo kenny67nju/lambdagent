@@ -76,8 +76,8 @@ def _now_str() -> str:
 def _slug(name: str) -> str:
     """将名称转为文件名 slug: 'JWT Auth' → 'jwt-auth'"""
     s = name.lower().strip()
-    s = re.sub(r'[^\w\s-]', '', s)
-    s = re.sub(r'[\s_]+', '-', s)
+    s = re.sub(r"[^\w\s-]", "", s)
+    s = re.sub(r"[\s_]+", "-", s)
     return s[:60]
 
 
@@ -87,11 +87,13 @@ def _slug(name: str) -> str:
 
 _extract_skill = None
 
+
 def _get_extract_skill():
     """延迟初始化 ingest-extractor skill。"""
     global _extract_skill
     if _extract_skill is None:
         from lambdagent.primitives import Lam
+
         _extract_skill = Lam(
             "ingest-extractor",
             "你是一个知识提取专家。阅读以下源文件内容，提取结构化信息。\n\n"
@@ -101,7 +103,7 @@ def _get_extract_skill():
             '  "entities": [\n'
             '    {"name": "实体名", "type": "technology|person|component|concept", '
             '"description": "一句话描述"}\n'
-            '  ],\n'
+            "  ],\n"
             '  "topics": ["主题1", "主题2"],\n'
             '  "key_facts": ["事实1", "事实2"],\n'
             '  "connections": ["与 XX 文件的关系描述"]\n'
@@ -118,11 +120,13 @@ def _get_extract_skill():
 
 _answer_skill = None
 
+
 def _get_answer_skill():
     """延迟初始化 wiki-answerer skill。"""
     global _answer_skill
     if _answer_skill is None:
         from lambdagent.primitives import Lam
+
         _answer_skill = Lam(
             "wiki-answerer",
             "你是一个精准的问答助手。基于提供的 wiki 页面内容回答问题。\n\n"
@@ -138,11 +142,13 @@ def _get_answer_skill():
 
 _lint_skill = None
 
+
 def _get_lint_skill():
     """延迟初始化 wiki-linter skill。"""
     global _lint_skill
     if _lint_skill is None:
         from lambdagent.primitives import Lam
+
         _lint_skill = Lam(
             "wiki-linter",
             "你是一个 wiki 质量检查员。检查以下 wiki 内容的健康状况。\n\n"
@@ -166,9 +172,33 @@ def _get_lint_skill():
 # ════════════════════════════════════════════════════════════
 
 SUPPORTED_EXTS = {
-    ".txt", ".md", ".py", ".js", ".ts", ".java", ".go", ".rs", ".c", ".cpp",
-    ".h", ".css", ".html", ".json", ".yaml", ".yml", ".toml", ".sh", ".sql",
-    ".pdf", ".csv", ".log", ".xml", ".rb", ".php", ".swift", ".kt",
+    ".txt",
+    ".md",
+    ".py",
+    ".js",
+    ".ts",
+    ".java",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".css",
+    ".html",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".sh",
+    ".sql",
+    ".pdf",
+    ".csv",
+    ".log",
+    ".xml",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
 }
 
 
@@ -201,7 +231,13 @@ def wiki_ingest(input_val: Any) -> str:
             results.append(r)
             total_pages += r["pages_touched"]
         except Exception as e:
-            results.append({"file": os.path.basename(filepath), "error": str(e), "pages_touched": 0})
+            results.append(
+                {
+                    "file": os.path.basename(filepath),
+                    "error": str(e),
+                    "pages_touched": 0,
+                }
+            )
 
     # 更新 index.md
     _rebuild_index(root)
@@ -210,17 +246,16 @@ def wiki_ingest(input_val: Any) -> str:
     now = _now_str()
     log_entry = f"\n## [{now}] ingest | {len(files)} 个文件\n"
     for r in results:
-        status = f"✅ {r['pages_touched']} 页" if "error" not in r else f"❌ {r['error']}"
+        status = (
+            f"✅ {r['pages_touched']} 页" if "error" not in r else f"❌ {r['error']}"
+        )
         log_entry += f"- {r['file']}: {status}\n"
     _append_log(root, log_entry)
 
     # 汇报
     ok = [r for r in results if "error" not in r]
     err = [r for r in results if "error" in r]
-    report = (
-        f"📚 Wiki Ingest 完成\n\n"
-        f"  文件: {len(ok)} 成功"
-    )
+    report = f"📚 Wiki Ingest 完成\n\n  文件: {len(ok)} 成功"
     if err:
         report += f", {len(err)} 失败"
     report += f"\n  触及页面: {total_pages}\n  wiki 目录: {root}\n"
@@ -254,6 +289,7 @@ def _ingest_one(filepath: str, wiki_root: str) -> Dict:
 
     # 2. LLM 提取 (ingest-extractor skill)
     from lambdagent.core import Context
+
     ctx = Context()
     extract_input = f"文件名: {filename}\n文件类型: {ext}\n\n文件内容:\n{content}"
 
@@ -308,7 +344,9 @@ def _ingest_one(filepath: str, wiki_root: str) -> Dict:
     }
 
 
-def _write_source_page(root: str, filename: str, filepath: str, ext: str, extracted: Dict) -> str:
+def _write_source_page(
+    root: str, filename: str, filepath: str, ext: str, extracted: Dict
+) -> str:
     """写源文件摘要页。"""
     slug = _slug(filename.replace(".", "-"))
     page_path = os.path.join(root, "sources", f"{slug}.md")
@@ -359,7 +397,9 @@ def _write_source_page(root: str, filename: str, filepath: str, ext: str, extrac
     return f"sources/{slug}.md"
 
 
-def _update_entity_page(root: str, name: str, etype: str, desc: str, source: str) -> str:
+def _update_entity_page(
+    root: str, name: str, etype: str, desc: str, source: str
+) -> str:
     """创建或更新实体页。"""
     slug = _slug(name)
     page_path = os.path.join(root, "entities", f"{slug}.md")
@@ -373,7 +413,9 @@ def _update_entity_page(root: str, name: str, etype: str, desc: str, source: str
             if "## 来源引用" in existing:
                 existing = existing.replace(
                     "## 来源引用",
-                    f"## 来源引用\n- {source}: {desc}" if desc else f"## 来源引用\n- {source}"
+                    f"## 来源引用\n- {source}: {desc}"
+                    if desc
+                    else f"## 来源引用\n- {source}",
                 )
             else:
                 existing += f"\n## 来源引用\n- {source}: {desc}\n"
@@ -406,8 +448,11 @@ def _update_topic_page(root: str, topic: str, source: str, extracted: Dict) -> s
     page_path = os.path.join(root, "topics", f"{slug}.md")
 
     # 收集与此主题相关的事实
-    relevant_facts = [f for f in extracted.get("key_facts", [])
-                      if topic.lower() in f.lower() or len(extracted.get("topics", [])) <= 2]
+    relevant_facts = [
+        f
+        for f in extracted.get("key_facts", [])
+        if topic.lower() in f.lower() or len(extracted.get("topics", [])) <= 2
+    ]
 
     if os.path.exists(page_path):
         with open(page_path, "r", encoding="utf-8") as f:
@@ -440,7 +485,9 @@ def _update_topic_page(root: str, topic: str, source: str, extracted: Dict) -> s
     return f"topics/{slug}.md"
 
 
-def _cross_reference_new_pages(wiki_root: str, new_pages: List[str], extracted: Dict) -> int:
+def _cross_reference_new_pages(
+    wiki_root: str, new_pages: List[str], extracted: Dict
+) -> int:
     """
     v2: 补充交叉引用 — 扫描已有页面，为新页面添加 [[链接]]。
 
@@ -502,7 +549,9 @@ def _cross_reference_new_pages(wiki_root: str, new_pages: List[str], extracted: 
     return refs_added
 
 
-def _update_related_pages(wiki_root: str, source_file: str, extracted: Dict) -> List[str]:
+def _update_related_pages(
+    wiki_root: str, source_file: str, extracted: Dict
+) -> List[str]:
     """
     v2: 更新相关页面 — 让已有实体/主题页反向引用新源文件。
 
@@ -538,7 +587,7 @@ def _update_related_pages(wiki_root: str, source_file: str, extracted: Dict) -> 
             content += f"\n## 来源引用\n- {source_file}\n"
 
         # 更新时间戳
-        content = re.sub(r'updated: .*', f'updated: {_now_str()}', content)
+        content = re.sub(r"updated: .*", f"updated: {_now_str()}", content)
 
         with open(entity_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -567,7 +616,9 @@ def _rebuild_index(root: str):
                                     break
                     except Exception:
                         pass
-                    sections[category].append(f"- [[{category}/{fname.replace('.md', '')}|{title}]]")
+                    sections[category].append(
+                        f"- [[{category}/{fname.replace('.md', '')}|{title}]]"
+                    )
 
     index = "# 知识库索引\n\n> 由 wikiagent 自动维护。\n\n"
 
@@ -604,6 +655,7 @@ def _append_log(root: str, entry: str):
 # ════════════════════════════════════════════════════════════
 # WikiQuery — 提问 (查阅已编译知识)
 # ════════════════════════════════════════════════════════════
+
 
 def wiki_query(input_val: Any) -> str:
     """
@@ -659,6 +711,7 @@ def wiki_query(input_val: Any) -> str:
 
     # Step 4: LLM 回答 (wiki-answerer skill)
     from lambdagent.core import Context
+
     ctx = Context()
     answer_input = f"Wiki 页面内容:\n{wiki_context}\n\n问题: {query}"
 
@@ -685,7 +738,10 @@ def wiki_query(input_val: Any) -> str:
         _rebuild_index(root)
 
     # 写日志
-    _append_log(root, f"\n## [{_now_str()}] query | {query[:60]}\n- 匹配页面: {len(relevant_pages)}\n")
+    _append_log(
+        root,
+        f"\n## [{_now_str()}] query | {query[:60]}\n- 匹配页面: {len(relevant_pages)}\n",
+    )
 
     return (
         f"📚 回答 (基于 {len(relevant_pages)} 个 wiki 页面):\n\n"
@@ -705,8 +761,28 @@ def _find_relevant_pages_v2(root: str, query: str) -> List[str]:
       4. 跟踪 [[链接]] 引用的页面 → 补充上下文
     """
     keywords = set(query.lower().split())
-    stopwords = {"的", "是", "有", "哪些", "什么", "了", "在", "和", "与", "从",
-                 "the", "is", "are", "what", "which", "how", "a", "an", "in", "of"}
+    stopwords = {
+        "的",
+        "是",
+        "有",
+        "哪些",
+        "什么",
+        "了",
+        "在",
+        "和",
+        "与",
+        "从",
+        "the",
+        "is",
+        "are",
+        "what",
+        "which",
+        "how",
+        "a",
+        "an",
+        "in",
+        "of",
+    }
     keywords -= stopwords
     if not keywords:
         keywords = set(query.lower().split()[:3])
@@ -718,7 +794,9 @@ def _find_relevant_pages_v2(root: str, query: str) -> List[str]:
         if not os.path.isdir(cat_dir):
             continue
         # 实体和主题页优先
-        cat_boost = {"entities": 3, "topics": 2, "sources": 1, "analyses": 1}.get(category, 1)
+        cat_boost = {"entities": 3, "topics": 2, "sources": 1, "analyses": 1}.get(
+            category, 1
+        )
 
         for fname in os.listdir(cat_dir):
             if not fname.endswith(".md"):
@@ -759,12 +837,15 @@ def _find_relevant_pages_v2(root: str, query: str) -> List[str]:
         try:
             with open(fpath, "r", encoding="utf-8") as f:
                 content = f.read()
-            links = re.findall(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', content)
+            links = re.findall(r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]", content)
             for link in links:
                 link_slug = _slug(link)
                 for cat in ("entities", "topics"):
                     candidate = f"{cat}/{link_slug}.md"
-                    if os.path.exists(os.path.join(root, candidate)) and candidate not in top_pages:
+                    if (
+                        os.path.exists(os.path.join(root, candidate))
+                        and candidate not in top_pages
+                    ):
                         linked_pages.add(candidate)
         except Exception:
             pass
@@ -782,8 +863,28 @@ def _find_relevant_pages(root: str, query: str) -> List[str]:
     """在 wiki 中搜索与 query 相关的页面。(v1 兼容)"""
     keywords = set(query.lower().split())
     # 移除停用词
-    stopwords = {"的", "是", "有", "哪些", "什么", "了", "在", "和", "与", "从",
-                 "the", "is", "are", "what", "which", "how", "a", "an", "in", "of"}
+    stopwords = {
+        "的",
+        "是",
+        "有",
+        "哪些",
+        "什么",
+        "了",
+        "在",
+        "和",
+        "与",
+        "从",
+        "the",
+        "is",
+        "are",
+        "what",
+        "which",
+        "how",
+        "a",
+        "an",
+        "in",
+        "of",
+    }
     keywords -= stopwords
     if not keywords:
         keywords = set(query.lower().split()[:3])
@@ -819,6 +920,7 @@ def _find_relevant_pages(root: str, query: str) -> List[str]:
 # WikiLint — 健康检查
 # ════════════════════════════════════════════════════════════
 
+
 def wiki_lint(input_val: Any) -> str:
     """
     Lint: 检查 wiki 质量 — 矛盾、孤页、缺页、过时。
@@ -829,7 +931,7 @@ def wiki_lint(input_val: Any) -> str:
     # 收集所有页面和链接
     all_pages = {}  # path → content
     all_links = {}  # path → set of [[link targets]]
-    inbound = {}    # page → count of pages linking to it
+    inbound = {}  # page → count of pages linking to it
 
     for category in ("sources", "entities", "topics", "analyses"):
         cat_dir = os.path.join(root, category)
@@ -845,7 +947,7 @@ def wiki_lint(input_val: Any) -> str:
                     content = f.read()
                 all_pages[rel_path] = content
                 # 提取 [[链接]]
-                links = set(re.findall(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', content))
+                links = set(re.findall(r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]", content))
                 all_links[rel_path] = links
             except Exception:
                 pass
@@ -863,8 +965,11 @@ def wiki_lint(input_val: Any) -> str:
 
     for page_path in all_pages:
         page_name = page_path.split("/")[-1].replace(".md", "")
-        linked_by = sum(1 for links in all_links.values()
-                        if page_name in links or page_path.replace(".md", "") in links)
+        linked_by = sum(
+            1
+            for links in all_links.values()
+            if page_name in links or page_path.replace(".md", "") in links
+        )
         if linked_by == 0:
             inbound[page_path] = 0
             issues["orphans"].append(page_path)
@@ -877,19 +982,25 @@ def wiki_lint(input_val: Any) -> str:
     for page_path, links in all_links.items():
         for link in links:
             link_slug = _slug(link)
-            if link_slug and link_slug not in existing_slugs and link not in existing_slugs:
+            if (
+                link_slug
+                and link_slug not in existing_slugs
+                and link not in existing_slugs
+            ):
                 issues["broken_links"].append(f"[[{link}]] (从 {page_path})")
 
     # v2: 过期检测 (图3: 查过期引用)
     for page_path, content in all_pages.items():
         # 检查 front matter 中的 updated/ingested 时间
-        date_match = re.search(r'(?:updated|ingested):\s*(\d{4}-\d{2}-\d{2})', content)
+        date_match = re.search(r"(?:updated|ingested):\s*(\d{4}-\d{2}-\d{2})", content)
         if date_match:
             try:
                 page_date = datetime.datetime.strptime(date_match.group(1), "%Y-%m-%d")
                 age_days = (datetime.datetime.now() - page_date).days
                 if age_days > 90:  # 超过 90 天视为过期
-                    issues["stale"].append(f"{page_path} (最后更新: {date_match.group(1)}, {age_days}天前)")
+                    issues["stale"].append(
+                        f"{page_path} (最后更新: {date_match.group(1)}, {age_days}天前)"
+                    )
             except ValueError:
                 pass
 
@@ -898,7 +1009,7 @@ def wiki_lint(input_val: Any) -> str:
     if auto_fix:
         # 修复断链: 创建占位页面
         for broken in issues["broken_links"]:
-            link_match = re.match(r'\[\[(.+?)\]\]', broken)
+            link_match = re.match(r"\[\[(.+?)\]\]", broken)
             if link_match:
                 link_name = link_match.group(1)
                 slug = _slug(link_name)
@@ -924,17 +1035,23 @@ def wiki_lint(input_val: Any) -> str:
     if len(all_pages) > 0 and not any("topics/" in p for p in all_pages):
         issues["suggestions"].append("没有主题页——考虑运行 WikiGrow 创建跨源综合主题")
     if len(all_pages) > 10 and len(issues["orphans"]) > len(all_pages) * 0.3:
-        issues["suggestions"].append(f"{len(issues['orphans'])} 个孤页 (>30%)——运行 WikiLint auto_fix=true 自动补链接")
+        issues["suggestions"].append(
+            f"{len(issues['orphans'])} 个孤页 (>30%)——运行 WikiLint auto_fix=true 自动补链接"
+        )
     if issues["stale"]:
-        issues["suggestions"].append(f"{len(issues['stale'])} 个过期页面——考虑重新 WikiIngest 相关源文件")
+        issues["suggestions"].append(
+            f"{len(issues['stale'])} 个过期页面——考虑重新 WikiIngest 相关源文件"
+        )
 
     # LLM 深度检查 (如果页面数量合理)
     llm_analysis = ""
     if len(all_pages) > 0 and len(all_pages) <= 30:
         try:
             from lambdagent.core import Context
+
             all_content = "\n\n---\n\n".join(
-                f"[{path}]\n{content[:500]}" for path, content in list(all_pages.items())[:20]
+                f"[{path}]\n{content[:500]}"
+                for path, content in list(all_pages.items())[:20]
             )
             lint_input = f"Wiki 包含 {len(all_pages)} 个页面:\n\n{all_content}"
             llm_analysis = _get_lint_skill().apply(lint_input, Context())
@@ -942,12 +1059,15 @@ def wiki_lint(input_val: Any) -> str:
             llm_analysis = "(LLM 检查跳过)"
 
     # 写日志
-    _append_log(root, (
-        f"\n## [{_now_str()}] lint | {len(all_pages)} 页, "
-        f"{len(issues['orphans'])} 孤页, {len(issues['broken_links'])} 断链, "
-        f"{len(issues['stale'])} 过期"
-        f"{f', 修复 {fixed_count} 项' if auto_fix else ''}\n"
-    ))
+    _append_log(
+        root,
+        (
+            f"\n## [{_now_str()}] lint | {len(all_pages)} 页, "
+            f"{len(issues['orphans'])} 孤页, {len(issues['broken_links'])} 断链, "
+            f"{len(issues['stale'])} 过期"
+            f"{f', 修复 {fixed_count} 项' if auto_fix else ''}\n"
+        ),
+    )
 
     # 组装报告
     report = f"🔍 Wiki 健康检查 ({len(all_pages)} 个页面)\n\n"
@@ -997,6 +1117,7 @@ def wiki_lint(input_val: Any) -> str:
 # WikiSearch — 搜索 wiki 内容
 # ════════════════════════════════════════════════════════════
 
+
 def wiki_search(input_val: Any) -> str:
     """搜索 wiki 页面内容 (关键词匹配)。"""
     params = _parse(input_val)
@@ -1016,6 +1137,7 @@ def wiki_search(input_val: Any) -> str:
 # ════════════════════════════════════════════════════════════
 # WikiStatus — 统计信息
 # ════════════════════════════════════════════════════════════
+
 
 def wiki_status(input_val: Any) -> str:
     """v2: 查看 wiki 统计 + 生长指标 + 健康评分。"""
@@ -1037,7 +1159,7 @@ def wiki_status(input_val: Any) -> str:
                     total_size += size
                     with open(fpath, "r", encoding="utf-8") as f:
                         content = f.read()
-                    total_links += len(re.findall(r'\[\[', content))
+                    total_links += len(re.findall(r"\[\[", content))
                 except Exception:
                     pass
         else:
@@ -1101,6 +1223,7 @@ def wiki_status(input_val: Any) -> str:
 # WikiGrow — 主动生长 (v2 新增)
 # ════════════════════════════════════════════════════════════
 
+
 def wiki_grow(input_val: Any) -> str:
     """
     v2: 主动生长 — 发现知识空白 → 自动创建综合页面。
@@ -1124,7 +1247,7 @@ def wiki_grow(input_val: Any) -> str:
     all_pages = {}
     all_links = set()
     entity_mentions = {}  # name → count of pages mentioning it
-    topic_counts = {}     # topic → list of source files
+    topic_counts = {}  # topic → list of source files
 
     for category in ("sources", "entities", "topics"):
         cat_dir = os.path.join(root, category)
@@ -1140,7 +1263,7 @@ def wiki_grow(input_val: Any) -> str:
                     content = f.read()
                 all_pages[rel_path] = content
                 # 提取 [[链接]]
-                links = re.findall(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', content)
+                links = re.findall(r"\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]", content)
                 all_links.update(links)
             except Exception:
                 pass
@@ -1155,7 +1278,9 @@ def wiki_grow(input_val: Any) -> str:
         link_slug = _slug(link)
         if link_slug and link_slug not in existing_slugs:
             # 统计被引用次数
-            ref_count = sum(1 for content in all_pages.values() if f"[[{link}]]" in content)
+            ref_count = sum(
+                1 for content in all_pages.values() if f"[[{link}]]" in content
+            )
             if ref_count >= 2:  # 至少被 2 个页面引用
                 missing_concepts.append((link, ref_count))
 
@@ -1173,7 +1298,7 @@ def wiki_grow(input_val: Any) -> str:
                 with open(fpath, "r", encoding="utf-8") as f:
                     content = f.read()
                 # 统计来源数
-                sources = re.findall(r'来源引用.*?(?=##|\Z)', content, re.DOTALL)
+                sources = re.findall(r"来源引用.*?(?=##|\Z)", content, re.DOTALL)
                 source_count = content.count("- ") if sources else 0
                 if source_count >= 3:  # 被 3+ 源引用的实体值得综合
                     name = fname.replace(".md", "").replace("-", " ")
@@ -1206,19 +1331,28 @@ def wiki_grow(input_val: Any) -> str:
         _rebuild_index(root)
 
     # 写日志
-    _append_log(root, (
-        f"\n## [{_now_str()}] grow | "
-        f"发现 {len(missing_concepts)} 个缺失概念, "
-        f"{len(entities_needing_synthesis)} 个可综合实体"
-        f"{f', 创建 {len(created)} 页' if created else ''}\n"
-    ))
+    _append_log(
+        root,
+        (
+            f"\n## [{_now_str()}] grow | "
+            f"发现 {len(missing_concepts)} 个缺失概念, "
+            f"{len(entities_needing_synthesis)} 个可综合实体"
+            f"{f', 创建 {len(created)} 页' if created else ''}\n"
+        ),
+    )
 
     # 报告
     report = f"🌱 Wiki 生长分析\n\n"
 
     report += f"## 缺失概念 (被引用但无页面, {len(missing_concepts)} 个)\n"
     for concept, cnt in missing_concepts[:15]:
-        status = "✅ 已创建" if not dry_run and concept in [c.split("/")[-1].split(".")[0] for c, _ in missing_concepts[:10]] else "⬜"
+        status = (
+            "✅ 已创建"
+            if not dry_run
+            and concept
+            in [c.split("/")[-1].split(".")[0] for c, _ in missing_concepts[:10]]
+            else "⬜"
+        )
         report += f"  {status} [[{concept}]] — 被 {cnt} 个页面引用\n"
 
     report += f"\n## 可综合实体 (多源引用, {len(entities_needing_synthesis)} 个)\n"
@@ -1240,18 +1374,27 @@ def wiki_grow(input_val: Any) -> str:
 # 辅助函数
 # ════════════════════════════════════════════════════════════
 
+
 def _collect_files(path: str) -> List[str]:
     """收集文件列表。"""
     path = os.path.expanduser(path.strip())
     if "*" in path or "?" in path:
-        return [f for f in glob.glob(path, recursive=True)
-                if os.path.isfile(f) and os.path.splitext(f)[1].lower() in SUPPORTED_EXTS]
+        return [
+            f
+            for f in glob.glob(path, recursive=True)
+            if os.path.isfile(f) and os.path.splitext(f)[1].lower() in SUPPORTED_EXTS
+        ]
     if os.path.isfile(path):
         return [path] if os.path.splitext(path)[1].lower() in SUPPORTED_EXTS else []
     if os.path.isdir(path):
         files = []
         for root_dir, dirs, filenames in os.walk(path):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ('node_modules', '__pycache__', '.git', 'venv')]
+            dirs[:] = [
+                d
+                for d in dirs
+                if not d.startswith(".")
+                and d not in ("node_modules", "__pycache__", ".git", "venv")
+            ]
             for name in sorted(filenames):
                 full = os.path.join(root_dir, name)
                 if os.path.splitext(name)[1].lower() in SUPPORTED_EXTS:
@@ -1264,10 +1407,11 @@ def _read_pdf(filepath: str) -> str:
     """读取 PDF。"""
     try:
         import PyPDF2
+
         with open(filepath, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             return "\n\n".join(
-                f"[Page {i+1}]\n{page.extract_text() or ''}"
+                f"[Page {i + 1}]\n{page.extract_text() or ''}"
                 for i, page in enumerate(reader.pages)
             )
     except ImportError:
@@ -1298,4 +1442,10 @@ def _parse_json_from_llm(text: str) -> Dict:
                 return json.loads(text[start:end])
             except json.JSONDecodeError:
                 pass
-    return {"summary": text[:200], "entities": [], "topics": [], "key_facts": [], "connections": []}
+    return {
+        "summary": text[:200],
+        "entities": [],
+        "topics": [],
+        "key_facts": [],
+        "connections": [],
+    }

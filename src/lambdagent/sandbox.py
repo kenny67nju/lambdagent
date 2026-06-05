@@ -27,6 +27,7 @@ Usage:
     # Use exactly like Tool
     result = safe_tool("2 + 3")  # → "5"
 """
+
 from __future__ import annotations
 
 import json
@@ -47,6 +48,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 # at instantiation time on platforms without it.
 try:
     import resource  # type: ignore[import-not-found]
+
     _HAS_RESOURCE = True
 except ImportError:  # pragma: no cover — Windows path
     resource = None  # type: ignore[assignment]
@@ -71,6 +73,7 @@ from .core import Term, Context, ValidationError
 # Sandbox Policy
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class SandboxPolicy:
     """
@@ -79,38 +82,49 @@ class SandboxPolicy:
     Lambda: type constraint on Oracle — f must satisfy policy P.
     ⟦SandboxedTool(n, f, P)⟧ = λx. let r = f(x) in IF P_satisfied THEN r ELSE ⊥
     """
+
     # ── Resource limits ──
-    timeout: float = 30.0           # max execution time (seconds)
-    memory_mb: int = 256            # max memory (MB)
-    cpu_time: float = 30.0          # max CPU time (seconds)
+    timeout: float = 30.0  # max execution time (seconds)
+    memory_mb: int = 256  # max memory (MB)
+    cpu_time: float = 30.0  # max CPU time (seconds)
     max_output_bytes: int = 1_000_000  # max stdout size (1MB)
     max_file_descriptors: int = 64  # max open files
 
     # ── Filesystem ──
-    allowed_read_paths: List[str] = field(default_factory=list)   # readable paths
+    allowed_read_paths: List[str] = field(default_factory=list)  # readable paths
     allowed_write_paths: List[str] = field(default_factory=list)  # writable paths
-    use_tmpdir: bool = True         # run in isolated tmpdir
+    use_tmpdir: bool = True  # run in isolated tmpdir
 
     # ── Network ──
-    network: bool = False           # allow network access
+    network: bool = False  # allow network access
 
     # ── Execution ──
     allow_subprocess: bool = False  # allow spawning child processes
-    allow_exec: bool = False        # allow exec() / eval() of arbitrary code
+    allow_exec: bool = False  # allow exec() / eval() of arbitrary code
     env_vars: Dict[str, str] = field(default_factory=dict)  # environment variables
     python_path: str = sys.executable  # python interpreter to use
 
     @classmethod
     def strict(cls) -> "SandboxPolicy":
         """Most restrictive policy — no network, no subprocess, 10s timeout."""
-        return cls(timeout=10, memory_mb=128, network=False,
-                   allow_subprocess=False, allow_exec=False)
+        return cls(
+            timeout=10,
+            memory_mb=128,
+            network=False,
+            allow_subprocess=False,
+            allow_exec=False,
+        )
 
     @classmethod
     def permissive(cls) -> "SandboxPolicy":
         """Relaxed policy — network allowed, 60s timeout."""
-        return cls(timeout=60, memory_mb=512, network=True,
-                   allow_subprocess=True, allow_exec=False)
+        return cls(
+            timeout=60,
+            memory_mb=512,
+            network=True,
+            allow_subprocess=True,
+            allow_exec=False,
+        )
 
     @classmethod
     def default(cls) -> "SandboxPolicy":
@@ -122,10 +136,16 @@ class SandboxPolicy:
 # Sandbox Violations
 # ════════════════════════════════════════════════════════════
 
+
 class SandboxViolation(ValidationError):
     """Raised when sandbox policy is violated."""
-    def __init__(self, message: str, violation_type: str = "unknown",
-                 policy: Optional[SandboxPolicy] = None):
+
+    def __init__(
+        self,
+        message: str,
+        violation_type: str = "unknown",
+        policy: Optional[SandboxPolicy] = None,
+    ):
         super().__init__(message)
         self.violation_type = violation_type
         self.policy = policy
@@ -133,25 +153,23 @@ class SandboxViolation(ValidationError):
 
 class TimeoutViolation(SandboxViolation):
     def __init__(self, timeout: float):
-        super().__init__(f"Execution exceeded timeout of {timeout}s",
-                         "timeout")
+        super().__init__(f"Execution exceeded timeout of {timeout}s", "timeout")
 
 
 class MemoryViolation(SandboxViolation):
     def __init__(self, limit_mb: int):
-        super().__init__(f"Execution exceeded memory limit of {limit_mb}MB",
-                         "memory")
+        super().__init__(f"Execution exceeded memory limit of {limit_mb}MB", "memory")
 
 
 class OutputViolation(SandboxViolation):
     def __init__(self, limit_bytes: int):
-        super().__init__(f"Output exceeded {limit_bytes} bytes",
-                         "output_size")
+        super().__init__(f"Output exceeded {limit_bytes} bytes", "output_size")
 
 
 # ════════════════════════════════════════════════════════════
 # Resource Limiter (applied inside child process)
 # ════════════════════════════════════════════════════════════
+
 
 class ResourceLimiter:
     """
@@ -199,9 +217,10 @@ class ResourceLimiter:
         # File descriptor limit
         if policy.max_file_descriptors > 0:
             try:
-                resource.setrlimit(resource.RLIMIT_NOFILE,
-                                   (policy.max_file_descriptors,
-                                    policy.max_file_descriptors))
+                resource.setrlimit(
+                    resource.RLIMIT_NOFILE,
+                    (policy.max_file_descriptors, policy.max_file_descriptors),
+                )
             except (ValueError, resource.error):
                 pass
 
@@ -237,25 +256,23 @@ class ResourceLimiter:
 
         def _blocked_popen(*args, **kwargs):
             raise PermissionError(
-                "Subprocess creation blocked by sandbox policy "
-                "(allow_subprocess=False)"
+                "Subprocess creation blocked by sandbox policy (allow_subprocess=False)"
             )
 
         def _blocked_system(cmd):
             raise PermissionError(
-                "os.system() blocked by sandbox policy "
-                "(allow_subprocess=False)"
+                "os.system() blocked by sandbox policy (allow_subprocess=False)"
             )
 
         def _blocked_exec(*args, **kwargs):
             raise PermissionError(
-                "os.exec*() blocked by sandbox policy "
-                "(allow_subprocess=False)"
+                "os.exec*() blocked by sandbox policy (allow_subprocess=False)"
             )
 
         # Patch subprocess
         try:
             import subprocess as _sp
+
             _sp.Popen = _blocked_popen
             _sp.run = _blocked_popen
             _sp.call = _blocked_popen
@@ -272,8 +289,16 @@ class ResourceLimiter:
             pass
 
         # Patch os.exec* family
-        for attr in ("execl", "execle", "execlp", "execlpe",
-                      "execv", "execve", "execvp", "execvpe"):
+        for attr in (
+            "execl",
+            "execle",
+            "execlp",
+            "execlpe",
+            "execv",
+            "execve",
+            "execvp",
+            "execvpe",
+        ):
             if hasattr(os, attr):
                 try:
                     setattr(os, attr, _blocked_exec)
@@ -284,6 +309,7 @@ class ResourceLimiter:
 # ════════════════════════════════════════════════════════════
 # SandboxedTool — Tool with process isolation
 # ════════════════════════════════════════════════════════════
+
 
 class SandboxedTool(Term):
     """
@@ -301,8 +327,13 @@ class SandboxedTool(Term):
     If P is violated, the tool returns SandboxViolation (= stuck).
     """
 
-    def __init__(self, name: str, fn: Callable, policy: Optional[SandboxPolicy] = None,
-                 description: str = ""):
+    def __init__(
+        self,
+        name: str,
+        fn: Callable,
+        policy: Optional[SandboxPolicy] = None,
+        description: str = "",
+    ):
         if not _SANDBOX_AVAILABLE:
             raise NotImplementedError(_SANDBOX_UNAVAILABLE_MSG)
         super().__init__(name)
@@ -319,13 +350,13 @@ class SandboxedTool(Term):
             result = self._execute_sandboxed(str(input))
         except SandboxViolation as e:
             elapsed = (time.time() - t0) * 1000
-            ctx.log(self._name, self._trace_id, input,
-                    f"[SANDBOX_VIOLATION] {e}", elapsed)
+            ctx.log(
+                self._name, self._trace_id, input, f"[SANDBOX_VIOLATION] {e}", elapsed
+            )
             raise
         except Exception as e:
             elapsed = (time.time() - t0) * 1000
-            ctx.log(self._name, self._trace_id, input,
-                    f"[ERROR] {e}", elapsed)
+            ctx.log(self._name, self._trace_id, input, f"[ERROR] {e}", elapsed)
             raise
 
         elapsed = (time.time() - t0) * 1000
@@ -340,8 +371,9 @@ class SandboxedTool(Term):
         fn_bytes = _serialize_fn(self.fn)
 
         # Write function pickle to temp file
-        fn_file = tempfile.NamedTemporaryFile(suffix=".pkl", delete=False,
-                                               prefix="lambdagent_fn_")
+        fn_file = tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False, prefix="lambdagent_fn_"
+        )
         fn_file.write(fn_bytes)
         fn_file.close()
 
@@ -363,8 +395,10 @@ class SandboxedTool(Term):
         try:
             preexec = None
             if os.name != "nt":
+
                 def _apply_limits():
                     ResourceLimiter.apply(policy)
+
                 preexec = _apply_limits
 
             proc = subprocess.Popen(
@@ -396,7 +430,8 @@ class SandboxedTool(Term):
                 else:
                     raise SandboxViolation(
                         f"Child exited {proc.returncode}: {err_msg[:200]}",
-                        "execution_error")
+                        "execution_error",
+                    )
 
             if len(stdout) > policy.max_output_bytes:
                 raise OutputViolation(policy.max_output_bytes)
@@ -424,13 +459,14 @@ class SandboxedTool(Term):
             if work_dir and os.path.exists(work_dir):
                 try:
                     import shutil
+
                     shutil.rmtree(work_dir, ignore_errors=True)
                 except Exception:
                     pass
 
     def _build_child_script(self, fn_pickle_path: str) -> str:
         """Build child script that loads pickled function."""
-        script = textwrap.dedent(f'''\
+        script = textwrap.dedent(f"""\
             import sys, json, os, pickle
 
             # Load serialized function
@@ -450,13 +486,14 @@ class SandboxedTool(Term):
             except Exception as e:
                 print(json.dumps({{"error": f"{{type(e).__name__}}: {{e}}"}}))
                 sys.exit(1)
-        ''')
+        """)
         return script
 
 
 # ════════════════════════════════════════════════════════════
 # SecureExecutor — Sandbox-aware β-reduction engine
 # ════════════════════════════════════════════════════════════
+
 
 class SecureExecutor:
     """
@@ -489,6 +526,7 @@ class SecureExecutor:
             return tool  # already sandboxed
 
         from .primitives import Tool as BaseTool
+
         if isinstance(tool, BaseTool):
             return SandboxedTool(
                 name=tool._name,
@@ -524,7 +562,9 @@ class SecureExecutor:
             return Route(new_cls, new_routes, default=term.default)
         elif isinstance(term, Guard):
             new_agent = self.sandbox_all_tools(term.agent)
-            return Guard(new_agent, term.validator, retry=term.retry, on_fail=term.on_fail)
+            return Guard(
+                new_agent, term.validator, retry=term.retry, on_fail=term.on_fail
+            )
         elif isinstance(term, Memory):
             new_agent = self.sandbox_all_tools(term.agent)
             return Memory(new_agent, store=term.store)
@@ -532,12 +572,15 @@ class SecureExecutor:
             new_agents = [self.sandbox_all_tools(a) for a in term.agents]
             return Par(*new_agents)
         elif isinstance(term, Pair):
-            return Pair(self.sandbox_all_tools(term.first),
-                        self.sandbox_all_tools(term.second))
+            return Pair(
+                self.sandbox_all_tools(term.first), self.sandbox_all_tools(term.second)
+            )
         elif isinstance(term, If):
-            return If(term.cond,
-                      self.sandbox_all_tools(term.then_),
-                      self.sandbox_all_tools(term.else_))
+            return If(
+                term.cond,
+                self.sandbox_all_tools(term.then_),
+                self.sandbox_all_tools(term.else_),
+            )
         else:
             return term
 
@@ -550,11 +593,13 @@ class SecureExecutor:
 # Utility
 # ════════════════════════════════════════════════════════════
 
+
 def _serialize_fn(fn: Callable) -> bytes:
     """Serialize a function to bytes for cross-process transfer."""
     # Try cloudpickle first (handles lambdas, closures)
     try:
         import cloudpickle
+
         return cloudpickle.dumps(fn)
     except ImportError:
         pass
@@ -562,12 +607,14 @@ def _serialize_fn(fn: Callable) -> bytes:
     # Try dill
     try:
         import dill
+
         return dill.dumps(fn)
     except ImportError:
         pass
 
     # Fallback: standard pickle (works for named functions, not lambdas)
     import pickle
+
     return pickle.dumps(fn)
 
 
@@ -599,8 +646,15 @@ def _extract_fn_source(fn: Callable) -> Optional[str]:
     return None
 
 
-def sandboxed(fn: Callable = None, *, name: str = "", policy: Optional[SandboxPolicy] = None,
-              timeout: float = 30, memory_mb: int = 256, network: bool = False):
+def sandboxed(
+    fn: Callable = None,
+    *,
+    name: str = "",
+    policy: Optional[SandboxPolicy] = None,
+    timeout: float = 30,
+    memory_mb: int = 256,
+    network: bool = False,
+):
     """
     Decorator to create a SandboxedTool from a function.
 
@@ -611,8 +665,11 @@ def sandboxed(fn: Callable = None, *, name: str = "", policy: Optional[SandboxPo
 
         result = calculate("2 + 3")  # runs in sandbox
     """
+
     def decorator(f):
-        p = policy or SandboxPolicy(timeout=timeout, memory_mb=memory_mb, network=network)
+        p = policy or SandboxPolicy(
+            timeout=timeout, memory_mb=memory_mb, network=network
+        )
         tool_name = name or getattr(f, "__name__", "sandboxed_fn")
         return SandboxedTool(tool_name, f, policy=p)
 

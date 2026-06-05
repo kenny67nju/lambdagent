@@ -16,24 +16,32 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from lambdagent import (
-    Tool, Context,
-    Skill, SkillSignature, SkillPack,
-    SkillRegistry, SkillAgent, skill,
+    Tool,
+    Context,
+    Skill,
+    SkillSignature,
+    SkillPack,
+    SkillRegistry,
+    SkillAgent,
+    skill,
 )
 
 
 def separator(title: str):
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  案例: {title}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 # ══════════════════════════════════════════════════════════════
 # 案例 1: @skill 装饰器 — 零摩擦创建技能
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_skill_decorator():
     """
@@ -49,48 +57,57 @@ def demo_skill_decorator():
 
     # ── 文本处理技能 ──
 
-    @skill("word_count", "Count the number of words in text",
-           tags=["text", "analysis"],
-           input_type="Str", output_type="Int",
-           examples=[("hello world", "2"), ("one two three", "3")])
+    @skill(
+        "word_count",
+        "Count the number of words in text",
+        tags=["text", "analysis"],
+        input_type="Str",
+        output_type="Int",
+        examples=[("hello world", "2"), ("one two three", "3")],
+    )
     def word_count(x):
         return str(len(x.split()))
 
-    @skill("char_count", "Count characters in text",
-           tags=["text", "analysis"])
+    @skill("char_count", "Count characters in text", tags=["text", "analysis"])
     def char_count(x):
         return str(len(x))
 
-    @skill("to_upper", "Convert text to UPPERCASE",
-           tags=["text", "transform"])
+    @skill("to_upper", "Convert text to UPPERCASE", tags=["text", "transform"])
     def to_upper(x):
         return x.upper()
 
-    @skill("to_lower", "Convert text to lowercase",
-           tags=["text", "transform"])
+    @skill("to_lower", "Convert text to lowercase", tags=["text", "transform"])
     def to_lower(x):
         return x.lower()
 
-    @skill("reverse", "Reverse the text",
-           tags=["text", "transform"])
+    @skill("reverse", "Reverse the text", tags=["text", "transform"])
     def reverse_text(x):
         return x[::-1]
 
-    @skill("extract_numbers", "Extract all numbers from text",
-           tags=["text", "extraction"],
-           input_type="Str", output_type="List[Int]")
+    @skill(
+        "extract_numbers",
+        "Extract all numbers from text",
+        tags=["text", "extraction"],
+        input_type="Str",
+        output_type="List[Int]",
+    )
     def extract_numbers(x):
         import re
-        nums = re.findall(r'\d+', x)
+
+        nums = re.findall(r"\d+", x)
         return ", ".join(nums) if nums else "no numbers found"
 
-    @skill("summarize_stats", "Generate text statistics",
-           tags=["text", "analysis"],
-           input_type="Str", output_type="Str")
+    @skill(
+        "summarize_stats",
+        "Generate text statistics",
+        tags=["text", "analysis"],
+        input_type="Str",
+        output_type="Str",
+    )
     def summarize_stats(x):
         words = len(x.split())
         chars = len(x)
-        sentences = x.count('.') + x.count('!') + x.count('?')
+        sentences = x.count(".") + x.count("!") + x.count("?")
         return f"Words: {words}, Chars: {chars}, Sentences: {sentences}"
 
     reg = SkillRegistry()
@@ -101,7 +118,7 @@ def demo_skill_decorator():
 
     # 测试
     text = "Hello World! This is a test. AI has 3 models and 100 users."
-    print(f"\n  输入: \"{text}\"")
+    print(f'\n  输入: "{text}"')
     print(f"  word_count → {word_count(text)}")
     print(f"  char_count → {char_count(text)}")
     print(f"  extract_numbers → {extract_numbers(text)}")
@@ -112,6 +129,7 @@ def demo_skill_decorator():
 # ══════════════════════════════════════════════════════════════
 # 案例 2: Skill 组合 — 带类型检查的管道
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_skill_composition():
     """
@@ -132,7 +150,7 @@ def demo_skill_composition():
     # 简单组合
     pipeline1 = to_upper >> reverse
     result = pipeline1("hello world")
-    print(f"  to_upper >> reverse: \"hello world\" → \"{result}\"")
+    print(f'  to_upper >> reverse: "hello world" → "{result}"')
     assert result == "DLROW OLLEH"
 
     # 三段管道
@@ -143,7 +161,9 @@ def demo_skill_composition():
     # 查看组合后的技能元数据
     print(f"\n  组合技能:")
     print(f"    名称: {pipeline1._name}")
-    print(f"    类型: {pipeline1.signature.input_type} → {pipeline1.signature.output_type}")
+    print(
+        f"    类型: {pipeline1.signature.input_type} → {pipeline1.signature.output_type}"
+    )
     print(f"    标签: {pipeline1.tags}")
     print("  ✅ 技能组合完成")
 
@@ -151,6 +171,7 @@ def demo_skill_composition():
 # ══════════════════════════════════════════════════════════════
 # 案例 3: Skill 柯里化 — 偏应用
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_skill_currying():
     """
@@ -162,8 +183,7 @@ def demo_skill_currying():
     """
     separator("3. Skill 柯里化 (.bind)")
 
-    @skill("formatter", "Format text with style",
-           tags=["text", "format"])
+    @skill("formatter", "Format text with style", tags=["text", "format"])
     def formatter(x):
         # 检测参数
         if "[style=markdown]" in x:
@@ -185,9 +205,9 @@ def demo_skill_currying():
 
     r1 = md_formatter("Hello World")
     r2 = json_formatter("Hello World")
-    print(f"\n  md_formatter(\"Hello World\"):")
+    print(f'\n  md_formatter("Hello World"):')
     print(f"    {r1}")
-    print(f"  json_formatter(\"Hello World\"):")
+    print(f'  json_formatter("Hello World"):')
     print(f"    {r2}")
     print("  ✅ 柯里化完成")
 
@@ -195,6 +215,7 @@ def demo_skill_currying():
 # ══════════════════════════════════════════════════════════════
 # 案例 4: SkillPack — 技能包
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_skill_pack():
     """
@@ -242,6 +263,7 @@ def demo_skill_pack():
     @skill("top_words", "Find most common words", tags=["analysis"])
     def top_words(x):
         from collections import Counter
+
         words = x.lower().split()
         common = Counter(words).most_common(3)
         return ", ".join(f"{w}({c})" for w, c in common)
@@ -258,6 +280,7 @@ def demo_skill_pack():
 # ══════════════════════════════════════════════════════════════
 # 案例 5: SkillRegistry 搜索
 # ══════════════════════════════════════════════════════════════
+
 
 def demo_registry_search():
     """
@@ -276,7 +299,7 @@ def demo_registry_search():
     for query in ["count", "reverse", "format", "upper"]:
         results = reg.search(query=query)
         names = [s._name for s in results]
-        print(f"    search(\"{query}\") → {names}")
+        print(f'    search("{query}") → {names}')
 
     # 标签搜索
     print("\n  标签搜索:")
@@ -298,6 +321,7 @@ def demo_registry_search():
 # 案例 6: SkillAgent — 自动技能发现
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_skill_agent():
     """
     SkillAgent: LLM 驱动的技能自动发现和执行。
@@ -313,14 +337,22 @@ def demo_skill_agent():
     reg = SkillRegistry()
 
     # 分类器 (用 Tool 模拟 LLM)
-    classifier = Tool("skill_selector", lambda x: (
-        "word_count" if any(w in x.lower() for w in ["count", "how many words"]) else
-        "to_upper" if any(w in x.lower() for w in ["upper", "capitalize", "大写"]) else
-        "reverse" if any(w in x.lower() for w in ["reverse", "反转", "backwards"]) else
-        "extract_numbers" if any(w in x.lower() for w in ["number", "数字", "extract"]) else
-        "summarize_stats" if any(w in x.lower() for w in ["stats", "统计", "analyze"]) else
-        "top_words"  # fallback
-    ))
+    classifier = Tool(
+        "skill_selector",
+        lambda x: (
+            "word_count"
+            if any(w in x.lower() for w in ["count", "how many words"])
+            else "to_upper"
+            if any(w in x.lower() for w in ["upper", "capitalize", "大写"])
+            else "reverse"
+            if any(w in x.lower() for w in ["reverse", "反转", "backwards"])
+            else "extract_numbers"
+            if any(w in x.lower() for w in ["number", "数字", "extract"])
+            else "summarize_stats"
+            if any(w in x.lower() for w in ["stats", "统计", "analyze"])
+            else "top_words"  # fallback
+        ),
+    )
 
     agent = SkillAgent(classifier=classifier, registry=reg)
 
@@ -337,7 +369,7 @@ def demo_skill_agent():
     print("  SkillAgent 自动选择技能:")
     for query, expected_skill in queries:
         result = agent(query, ctx)
-        print(f"    输入: \"{query[:50]}\"")
+        print(f'    输入: "{query[:50]}"')
         print(f"    选择: → {expected_skill}")
         print(f"    输出: {result}")
         print()
@@ -351,6 +383,7 @@ def demo_skill_agent():
 # 案例 7: 综合案例 — Skill 驱动的文档处理管道
 # ══════════════════════════════════════════════════════════════
 
+
 def demo_full_pipeline():
     """
     综合案例: 用 Skill 构建一个完整的文档处理管道。
@@ -363,31 +396,46 @@ def demo_full_pipeline():
     reg = SkillRegistry()
 
     # 创建专门的文档处理技能
-    @skill("doc_clean", "Clean and normalize document text",
-           tags=["document", "preprocessing"])
+    @skill(
+        "doc_clean",
+        "Clean and normalize document text",
+        tags=["document", "preprocessing"],
+    )
     def doc_clean(x):
         # 去除多余空白，统一换行
         import re
-        cleaned = re.sub(r'\s+', ' ', x).strip()
+
+        cleaned = re.sub(r"\s+", " ", x).strip()
         return cleaned
 
-    @skill("doc_extract_entities", "Extract named entities from text",
-           tags=["document", "extraction", "NLP"])
+    @skill(
+        "doc_extract_entities",
+        "Extract named entities from text",
+        tags=["document", "extraction", "NLP"],
+    )
     def doc_extract_entities(x):
         # 简单的实体提取（模拟 NER）
         import re
+
         # 找大写开头的词作为"实体"
-        entities = re.findall(r'\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b', x)
+        entities = re.findall(r"\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)*\b", x)
         unique = list(set(entities))[:10]
         return f"Entities: {', '.join(unique)}" if unique else "No entities found"
 
-    @skill("doc_sentiment", "Analyze sentiment of text",
-           tags=["document", "analysis", "NLP"])
+    @skill(
+        "doc_sentiment",
+        "Analyze sentiment of text",
+        tags=["document", "analysis", "NLP"],
+    )
     def doc_sentiment(x):
-        positive = sum(1 for w in ["good", "great", "excellent", "amazing", "love"]
-                      if w in x.lower())
-        negative = sum(1 for w in ["bad", "terrible", "awful", "hate", "poor"]
-                      if w in x.lower())
+        positive = sum(
+            1
+            for w in ["good", "great", "excellent", "amazing", "love"]
+            if w in x.lower()
+        )
+        negative = sum(
+            1 for w in ["bad", "terrible", "awful", "hate", "poor"] if w in x.lower()
+        )
         if positive > negative:
             return f"Sentiment: POSITIVE (score: +{positive - negative})"
         elif negative > positive:
@@ -406,7 +454,7 @@ def demo_full_pipeline():
 
     ctx = Context()
     print(f"  输入文档: ({len(doc)} 字符)")
-    print(f"    \"{doc.strip()[:80]}...\"")
+    print(f'    "{doc.strip()[:80]}..."')
 
     # 管道执行
     print(f"\n  [Pipeline] doc_clean >> doc_extract_entities")
@@ -455,6 +503,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ❌ {name} 失败: {e}")
             import traceback
+
             traceback.print_exc()
 
     print("\n" + "=" * 70)

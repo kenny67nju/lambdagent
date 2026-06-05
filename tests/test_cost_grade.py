@@ -12,8 +12,12 @@ Tests cover:
 import pytest
 from lambdagent.cost_grade import (
     CostGrade,
-    grade_serial, grade_parallel, grade_iterate, grade_guard,
-    estimate_cost, format_cost_estimate,
+    grade_serial,
+    grade_parallel,
+    grade_iterate,
+    grade_guard,
+    estimate_cost,
+    format_cost_estimate,
 )
 from lambdagent.primitives import Lam, Compose, If, Loop, Pair, Fst, Snd, Tool
 from lambdagent.extensions import Par, Route, Memory, Guard
@@ -23,8 +27,8 @@ from lambdagent.extensions import Par, Route, Memory, Guard
 # 1. CostGrade Construction
 # ============================================================
 
-class TestCostGrade:
 
+class TestCostGrade:
     def test_default_grade(self):
         g = CostGrade()
         assert g.probability == 1.0
@@ -42,8 +46,8 @@ class TestCostGrade:
 # 2. Grade Composition Rules (Paper III Definition 12)
 # ============================================================
 
-class TestGradeComposition:
 
+class TestGradeComposition:
     def test_serial(self):
         """g1 · g2: probabilities multiply, everything else adds"""
         g1 = CostGrade(0.9, 100, 1.0, 0.01)
@@ -69,7 +73,7 @@ class TestGradeComposition:
         g = CostGrade(0.9, 100, 1.0, 0.01, p_fatal=0.02)
         r = grade_iterate(g, 5)
         # 修正模型: p = (1 - p_fatal)^n = 0.98^5
-        assert r.probability == pytest.approx(0.98 ** 5)
+        assert r.probability == pytest.approx(0.98**5)
         # 成本不变
         assert r.tokens == 500
         assert r.latency == pytest.approx(5.0)
@@ -89,8 +93,8 @@ class TestGradeComposition:
 # 3. estimate_cost() for All Constructs
 # ============================================================
 
-class TestEstimateCost:
 
+class TestEstimateCost:
     def test_lam(self):
         """Lam has LLM cost"""
         lam = Lam("test", "prompt", model="qwen3-max")
@@ -175,8 +179,8 @@ class TestEstimateCost:
 # 4. Pipeline Cost Estimation
 # ============================================================
 
-class TestPipelineCost:
 
+class TestPipelineCost:
     def test_realistic_pipeline(self):
         """Realistic pipeline: summarize >> validate >> format"""
         summarizer = Lam("summarize", "Summarize", model="qwen3-max")
@@ -209,8 +213,8 @@ class TestPipelineCost:
 # 5. format_cost_estimate()
 # ============================================================
 
-class TestFormatCostEstimate:
 
+class TestFormatCostEstimate:
     def test_format(self):
         g = CostGrade(0.95, 800, 2.0, 0.0024)
         s = format_cost_estimate(g)

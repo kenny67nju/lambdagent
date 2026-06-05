@@ -12,6 +12,7 @@ Session persistence:
     Subsequent calls use `--resume <session_id>` to maintain full context.
     This eliminates the "amnesia" problem of stateless `-p` calls.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,7 +31,9 @@ def _find_working_claude(preferred: str = "claude") -> str:
 
     def _works(path: str) -> bool:
         try:
-            r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
+            r = subprocess.run(
+                [path, "--version"], capture_output=True, text=True, timeout=10
+            )
             return r.returncode == 0 and "Claude Code" in r.stdout
         except Exception:
             return False
@@ -87,6 +90,7 @@ class ClaudeLam(Term):
         inject_override: bool = True,
     ):
         import warnings
+
         warnings.warn(
             "ClaudeLam is deprecated and will be removed in lambdagent 0.3.0. "
             "Use Lam(provider=ClaudeCodeProvider(...)) instead.",
@@ -141,7 +145,9 @@ class ClaudeLam(Term):
         # Append tool override only on first call (when no session exists yet).
         # With --resume, Claude already has the override in its session memory.
         should_inject = self.inject_override and self._session_id is None
-        augmented_input = str(input) + self._TOOL_OVERRIDE if should_inject else str(input)
+        augmented_input = (
+            str(input) + self._TOOL_OVERRIDE if should_inject else str(input)
+        )
 
         if self.stream:
             raw = self._call_stream(augmented_input)
@@ -150,7 +156,14 @@ class ClaudeLam(Term):
 
         duration = (time.time() - t0) * 1000
         result = self.output_parser(raw)
-        ctx.log(self._name, self._trace_id, input, result, duration, f"claude-code/{self.model}")
+        ctx.log(
+            self._name,
+            self._trace_id,
+            input,
+            result,
+            duration,
+            f"claude-code/{self.model}",
+        )
         return result
 
     def _build_cmd(self, for_json: bool = False) -> list[str]:
@@ -163,9 +176,12 @@ class ClaudeLam(Term):
         cmd = [
             self.claude_bin,
             "-p",
-            "--output-format", output_format,
-            "--model", self.model,
-            "--tools", "",
+            "--output-format",
+            output_format,
+            "--model",
+            self.model,
+            "--tools",
+            "",
         ]
 
         if self._session_id:
@@ -215,7 +231,7 @@ class ClaudeLam(Term):
                 if not is_first:
                     if self.on_chunk:
                         chunk_buf.append(char)
-                        if len(chunk_buf) >= CHUNK_FLUSH_SIZE or char == '\n':
+                        if len(chunk_buf) >= CHUNK_FLUSH_SIZE or char == "\n":
                             self.on_chunk("".join(chunk_buf))
                             chunk_buf = []
                     else:
@@ -266,7 +282,9 @@ class ClaudeLam(Term):
             result = subprocess.run(
                 self._build_cmd(for_json=is_first),
                 input=input_text,
-                capture_output=True, text=True, timeout=600,
+                capture_output=True,
+                text=True,
+                timeout=600,
             )
 
             if result.returncode != 0:
@@ -301,4 +319,5 @@ class ClaudeLam(Term):
 
     def __rshift__(self, other):
         from lambdagent.primitives import Compose
+
         return Compose(self, other)

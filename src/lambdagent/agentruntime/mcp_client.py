@@ -1,4 +1,5 @@
 """agentruntime.mcp_client — MCP protocol HTTP client"""
+
 from __future__ import annotations
 import json
 import time
@@ -35,31 +36,39 @@ class MCPClient:
         if not node:
             return f"[MCP_ERROR: Unknown server '{server}']"
 
-        url = node.url if hasattr(node, 'url') else node.get("url", "")
-        endpoint = node.endpoint if hasattr(node, 'endpoint') else node.get("endpoint", "")
-        headers = node.headers if hasattr(node, 'headers') else node.get("headers", {})
-        retry = node.retry if hasattr(node, 'retry') else node.get("retry", 0)
+        url = node.url if hasattr(node, "url") else node.get("url", "")
+        endpoint = (
+            node.endpoint if hasattr(node, "endpoint") else node.get("endpoint", "")
+        )
+        headers = node.headers if hasattr(node, "headers") else node.get("headers", {})
+        retry = node.retry if hasattr(node, "retry") else node.get("retry", 0)
 
         if not url:
             return f"[MCP_NOT_CONFIGURED: {server}]"
 
         full_url = f"{url.rstrip('/')}{endpoint}"
-        body = json.dumps({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": tool,
-                "arguments": input_data if isinstance(input_data, dict) else {"input": str(input_data)},
+        body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": tool,
+                    "arguments": input_data
+                    if isinstance(input_data, dict)
+                    else {"input": str(input_data)},
+                },
             }
-        }).encode("utf-8")
+        ).encode("utf-8")
 
         req_headers = {"Content-Type": "application/json"}
         req_headers.update(headers)
 
         for attempt in range(1 + retry):
             try:
-                req = urllib.request.Request(full_url, data=body, headers=req_headers, method="POST")
+                req = urllib.request.Request(
+                    full_url, data=body, headers=req_headers, method="POST"
+                )
                 with urllib.request.urlopen(req, timeout=timeout) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     if "result" in data:
@@ -75,7 +84,7 @@ class MCPClient:
                     return str(data)
             except urllib.error.URLError as e:
                 if attempt < retry:
-                    time.sleep(min(2 ** attempt, 30))
+                    time.sleep(min(2**attempt, 30))
                     continue
                 return f"[MCP_TIMEOUT: {server}/{tool}] {e}"
             except Exception as e:
@@ -89,30 +98,37 @@ class MCPClient:
         if not node:
             return []
 
-        url = node.url if hasattr(node, 'url') else node.get("url", "")
-        endpoint = node.endpoint if hasattr(node, 'endpoint') else node.get("endpoint", "")
-        headers = node.headers if hasattr(node, 'headers') else node.get("headers", {})
+        url = node.url if hasattr(node, "url") else node.get("url", "")
+        endpoint = (
+            node.endpoint if hasattr(node, "endpoint") else node.get("endpoint", "")
+        )
+        headers = node.headers if hasattr(node, "headers") else node.get("headers", {})
 
         if not url:
             return []
 
         full_url = f"{url.rstrip('/')}{endpoint}"
-        body = json.dumps({
-            "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}
-        }).encode("utf-8")
+        body = json.dumps(
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+        ).encode("utf-8")
 
         req_headers = {"Content-Type": "application/json"}
         req_headers.update(headers)
 
         try:
-            req = urllib.request.Request(full_url, data=body, headers=req_headers, method="POST")
+            req = urllib.request.Request(
+                full_url, data=body, headers=req_headers, method="POST"
+            )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 tools = data.get("result", {}).get("tools", [])
-                return [ToolSchema(
-                    name=t.get("name", ""),
-                    description=t.get("description", ""),
-                    input_schema=t.get("inputSchema", {}),
-                ) for t in tools]
+                return [
+                    ToolSchema(
+                        name=t.get("name", ""),
+                        description=t.get("description", ""),
+                        input_schema=t.get("inputSchema", {}),
+                    )
+                    for t in tools
+                ]
         except Exception:
             return []

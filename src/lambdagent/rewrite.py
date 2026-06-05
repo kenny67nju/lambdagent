@@ -42,18 +42,21 @@ from .core import Term
 # 重写日志
 # ============================================================
 
+
 @dataclass
 class RewriteEntry:
     """一条重写的记录"""
-    law: str            # 定律名 (e.g. "Thm37: Left Unit")
-    description: str    # 描述
-    before: str         # 重写前的 repr
-    after: str          # 重写后的 repr
+
+    law: str  # 定律名 (e.g. "Thm37: Left Unit")
+    description: str  # 描述
+    before: str  # 重写前的 repr
+    after: str  # 重写后的 repr
 
 
 @dataclass
 class RewriteLog:
     """重写过程的完整日志"""
+
     entries: List[RewriteEntry] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
@@ -69,8 +72,10 @@ class RewriteLog:
 # Identity Term (用于检测单位元)
 # ============================================================
 
+
 class _IdentityTerm(Term):
     """Identity agent: Id(x) = x"""
+
     def __init__(self):
         super().__init__("Id")
 
@@ -84,6 +89,7 @@ def _is_identity(term: Term) -> bool:
         return True
     # 检查 Tool(lambda x: x) 模式
     from .primitives import Tool
+
     if isinstance(term, Tool):
         if term._name in ("Id", "id", "identity", "passthrough", "noop"):
             return True
@@ -94,6 +100,7 @@ def _is_identity(term: Term) -> bool:
 # 重写规则
 # ============================================================
 
+
 def _rewrite_left_unit(term: Term, log: RewriteLog) -> Term:
     """
     定理 37: 左单位元 — Id >> f ≡ f
@@ -101,6 +108,7 @@ def _rewrite_left_unit(term: Term, log: RewriteLog) -> Term:
     消除组合链中的前导 Identity。
     """
     from .primitives import Compose
+
     if not isinstance(term, Compose):
         return term
     new_stages = [s for s in term.stages if not _is_identity(s)]
@@ -113,12 +121,14 @@ def _rewrite_left_unit(term: Term, log: RewriteLog) -> Term:
             result = new_stages[0]
         else:
             result = Compose(*new_stages)
-        log.entries.append(RewriteEntry(
-            law="Thm37/38: Unit Laws",
-            description=f"Eliminated {removed} identity agent(s) from pipeline",
-            before=before,
-            after=repr(result),
-        ))
+        log.entries.append(
+            RewriteEntry(
+                law="Thm37/38: Unit Laws",
+                description=f"Eliminated {removed} identity agent(s) from pipeline",
+                before=before,
+                after=repr(result),
+            )
+        )
         return result
     return term
 
@@ -140,13 +150,17 @@ def _rewrite_route_distribution(term: Term, log: RewriteLog) -> Term:
     for i, stage in enumerate(term.stages):
         if isinstance(stage, Route) and i < len(term.stages) - 1:
             route = stage
-            remaining = term.stages[i + 1:]
+            remaining = term.stages[i + 1 :]
             suffix = remaining[0] if len(remaining) == 1 else Compose(*remaining)
 
             # 将 suffix 推入每个路由分支
             new_routes = {}
             for label, agent in route.routes.items():
-                new_routes[label] = Compose(agent, suffix) if not isinstance(agent, Compose) else Compose(*agent.stages, suffix)
+                new_routes[label] = (
+                    Compose(agent, suffix)
+                    if not isinstance(agent, Compose)
+                    else Compose(*agent.stages, suffix)
+                )
 
             new_default = None
             if route.default:
@@ -161,12 +175,14 @@ def _rewrite_route_distribution(term: Term, log: RewriteLog) -> Term:
                 result = Compose(*prefix, new_route)
             else:
                 result = new_route
-            log.entries.append(RewriteEntry(
-                law="Thm40: Route Distribution",
-                description=f"Pushed post-processing into {len(new_routes)} route branches",
-                before=before,
-                after=repr(result),
-            ))
+            log.entries.append(
+                RewriteEntry(
+                    law="Thm40: Route Distribution",
+                    description=f"Pushed post-processing into {len(new_routes)} route branches",
+                    before=before,
+                    after=repr(result),
+                )
+            )
             return result
 
     return term
@@ -187,12 +203,14 @@ def _rewrite_loop_simplify(term: Term, log: RewriteLog) -> Term:
             then_=_IdentityTerm(),
             else_=term.body,
         )
-        log.entries.append(RewriteEntry(
-            law="Thm39: Loop Unfolding",
-            description="Loop(body, cond, 1) simplified to If(cond, Id, body)",
-            before=before,
-            after=repr(result),
-        ))
+        log.entries.append(
+            RewriteEntry(
+                law="Thm39: Loop Unfolding",
+                description="Loop(body, cond, 1) simplified to If(cond, Id, body)",
+                before=before,
+                after=repr(result),
+            )
+        )
         return result
     return term
 
@@ -225,6 +243,7 @@ def _check_guard_distribution(term: Term, log: RewriteLog) -> None:
 # ============================================================
 # 递归重写
 # ============================================================
+
 
 def _rewrite_recursive(term: Term, log: RewriteLog) -> Term:
     """递归地对所有子项应用重写规则"""
@@ -270,6 +289,7 @@ def _rewrite_recursive(term: Term, log: RewriteLog) -> Term:
 # ============================================================
 # Public API
 # ============================================================
+
 
 def optimize(term: Term) -> Tuple[Term, RewriteLog]:
     """

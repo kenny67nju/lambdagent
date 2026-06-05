@@ -9,6 +9,7 @@ Optimizations:
   - Falls back to messages-in-prompt if --resume unavailable
   - Auto-detects a working claude binary across nvm versions
 """
+
 from __future__ import annotations
 
 import json
@@ -34,13 +35,18 @@ def _find_working_claude(preferred: str = "claude") -> Optional[str]:
       - Its version output contains "Claude Code"
       - Its --help output mentions "--tools" (rules out old v1.x CLI)
     """
+
     def _works(path: str) -> bool:
         try:
-            r = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=10)
+            r = subprocess.run(
+                [path, "--version"], capture_output=True, text=True, timeout=10
+            )
             if r.returncode != 0 or "Claude Code" not in r.stdout:
                 return False
             # v1.x (old) doesn't have --tools; v2.x does. Use --help as a proxy check.
-            h = subprocess.run([path, "--help"], capture_output=True, text=True, timeout=10)
+            h = subprocess.run(
+                [path, "--help"], capture_output=True, text=True, timeout=10
+            )
             help_text = h.stdout + h.stderr
             return "--tools" in help_text
         except Exception:
@@ -80,7 +86,9 @@ class ClaudeCodeProvider(LLMProvider):
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        preferred = config.extra.get("claude_bin", "claude") if config.extra else "claude"
+        preferred = (
+            config.extra.get("claude_bin", "claude") if config.extra else "claude"
+        )
         self.claude_bin = _find_working_claude(preferred) or preferred
         self._session_id = None
 
@@ -102,7 +110,7 @@ class ClaudeCodeProvider(LLMProvider):
     # and forces it to output a single JSON tool-call decision instead.
     _REACT_CONSTRAINT = (
         "\n\n[REACT_MODE] 你是决策模块，不是执行模块。"
-        "只输出下一步的JSON工具调用，格式：{\"tool\":\"工具名\",\"input\":\"...\"}，"
+        '只输出下一步的JSON工具调用，格式：{"tool":"工具名","input":"..."}，'
         "或输出 terminate 表示任务完成。"
         "严禁直接执行任何搜索、Bash命令或文件读写操作。"
     )
@@ -121,24 +129,31 @@ class ClaudeCodeProvider(LLMProvider):
         prompt_arg = user_content + self._REACT_CONSTRAINT
 
         cmd = [
-            self.claude_bin, "-p", prompt_arg,
-            "--output-format", "json",
-            "--model", self.config.model,
-            "--system-prompt", system_prompt,
+            self.claude_bin,
+            "-p",
+            prompt_arg,
+            "--output-format",
+            "json",
+            "--model",
+            self.config.model,
+            "--system-prompt",
+            system_prompt,
             "--dangerously-skip-permissions",
         ]
 
         try:
             result = subprocess.run(
                 cmd,
-                stdin=subprocess.DEVNULL,   # avoid 3-s stdin-wait warning
-                capture_output=True, text=True,
+                stdin=subprocess.DEVNULL,  # avoid 3-s stdin-wait warning
+                capture_output=True,
+                text=True,
                 timeout=self.config.timeout,
             )
         except subprocess.TimeoutExpired:
             raise ProviderError(
                 f"Claude Code timeout ({self.config.timeout}s) on first turn",
-                "claude-code", retryable=True,
+                "claude-code",
+                retryable=True,
             )
 
         if result.returncode != 0:
@@ -155,7 +170,8 @@ class ClaudeCodeProvider(LLMProvider):
             raise ProviderError(
                 f"Claude Code returned empty output (exit {result.returncode}). "
                 f"stderr: {(result.stderr or '').strip()[:200] or '(empty)'}",
-                "claude-code", retryable=True,
+                "claude-code",
+                retryable=True,
             )
 
         try:
@@ -177,10 +193,15 @@ class ClaudeCodeProvider(LLMProvider):
         prompt_arg = last_user + self._REACT_CONSTRAINT
 
         cmd = [
-            self.claude_bin, "-p", prompt_arg,
-            "--output-format", "text",
-            "--model", self.config.model,
-            "--resume", self._session_id,
+            self.claude_bin,
+            "-p",
+            prompt_arg,
+            "--output-format",
+            "text",
+            "--model",
+            self.config.model,
+            "--resume",
+            self._session_id,
             "--dangerously-skip-permissions",
         ]
 
@@ -188,14 +209,16 @@ class ClaudeCodeProvider(LLMProvider):
             result = subprocess.run(
                 cmd,
                 stdin=subprocess.DEVNULL,
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
                 timeout=self.config.timeout,
             )
         except subprocess.TimeoutExpired:
             self._session_id = None
             raise ProviderError(
                 f"Claude Code timeout ({self.config.timeout}s) on resume",
-                "claude-code", retryable=True,
+                "claude-code",
+                retryable=True,
             )
 
         if result.returncode != 0:

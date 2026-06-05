@@ -4,6 +4,7 @@ lambdagent.token_budget — Token budget tracking and enforcement
 Tracks token consumption across agent execution and prevents
 budget overrun by raising BudgetExhaustedError.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -14,6 +15,7 @@ from .core import LambdagentError
 
 class BudgetExhaustedError(LambdagentError):
     """Raised when token budget is exhausted."""
+
     def __init__(self, budget: int, used: int):
         self.budget = budget
         self.used = used
@@ -23,6 +25,7 @@ class BudgetExhaustedError(LambdagentError):
 @dataclass
 class TokenBudget:
     """Track and enforce token consumption limits."""
+
     max_tokens: int = 100000
     used: int = 0
     hard_limit: bool = True
@@ -41,16 +44,23 @@ class TokenBudget:
         """Check if budget can afford sending this prompt."""
         return self.can_afford(self.estimate_cost(prompt))
 
-    def record(self, input_tokens: int, output_tokens: int, model: str = "",
-               step: int = -1):
+    def record(
+        self, input_tokens: int, output_tokens: int, model: str = "", step: int = -1
+    ):
         """Record token consumption."""
         total = input_tokens + output_tokens
         self.used += total
         if model:
             self._by_model[model] = self._by_model.get(model, 0) + total
         if step >= 0:
-            self._by_step.append({"step": step, "input": input_tokens,
-                                  "output": output_tokens, "model": model})
+            self._by_step.append(
+                {
+                    "step": step,
+                    "input": input_tokens,
+                    "output": output_tokens,
+                    "model": model,
+                }
+            )
 
     def check(self):
         """Raise BudgetExhaustedError if budget exceeded."""

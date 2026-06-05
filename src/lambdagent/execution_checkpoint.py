@@ -4,6 +4,7 @@ lambdagent.execution_checkpoint — Resumable execution state
 Extends Checkpoint to capture execution position, enabling
 resume from the exact step where execution was interrupted.
 """
+
 from __future__ import annotations
 
 import json
@@ -18,9 +19,10 @@ from .core import Context
 @dataclass
 class StackFrame:
     """One frame in the execution stack."""
-    term_type: str          # 'Loop', 'Compose', 'GroupChat', 'ReAct'
-    term_name: str          # Name of the term
-    step_index: int         # Current position (loop step, compose stage index, etc.)
+
+    term_type: str  # 'Loop', 'Compose', 'GroupChat', 'ReAct'
+    term_name: str  # Name of the term
+    step_index: int  # Current position (loop step, compose stage index, etc.)
     local_state: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -39,9 +41,10 @@ class StackFrame:
 @dataclass
 class ExecutionCheckpoint:
     """Checkpoint that captures execution position for resumption."""
-    context: Optional[Dict[str, Any]] = None    # Serialized Context
+
+    context: Optional[Dict[str, Any]] = None  # Serialized Context
     execution_stack: List[StackFrame] = field(default_factory=list)
-    loop_state: Dict[str, Any] = field(default_factory=dict)      # step_count, last_result
+    loop_state: Dict[str, Any] = field(default_factory=dict)  # step_count, last_result
     groupchat_state: Dict[str, Any] = field(default_factory=dict)  # round, conversation
     last_input: str = ""
     last_result: str = ""
@@ -67,13 +70,18 @@ class ExecutionCheckpoint:
             return self.execution_stack[-1].term_type
         return "unknown"
 
-    def push_frame(self, term_type: str, term_name: str, step_index: int,
-                   **local_state):
+    def push_frame(
+        self, term_type: str, term_name: str, step_index: int, **local_state
+    ):
         """Push a new stack frame."""
-        self.execution_stack.append(StackFrame(
-            term_type=term_type, term_name=term_name,
-            step_index=step_index, local_state=local_state,
-        ))
+        self.execution_stack.append(
+            StackFrame(
+                term_type=term_type,
+                term_name=term_name,
+                step_index=step_index,
+                local_state=local_state,
+            )
+        )
 
     def pop_frame(self) -> Optional[StackFrame]:
         """Pop the top stack frame."""
@@ -122,7 +130,9 @@ class ExecutionCheckpoint:
 
     def save(self, path: str) -> str:
         """Save checkpoint to JSON file."""
-        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        os.makedirs(
+            os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+        )
         with open(path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2, ensure_ascii=False, default=str)
         return path
@@ -153,14 +163,20 @@ class ExecutionCheckpoint:
 class ExecutionCheckpointManager:
     """Manages auto-saving of execution checkpoints."""
 
-    def __init__(self, directory: str = ".lambdagent/checkpoints",
-                 save_every_n_steps: int = 5, max_checkpoints: int = 10):
+    def __init__(
+        self,
+        directory: str = ".lambdagent/checkpoints",
+        save_every_n_steps: int = 5,
+        max_checkpoints: int = 10,
+    ):
         self.directory = directory
         self.save_every_n_steps = save_every_n_steps
         self.max_checkpoints = max_checkpoints
         self._current: Optional[ExecutionCheckpoint] = None
 
-    def begin(self, term_type: str, term_name: str, input_text: str) -> ExecutionCheckpoint:
+    def begin(
+        self, term_type: str, term_name: str, input_text: str
+    ) -> ExecutionCheckpoint:
         """Begin tracking a new execution."""
         self._current = ExecutionCheckpoint(
             last_input=input_text,
@@ -209,7 +225,8 @@ class ExecutionCheckpointManager:
         if not os.path.exists(self.directory):
             return []
         files = sorted(
-            f for f in os.listdir(self.directory)
+            f
+            for f in os.listdir(self.directory)
             if f.startswith("exec_cp_") and f.endswith(".json")
         )
         return [os.path.join(self.directory, f) for f in files]

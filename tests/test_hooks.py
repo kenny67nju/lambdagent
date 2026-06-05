@@ -5,6 +5,7 @@ Layer 1: Decorators (pre_hook, post_hook, guard_hook)
 Layer 2: HookTerm (first-class Lambda term)
 Layer 3: HookRegistry (machine-level observer)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -14,9 +15,13 @@ import pytest
 from lambdagent.core import Context
 from lambdagent.primitives import Tool, Lam, Compose
 from lambdagent.hooks import (
-    HookRegistry, HookTerm,
-    pre_hook, post_hook, guard_hook,
-    compile_hooks_from_config, compile_shell_hook,
+    HookRegistry,
+    HookTerm,
+    pre_hook,
+    post_hook,
+    guard_hook,
+    compile_hooks_from_config,
+    compile_shell_hook,
 )
 
 
@@ -28,11 +33,14 @@ def run_async(coro):
 # Layer 3: HookRegistry
 # ════════════════════════════════════════════════════════════
 
+
 class TestHookRegistry:
     def test_register_and_fire(self):
         reg = HookRegistry()
         calls = []
-        reg.register("pre_tool", lambda **kw: calls.append(("pre_tool", kw.get("input"))))
+        reg.register(
+            "pre_tool", lambda **kw: calls.append(("pre_tool", kw.get("input")))
+        )
         reg.fire("pre_tool", input="hello", term=None)
         assert len(calls) == 1
         assert calls[0] == ("pre_tool", "hello")
@@ -49,7 +57,7 @@ class TestHookRegistry:
         """Hook errors are caught and logged, not raised."""
         reg = HookRegistry()
         reg.register("pre_llm", lambda **kw: 1 / 0)  # will raise
-        reg.register("pre_llm", lambda **kw: None)     # should still run
+        reg.register("pre_llm", lambda **kw: None)  # should still run
         reg.fire("pre_llm", term=None, input="x", ctx=None)
         captured = capsys.readouterr()
         assert "HookError" in captured.err
@@ -114,6 +122,7 @@ class TestHookRegistry:
 # Layer 2: HookTerm
 # ════════════════════════════════════════════════════════════
 
+
 class TestHookTerm:
     def test_pre_hook(self):
         """Pre hook runs before agent, doesn't modify input."""
@@ -160,6 +169,7 @@ class TestHookTerm:
     def test_async_aapply(self):
         """HookTerm.aapply works async."""
         import lambdagent.async_core  # patch aapply
+
         agent = Tool("double", lambda x: int(x) * 2)
         hooked = HookTerm(agent, post=lambda x: x + 1)
         result = run_async(hooked.aapply("5", Context()))
@@ -180,6 +190,7 @@ class TestHookTerm:
 # Layer 1: Decorators
 # ════════════════════════════════════════════════════════════
 
+
 class TestDecorators:
     def test_pre_hook_decorator(self):
         log = []
@@ -197,6 +208,7 @@ class TestDecorators:
 
     def test_guard_hook_decorator(self):
         from lambdagent.core import ValidationError
+
         base = Tool("short", lambda x: "hi")
         agent = guard_hook(lambda x: len(str(x)) > 3, retry=1)(base)
         with pytest.raises(ValidationError):
@@ -217,6 +229,7 @@ class TestDecorators:
 # ════════════════════════════════════════════════════════════
 # YAML Hook compilation
 # ════════════════════════════════════════════════════════════
+
 
 class TestYAMLHooks:
     def test_compile_hooks_from_config(self):
@@ -244,6 +257,7 @@ class TestYAMLHooks:
 # Integration: Three layers coexist
 # ════════════════════════════════════════════════════════════
 
+
 class TestThreeLayerIntegration:
     def test_all_layers_fire(self):
         """Layer 1 + Layer 2 + Layer 3 all fire in one execution."""
@@ -263,6 +277,7 @@ class TestThreeLayerIntegration:
 
         # Layer 1: inline compose
         from lambdagent.primitives import Compose
+
         pipeline = Compose(
             Tool("L1:log", lambda x: (log.append("L1:pre"), x)[1]),
             hooked,

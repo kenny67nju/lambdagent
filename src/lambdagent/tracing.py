@@ -11,6 +11,7 @@ Features:
 Every feature maps to the patent:
   "基于β-规约追踪的大语言模型智能体调试方法及系统"
 """
+
 from __future__ import annotations
 
 import json
@@ -25,11 +26,13 @@ from typing import Any, Dict, List, Optional, Tuple
 # 1. Enhanced TraceEntry with parent_step nesting
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class TraceEntry:
     """One β-reduction step with nesting support."""
+
     step: int = 0
-    term_type: str = ""      # Lam | Tool | Compose | Loop | Route | Guard | Memory
+    term_type: str = ""  # Lam | Tool | Compose | Loop | Route | Guard | Memory
     name: str = ""
     input: str = ""
     output: str = ""
@@ -37,9 +40,9 @@ class TraceEntry:
     model: str = ""
     tokens_in: int = 0
     tokens_out: int = 0
-    parent_step: Optional[int] = None   # nesting: which step spawned this
-    depth: int = 0                       # nesting depth (0 = top-level)
-    terminated: bool = False             # is this the base case?
+    parent_step: Optional[int] = None  # nesting: which step spawned this
+    depth: int = 0  # nesting depth (0 = top-level)
+    terminated: bool = False  # is this the base case?
     error: Optional[str] = None
     timestamp: float = 0.0
 
@@ -51,6 +54,7 @@ class TraceEntry:
 # ════════════════════════════════════════════════════════════
 # 2. EnhancedTraceStore
 # ════════════════════════════════════════════════════════════
+
 
 class TraceStore:
     """
@@ -81,10 +85,19 @@ class TraceStore:
         if self._depth_stack:
             self._depth_stack.pop()
 
-    def record(self, term_type: str, name: str, inp: Any, out: Any,
-               elapsed_ms: float, model: str = "", tokens_in: int = 0,
-               tokens_out: int = 0, terminated: bool = False,
-               error: Optional[str] = None) -> TraceEntry:
+    def record(
+        self,
+        term_type: str,
+        name: str,
+        inp: Any,
+        out: Any,
+        elapsed_ms: float,
+        model: str = "",
+        tokens_in: int = 0,
+        tokens_out: int = 0,
+        terminated: bool = False,
+        error: Optional[str] = None,
+    ) -> TraceEntry:
         """Record one β-reduction step."""
         entry = TraceEntry(
             step=self._step_counter,
@@ -108,7 +121,9 @@ class TraceStore:
     # ── Serialization ──
 
     def to_json(self, indent: int = 2) -> str:
-        return json.dumps([asdict(e) for e in self._entries], indent=indent, default=str)
+        return json.dumps(
+            [asdict(e) for e in self._entries], indent=indent, default=str
+        )
 
     def save(self, path: str):
         with open(path, "w", encoding="utf-8") as f:
@@ -120,7 +135,9 @@ class TraceStore:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         for d in data:
-            entry = TraceEntry(**{k: v for k, v in d.items() if k in TraceEntry.__dataclass_fields__})
+            entry = TraceEntry(
+                **{k: v for k, v in d.items() if k in TraceEntry.__dataclass_fields__}
+            )
             store._entries.append(entry)
         store._step_counter = len(store._entries)
         return store
@@ -193,7 +210,9 @@ def _supports_color() -> bool:
     return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
 
 
-def colorize_timeline(store: TraceStore, show_io: bool = True, max_io_len: int = 60) -> str:
+def colorize_timeline(
+    store: TraceStore, show_io: bool = True, max_io_len: int = 60
+) -> str:
     """
     Generate colorized timeline view.
 
@@ -242,14 +261,16 @@ def colorize_timeline(store: TraceStore, show_io: bool = True, max_io_len: int =
 
         # Time formatting
         if e.elapsed_ms >= 1000:
-            time_str = f"{e.elapsed_ms/1000:.1f}s"
+            time_str = f"{e.elapsed_ms / 1000:.1f}s"
         else:
             time_str = f"{e.elapsed_ms:.0f}ms"
 
         # Main line
-        line = (f"  {step_str:6s} {indent}{status} "
-                f"{type_color}{bar} {e.term_type}:{e.name}{reset} "
-                f"{dim}({time_str}){reset}")
+        line = (
+            f"  {step_str:6s} {indent}{status} "
+            f"{type_color}{bar} {e.term_type}:{e.name}{reset} "
+            f"{dim}({time_str}){reset}"
+        )
 
         if e.error:
             line += f" {red}ERROR: {e.error[:40]}{reset}"
@@ -268,7 +289,7 @@ def colorize_timeline(store: TraceStore, show_io: bool = True, max_io_len: int =
     lines.append(f"{_DIM if use_color else ''}{'─' * 70}{_RESET if use_color else ''}")
     lines.append(
         f"  Total: {s['total_steps']} β-reductions, "
-        f"{s['total_ms']/1000:.1f}s, "
+        f"{s['total_ms'] / 1000:.1f}s, "
         f"~{s['total_tokens']} tokens, "
         f"terminated by: {s['terminated_by']}"
     )
@@ -293,23 +314,27 @@ def colorize_timeline(store: TraceStore, show_io: bool = True, max_io_len: int =
 # 4. Anomaly Detection (5 algorithms)
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class Anomaly:
     """Detected anomaly in trace."""
-    type: str           # LATENCY_SPIKE | LOOP_DIVERGENCE | GUARD_STREAK | TOOL_REPEAT | EXCESSIVE_STEPS
-    severity: str       # ERROR | WARN
-    step: int           # which step triggered it
+
+    type: str  # LATENCY_SPIKE | LOOP_DIVERGENCE | GUARD_STREAK | TOOL_REPEAT | EXCESSIVE_STEPS
+    severity: str  # ERROR | WARN
+    step: int  # which step triggered it
     message: str
     details: Dict[str, Any] = field(default_factory=dict)
 
 
-def detect_anomalies(store: TraceStore,
-                     latency_factor: float = 3.0,
-                     similarity_threshold: float = 0.90,
-                     max_guard_fails: int = 3,
-                     max_tool_repeats: int = 5,
-                     step_warn: int = 50,
-                     step_error: int = 100) -> List[Anomaly]:
+def detect_anomalies(
+    store: TraceStore,
+    latency_factor: float = 3.0,
+    similarity_threshold: float = 0.90,
+    max_guard_fails: int = 3,
+    max_tool_repeats: int = 5,
+    step_warn: int = 50,
+    step_error: int = 100,
+) -> List[Anomaly]:
     """
     Run all 5 anomaly detection algorithms on a trace.
     Returns list of detected anomalies.
@@ -326,30 +351,37 @@ def detect_anomalies(store: TraceStore,
         mean_ms = sum(elapsed_values) / len(elapsed_values)
         for e in entries:
             if e.elapsed_ms > mean_ms * latency_factor and e.elapsed_ms > 100:
-                anomalies.append(Anomaly(
-                    type="LATENCY_SPIKE",
-                    severity="WARN",
-                    step=e.step,
-                    message=f"β[{e.step}] {e.term_type}:{e.name} took {e.elapsed_ms:.0f}ms "
-                            f"(mean: {mean_ms:.0f}ms, {e.elapsed_ms/mean_ms:.1f}x)",
-                    details={"elapsed_ms": e.elapsed_ms, "mean_ms": mean_ms,
-                             "factor": e.elapsed_ms / mean_ms},
-                ))
+                anomalies.append(
+                    Anomaly(
+                        type="LATENCY_SPIKE",
+                        severity="WARN",
+                        step=e.step,
+                        message=f"β[{e.step}] {e.term_type}:{e.name} took {e.elapsed_ms:.0f}ms "
+                        f"(mean: {mean_ms:.0f}ms, {e.elapsed_ms / mean_ms:.1f}x)",
+                        details={
+                            "elapsed_ms": e.elapsed_ms,
+                            "mean_ms": mean_ms,
+                            "factor": e.elapsed_ms / mean_ms,
+                        },
+                    )
+                )
 
     # ── Algorithm 2: Loop Divergence ──
     loop_entries = [e for e in entries if e.term_type == "Loop"]
     if len(loop_entries) >= 3:
         for i in range(2, len(loop_entries)):
-            sim = _text_similarity(loop_entries[i].output, loop_entries[i-1].output)
+            sim = _text_similarity(loop_entries[i].output, loop_entries[i - 1].output)
             if sim > similarity_threshold:
-                anomalies.append(Anomaly(
-                    type="LOOP_DIVERGENCE",
-                    severity="WARN",
-                    step=loop_entries[i].step,
-                    message=f"Loop output similarity {sim:.1%} at β[{loop_entries[i].step}] — "
-                            f"output not changing, possible stall",
-                    details={"similarity": sim, "consecutive": i},
-                ))
+                anomalies.append(
+                    Anomaly(
+                        type="LOOP_DIVERGENCE",
+                        severity="WARN",
+                        step=loop_entries[i].step,
+                        message=f"Loop output similarity {sim:.1%} at β[{loop_entries[i].step}] — "
+                        f"output not changing, possible stall",
+                        details={"similarity": sim, "consecutive": i},
+                    )
+                )
                 break  # report once
 
     # ── Algorithm 3: Guard Streak Failure ──
@@ -359,13 +391,15 @@ def detect_anomalies(store: TraceStore,
         if e.error or "stuck" in str(e.output).lower():
             consecutive_fails += 1
             if consecutive_fails >= max_guard_fails:
-                anomalies.append(Anomaly(
-                    type="GUARD_STREAK",
-                    severity="ERROR",
-                    step=e.step,
-                    message=f"Guard failed {consecutive_fails} consecutive times at β[{e.step}]",
-                    details={"consecutive_fails": consecutive_fails},
-                ))
+                anomalies.append(
+                    Anomaly(
+                        type="GUARD_STREAK",
+                        severity="ERROR",
+                        step=e.step,
+                        message=f"Guard failed {consecutive_fails} consecutive times at β[{e.step}]",
+                        details={"consecutive_fails": consecutive_fails},
+                    )
+                )
                 break
         else:
             consecutive_fails = 0
@@ -378,34 +412,40 @@ def detect_anomalies(store: TraceStore,
             if len(recent_tools) >= max_tool_repeats:
                 last_n = recent_tools[-max_tool_repeats:]
                 if all(t == last_n[0] for t in last_n):
-                    anomalies.append(Anomaly(
-                        type="TOOL_REPEAT",
-                        severity="WARN",
-                        step=e.step,
-                        message=f"Tool '{e.name}' called {max_tool_repeats} times "
-                                f"consecutively at β[{e.step}]",
-                        details={"tool": e.name, "repeat_count": max_tool_repeats},
-                    ))
+                    anomalies.append(
+                        Anomaly(
+                            type="TOOL_REPEAT",
+                            severity="WARN",
+                            step=e.step,
+                            message=f"Tool '{e.name}' called {max_tool_repeats} times "
+                            f"consecutively at β[{e.step}]",
+                            details={"tool": e.name, "repeat_count": max_tool_repeats},
+                        )
+                    )
                     break
 
     # ── Algorithm 5: Excessive Steps ──
     total = len(entries)
     if total > step_error:
-        anomalies.append(Anomaly(
-            type="EXCESSIVE_STEPS",
-            severity="ERROR",
-            step=total - 1,
-            message=f"Trace has {total} steps (> {step_error} threshold)",
-            details={"total_steps": total, "threshold": step_error},
-        ))
+        anomalies.append(
+            Anomaly(
+                type="EXCESSIVE_STEPS",
+                severity="ERROR",
+                step=total - 1,
+                message=f"Trace has {total} steps (> {step_error} threshold)",
+                details={"total_steps": total, "threshold": step_error},
+            )
+        )
     elif total > step_warn:
-        anomalies.append(Anomaly(
-            type="EXCESSIVE_STEPS",
-            severity="WARN",
-            step=total - 1,
-            message=f"Trace has {total} steps (> {step_warn} threshold)",
-            details={"total_steps": total, "threshold": step_warn},
-        ))
+        anomalies.append(
+            Anomaly(
+                type="EXCESSIVE_STEPS",
+                severity="WARN",
+                step=total - 1,
+                message=f"Trace has {total} steps (> {step_warn} threshold)",
+                details={"total_steps": total, "threshold": step_warn},
+            )
+        )
 
     return anomalies
 
@@ -421,7 +461,9 @@ def format_anomalies(anomalies: List[Anomaly]) -> str:
         if use_color:
             color = _RED if a.severity == "ERROR" else _YELLOW
             icon = "✗" if a.severity == "ERROR" else "⚠"
-            lines.append(f"  {color}{icon} [{a.severity}] {a.type}{_RESET}: {a.message}")
+            lines.append(
+                f"  {color}{icon} [{a.severity}] {a.type}{_RESET}: {a.message}"
+            )
         else:
             icon = "x" if a.severity == "ERROR" else "!"
             lines.append(f"  [{icon}] [{a.severity}] {a.type}: {a.message}")
@@ -432,7 +474,10 @@ def format_anomalies(anomalies: List[Anomaly]) -> str:
 # 5. Flamegraph (HTML export)
 # ════════════════════════════════════════════════════════════
 
-def generate_flamegraph_html(store: TraceStore, title: str = "lambdagent β-reduction flamegraph") -> str:
+
+def generate_flamegraph_html(
+    store: TraceStore, title: str = "lambdagent β-reduction flamegraph"
+) -> str:
     """
     Generate a self-contained HTML flamegraph from trace data.
     Each bar = one β-reduction, width = elapsed time, depth = nesting.
@@ -463,8 +508,7 @@ def generate_flamegraph_html(store: TraceStore, title: str = "lambdagent β-redu
 
         # x position: based on cumulative time of entries before this one at same depth
         preceding_ms = sum(
-            prev.elapsed_ms for prev in entries[:e.step]
-            if prev.depth == e.depth
+            prev.elapsed_ms for prev in entries[: e.step] if prev.depth == e.depth
         )
         x_pct = (preceding_ms / max(total_ms, 1)) * 100
 
@@ -472,13 +516,23 @@ def generate_flamegraph_html(store: TraceStore, title: str = "lambdagent β-redu
 
         # Color by type
         colors = {
-            "Lam": "#4A90D9", "Tool": "#50B050", "Compose": "#40B0B0",
-            "Loop": "#B060B0", "Route": "#D0A030", "Guard": "#D05050",
-            "Memory": "#808080", "MCP": "#50B050", "Pair": "#40B0B0",
+            "Lam": "#4A90D9",
+            "Tool": "#50B050",
+            "Compose": "#40B0B0",
+            "Loop": "#B060B0",
+            "Route": "#D0A030",
+            "Guard": "#D05050",
+            "Memory": "#808080",
+            "MCP": "#50B050",
+            "Pair": "#40B0B0",
         }
         color = colors.get(e.term_type, "#999999")
 
-        time_str = f"{e.elapsed_ms:.0f}ms" if e.elapsed_ms < 1000 else f"{e.elapsed_ms/1000:.1f}s"
+        time_str = (
+            f"{e.elapsed_ms:.0f}ms"
+            if e.elapsed_ms < 1000
+            else f"{e.elapsed_ms / 1000:.1f}s"
+        )
         label = f"{e.term_type}:{e.name} ({time_str})"
 
         bars_svg.append(f'''
@@ -489,7 +543,7 @@ def generate_flamegraph_html(store: TraceStore, title: str = "lambdagent β-redu
           <rect x="{x_pct}%" y="{y}" width="{width_pct}%" height="{bar_height}"
                 fill="{color}" rx="3" stroke="#fff" stroke-width="1"
                 opacity="0.9"/>
-          <text x="{x_pct + width_pct/2}%" y="{y + bar_height/2 + 4}"
+          <text x="{x_pct + width_pct / 2}%" y="{y + bar_height / 2 + 4}"
                 text-anchor="middle" font-size="11" fill="white"
                 style="pointer-events:none">{_html_escape(label[:40])}</text>
         </g>''')
@@ -520,9 +574,9 @@ def generate_flamegraph_html(store: TraceStore, title: str = "lambdagent β-redu
 <body>
 <h1>🔥 {_html_escape(title)}</h1>
 <div class="stats">
-  {stats['total_steps']} β-reductions · {stats['total_ms']/1000:.1f}s ·
-  ~{stats['total_tokens']} tokens · {stats['llm_calls']} LLM calls ·
-  {stats['tool_calls']} tool calls · terminated by: {stats['terminated_by']}
+  {stats["total_steps"]} β-reductions · {stats["total_ms"] / 1000:.1f}s ·
+  ~{stats["total_tokens"]} tokens · {stats["llm_calls"]} LLM calls ·
+  {stats["tool_calls"]} tool calls · terminated by: {stats["terminated_by"]}
 </div>
 <div class="legend">
   <span><div class="swatch" style="background:#4A90D9"></div> Lam (LLM)</span>
@@ -534,9 +588,9 @@ def generate_flamegraph_html(store: TraceStore, title: str = "lambdagent β-redu
 </div>
 <svg width="100%" height="{svg_height}" xmlns="http://www.w3.org/2000/svg">
   <text x="10" y="25" font-size="14" fill="#888">
-    depth ↑ | time →  (total: {total_ms/1000:.1f}s)
+    depth ↑ | time →  (total: {total_ms / 1000:.1f}s)
   </text>
-  {''.join(bars_svg)}
+  {"".join(bars_svg)}
 </svg>
 <div id="tooltip"></div>
 <script>
@@ -562,7 +616,9 @@ document.querySelectorAll('.bar').forEach(bar => {{
     return html
 
 
-def save_flamegraph(store: TraceStore, path: str, title: str = "lambdagent β-reduction flamegraph"):
+def save_flamegraph(
+    store: TraceStore, path: str, title: str = "lambdagent β-reduction flamegraph"
+):
     """Save flamegraph as HTML file."""
     html = generate_flamegraph_html(store, title)
     with open(path, "w", encoding="utf-8") as f:
@@ -572,6 +628,7 @@ def save_flamegraph(store: TraceStore, path: str, title: str = "lambdagent β-re
 # ════════════════════════════════════════════════════════════
 # 6. Replay + Diff
 # ════════════════════════════════════════════════════════════
+
 
 def replay(store: TraceStore, speed: float = 1.0, show_io: bool = True):
     """
@@ -591,13 +648,19 @@ def replay(store: TraceStore, speed: float = 1.0, show_io: bool = True):
         reset = _RESET if use_color else ""
         dim = _DIM if use_color else ""
 
-        time_str = f"{e.elapsed_ms:.0f}ms" if e.elapsed_ms < 1000 else f"{e.elapsed_ms/1000:.1f}s"
+        time_str = (
+            f"{e.elapsed_ms:.0f}ms"
+            if e.elapsed_ms < 1000
+            else f"{e.elapsed_ms / 1000:.1f}s"
+        )
 
         # Print step
         status = "■" if e.terminated else ("✗" if e.error else "▶")
-        print(f"  β[{e.step}] {indent}{status} "
-              f"{type_color}{e.term_type}:{e.name}{reset} "
-              f"{dim}({time_str}){reset}")
+        print(
+            f"  β[{e.step}] {indent}{status} "
+            f"{type_color}{e.term_type}:{e.name}{reset} "
+            f"{dim}({time_str}){reset}"
+        )
 
         if show_io:
             inp_s = str(e.input)[:60]
@@ -614,8 +677,9 @@ def replay(store: TraceStore, speed: float = 1.0, show_io: bool = True):
     print(f"{'─' * 60}")
 
 
-def diff_traces(trace_a: TraceStore, trace_b: TraceStore,
-                label_a: str = "A", label_b: str = "B") -> str:
+def diff_traces(
+    trace_a: TraceStore, trace_b: TraceStore, label_a: str = "A", label_b: str = "B"
+) -> str:
     """
     Compare two traces side by side.
     Aligns by (term_type, name) and reports differences.
@@ -625,7 +689,9 @@ def diff_traces(trace_a: TraceStore, trace_b: TraceStore,
     use_color = _supports_color()
 
     lines = []
-    lines.append(f"Trace diff: {label_a} ({len(entries_a)} steps) vs {label_b} ({len(entries_b)} steps)")
+    lines.append(
+        f"Trace diff: {label_a} ({len(entries_a)} steps) vs {label_b} ({len(entries_b)} steps)"
+    )
     lines.append("═" * 70)
 
     max_len = max(len(entries_a), len(entries_b))
@@ -644,16 +710,24 @@ def diff_traces(trace_a: TraceStore, trace_b: TraceStore,
                     # Same
                     same_count += 1
                     if use_color:
-                        lines.append(f"  {_DIM}β[{i}] {ea.term_type}:{ea.name} — SAME{_RESET}")
+                        lines.append(
+                            f"  {_DIM}β[{i}] {ea.term_type}:{ea.name} — SAME{_RESET}"
+                        )
                     else:
                         lines.append(f"  β[{i}] {ea.term_type}:{ea.name} — SAME")
                 else:
                     # Changed output
                     changed_count += 1
                     if use_color:
-                        lines.append(f"  {_YELLOW}β[{i}] {ea.term_type}:{ea.name} — CHANGED{_RESET}")
-                        lines.append(f"    {_RED}  {label_a}: {str(ea.output)[:50]}{_RESET}")
-                        lines.append(f"    {_GREEN}  {label_b}: {str(eb.output)[:50]}{_RESET}")
+                        lines.append(
+                            f"  {_YELLOW}β[{i}] {ea.term_type}:{ea.name} — CHANGED{_RESET}"
+                        )
+                        lines.append(
+                            f"    {_RED}  {label_a}: {str(ea.output)[:50]}{_RESET}"
+                        )
+                        lines.append(
+                            f"    {_GREEN}  {label_b}: {str(eb.output)[:50]}{_RESET}"
+                        )
                     else:
                         lines.append(f"  β[{i}] {ea.term_type}:{ea.name} — CHANGED")
                         lines.append(f"    - {label_a}: {str(ea.output)[:50]}")
@@ -661,32 +735,46 @@ def diff_traces(trace_a: TraceStore, trace_b: TraceStore,
             else:
                 # Different structure
                 changed_count += 1
-                lines.append(f"  β[{i}] STRUCTURE CHANGED: "
-                             f"{ea.term_type}:{ea.name} → {eb.term_type}:{eb.name}")
+                lines.append(
+                    f"  β[{i}] STRUCTURE CHANGED: "
+                    f"{ea.term_type}:{ea.name} → {eb.term_type}:{eb.name}"
+                )
         elif ea:
             removed_count += 1
             if use_color:
-                lines.append(f"  {_RED}β[{i}] {ea.term_type}:{ea.name} — REMOVED (only in {label_a}){_RESET}")
+                lines.append(
+                    f"  {_RED}β[{i}] {ea.term_type}:{ea.name} — REMOVED (only in {label_a}){_RESET}"
+                )
             else:
-                lines.append(f"  β[{i}] {ea.term_type}:{ea.name} — REMOVED (only in {label_a})")
+                lines.append(
+                    f"  β[{i}] {ea.term_type}:{ea.name} — REMOVED (only in {label_a})"
+                )
         elif eb:
             added_count += 1
             if use_color:
-                lines.append(f"  {_GREEN}β[{i}] {eb.term_type}:{eb.name} — ADDED (only in {label_b}){_RESET}")
+                lines.append(
+                    f"  {_GREEN}β[{i}] {eb.term_type}:{eb.name} — ADDED (only in {label_b}){_RESET}"
+                )
             else:
-                lines.append(f"  β[{i}] {eb.term_type}:{eb.name} — ADDED (only in {label_b})")
+                lines.append(
+                    f"  β[{i}] {eb.term_type}:{eb.name} — ADDED (only in {label_b})"
+                )
 
     lines.append("═" * 70)
-    lines.append(f"  Same: {same_count}, Changed: {changed_count}, "
-                 f"Added: {added_count}, Removed: {removed_count}")
+    lines.append(
+        f"  Same: {same_count}, Changed: {changed_count}, "
+        f"Added: {added_count}, Removed: {removed_count}"
+    )
 
     # Timing comparison
     ms_a = sum(e.elapsed_ms for e in entries_a)
     ms_b = sum(e.elapsed_ms for e in entries_b)
     if ms_a > 0:
         speedup = ms_a / max(ms_b, 1)
-        lines.append(f"  Time: {label_a}={ms_a/1000:.1f}s, {label_b}={ms_b/1000:.1f}s "
-                     f"({speedup:.2f}x {'faster' if speedup > 1 else 'slower'})")
+        lines.append(
+            f"  Time: {label_a}={ms_a / 1000:.1f}s, {label_b}={ms_b / 1000:.1f}s "
+            f"({speedup:.2f}x {'faster' if speedup > 1 else 'slower'})"
+        )
 
     return "\n".join(lines)
 
@@ -695,10 +783,11 @@ def diff_traces(trace_a: TraceStore, trace_b: TraceStore,
 # Utility functions
 # ════════════════════════════════════════════════════════════
 
+
 def _truncate(value: Any, max_len: int = 200) -> str:
     s = str(value)
     if len(s) > max_len:
-        return s[:max_len - 3] + "..."
+        return s[: max_len - 3] + "..."
     return s
 
 
@@ -716,4 +805,10 @@ def _text_similarity(a: str, b: str) -> float:
 
 
 def _html_escape(s: str) -> str:
-    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )

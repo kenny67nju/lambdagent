@@ -18,6 +18,7 @@ Lambda 演算解读:
 import sys
 import os
 import json
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lambdagent import Lam, Compose, Tool, Loop, Par, If, Context
@@ -37,7 +38,7 @@ def main():
             "You are a research planner. Given a research question, "
             "break it into exactly 3 focused sub-questions. "
             "Output as a JSON array of strings. Example: "
-            '[\"What is X?\", \"How does X affect Y?\", \"What are alternatives to X?\"]'
+            '["What is X?", "How does X affect Y?", "What are alternatives to X?"]'
         ),
         output_parser=lambda x: json.loads(x) if x.strip().startswith("[") else [x],
     )
@@ -60,7 +61,7 @@ def main():
         """高阶函数: MAP research_one over list"""
         results = []
         for i, q in enumerate(sub_questions):
-            print(f"    研究子问题 {i+1}/{len(sub_questions)}: {q[:50]}...")
+            print(f"    研究子问题 {i + 1}/{len(sub_questions)}: {q[:50]}...")
             answer = research_one(q, ctx)
             results.append(f"Q: {q}\nA: {answer}")
         return "\n\n".join(results)

@@ -13,9 +13,20 @@ Tests cover:
 
 import pytest
 from lambdagent.cek_machine import (
-    AgentCEKMachine, CEKState, CostVector, ZERO_COST,
+    AgentCEKMachine,
+    CEKState,
+    CostVector,
+    ZERO_COST,
     CostMonotonicityViolation,
-    HaltK, CompK, LoopK, PairLK, PairRK, GuardK, MemK, IfK, RouteK,
+    HaltK,
+    CompK,
+    LoopK,
+    PairLK,
+    PairRK,
+    GuardK,
+    MemK,
+    IfK,
+    RouteK,
     LabelKind,
 )
 from lambdagent.primitives import Lam, Compose, If, Loop, Pair, Fst, Snd, Tool
@@ -27,8 +38,8 @@ from lambdagent.handlers import TestHandler
 # 1. Basic Execution
 # ============================================================
 
-class TestCEKBasicExecution:
 
+class TestCEKBasicExecution:
     def test_tool_execution(self):
         """CEK can execute a simple Tool"""
         tool = Tool("double", lambda x: int(x) * 2)
@@ -104,8 +115,8 @@ class TestCEKBasicExecution:
 # 2. Handler Integration
 # ============================================================
 
-class TestCEKHandlerIntegration:
 
+class TestCEKHandlerIntegration:
     def test_cek_with_test_handler_lam(self):
         """CEK routes Lam calls through TestHandler"""
         handler = TestHandler()
@@ -155,8 +166,8 @@ class TestCEKHandlerIntegration:
 # 3. IfK Continuation Frame
 # ============================================================
 
-class TestCEKIfK:
 
+class TestCEKIfK:
     def test_if_term_condition_uses_ifk(self):
         """When If.cond is a Term, CEK pushes IfK and evaluates cond first"""
         # Condition is a Term (Tool returning "TRUE")
@@ -190,8 +201,8 @@ class TestCEKIfK:
 # 4. RouteK Continuation Frame
 # ============================================================
 
-class TestCEKRouteK:
 
+class TestCEKRouteK:
     def test_route_uses_routek(self):
         """Route pushes RouteK, evaluates classifier, then dispatches"""
         classifier = Tool("cls", lambda x: "math" if "+" in str(x) else "text")
@@ -224,8 +235,8 @@ class TestCEKRouteK:
 # 5. Cost Monotonicity (Paper II Proposition 23)
 # ============================================================
 
-class TestCostMonotonicity:
 
+class TestCostMonotonicity:
     def test_cost_never_decreases(self):
         """Normal execution maintains cost monotonicity"""
         f = Tool("a", lambda x: x)
@@ -252,8 +263,8 @@ class TestCostMonotonicity:
 # 6. Step-by-Step Execution
 # ============================================================
 
-class TestCEKStepByStep:
 
+class TestCEKStepByStep:
     def test_step_by_step(self):
         """Can execute step by step and inspect state"""
         f = Tool("add1", lambda x: int(x) + 1)
@@ -287,8 +298,8 @@ class TestCEKStepByStep:
 # 7. Memory Integration
 # ============================================================
 
-class TestCEKMemory:
 
+class TestCEKMemory:
     def test_memory_stores_result(self):
         """CEK Memory stores result in store"""
         inner = Tool("t", lambda x: f"processed: {x}")

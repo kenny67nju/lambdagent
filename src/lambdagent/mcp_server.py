@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional
 # JSON-RPC 2.0 over stdio
 # ════════════════════════════════════════════════════════════
 
+
 def _read_message() -> Optional[Dict]:
     """Read a JSON-RPC message from stdin (Content-Length framing)."""
     headers = {}
@@ -208,9 +209,11 @@ TOOLS = [
 # Tool Implementations
 # ════════════════════════════════════════════════════════════
 
+
 def _load_config(args: Dict) -> Dict:
     """Load config from path or content string."""
     import yaml
+
     if "config_content" in args and args["config_content"]:
         return yaml.safe_load(args["config_content"])
     elif "config_path" in args and args["config_path"]:
@@ -229,9 +232,7 @@ def _compile_term(config_or_path):
 
     if isinstance(config_or_path, dict):
         # Write to temp file for from_config
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             yaml.dump(config_or_path, f, allow_unicode=True)
             tmp_path = f.name
         try:
@@ -254,19 +255,20 @@ def handle_lint_agent_config(args: Dict) -> Dict:
     level_order = {"ERROR": 0, "WARN": 1, "INFO": 2}
     min_order = level_order.get(min_level, 1)
 
-    filtered = [
-        r for r in results
-        if level_order.get(r.level, 2) <= min_order
-    ]
+    filtered = [r for r in results if level_order.get(r.level, 2) <= min_order]
 
     return {
         "framework": framework,
         "total": len(results),
         "filtered": len(filtered),
         "errors": [
-            {"rule": r.rule, "level": r.level, "message": r.message,
-             "lambda_meaning": getattr(r, 'lambda_meaning', ''),
-             "field": getattr(r, 'field', '')}
+            {
+                "rule": r.rule,
+                "level": r.level,
+                "message": r.message,
+                "lambda_meaning": getattr(r, "lambda_meaning", ""),
+                "field": getattr(r, "field", ""),
+            }
             for r in filtered
         ],
         "summary": (
@@ -316,26 +318,30 @@ def handle_check_agent_types(args: Dict) -> Dict:
     term = _compile_term(cfg)
 
     # Extract agent_type for compose checking
-    agent_type = getattr(term, 'agent_type', None)
+    agent_type = getattr(term, "agent_type", None)
     errors = []
 
     # Walk compose chain and check types
     from lambdagent.primitives import Compose
+
     if isinstance(term, Compose):
         stages = term.stages
         for i in range(len(stages) - 1):
-            f_out = getattr(stages[i], 'output_type', None)
-            g_in = getattr(stages[i + 1], 'input_type', None)
+            f_out = getattr(stages[i], "output_type", None)
+            g_in = getattr(stages[i + 1], "input_type", None)
             if f_out and g_in:
                 from lambdagent.lam_types import is_subtype
+
                 if not is_subtype(f_out, g_in):
-                    errors.append({
-                        "stage": i,
-                        "composition": f"{stages[i]._name} >> {stages[i+1]._name}",
-                        "output_type": str(f_out),
-                        "input_type": str(g_in),
-                        "error": f"{f_out} is not subtype of {g_in}",
-                    })
+                    errors.append(
+                        {
+                            "stage": i,
+                            "composition": f"{stages[i]._name} >> {stages[i + 1]._name}",
+                            "output_type": str(f_out),
+                            "input_type": str(g_in),
+                            "error": f"{f_out} is not subtype of {g_in}",
+                        }
+                    )
 
     return {
         "type_safe": len(errors) == 0,
@@ -357,30 +363,42 @@ def handle_check_parallel_safety(args: Dict) -> Dict:
     # Find parallel constructs and check store independence
     def _check(t):
         if isinstance(t, (Pair, Par)):
-            agents = getattr(t, 'agents', None) or [
-                getattr(t, 'first', None), getattr(t, 'second', None)
+            agents = getattr(t, "agents", None) or [
+                getattr(t, "first", None),
+                getattr(t, "second", None),
             ]
             agents = [a for a in agents if a is not None]
             try:
                 from lambdagent.store_analysis import check_store_independence
+
                 check_store_independence(agents)
             except Exception as e:
-                conflicts.append({
-                    "agents": [getattr(a, '_name', '?') for a in agents],
-                    "error": str(e),
-                })
+                conflicts.append(
+                    {
+                        "agents": [getattr(a, "_name", "?") for a in agents],
+                        "error": str(e),
+                    }
+                )
 
         # Recurse into sub-terms
-        for attr in ('stages', 'agents', 'body', 'agent', 'first', 'second',
-                     'then_', 'else_'):
+        for attr in (
+            "stages",
+            "agents",
+            "body",
+            "agent",
+            "first",
+            "second",
+            "then_",
+            "else_",
+        ):
             child = getattr(t, attr, None)
             if child is None:
                 continue
             if isinstance(child, list):
                 for c in child:
-                    if hasattr(c, 'apply'):
+                    if hasattr(c, "apply"):
                         _check(c)
-            elif hasattr(child, 'apply'):
+            elif hasattr(child, "apply"):
                 _check(child)
 
     _check(term)
@@ -465,15 +483,16 @@ def handle_tools_call(params: Dict) -> Dict:
         result = handler(arguments)
         return {
             "content": [
-                {"type": "text", "text": json.dumps(result, indent=2, ensure_ascii=False)}
+                {
+                    "type": "text",
+                    "text": json.dumps(result, indent=2, ensure_ascii=False),
+                }
             ],
             "isError": False,
         }
     except Exception as e:
         return {
-            "content": [
-                {"type": "text", "text": f"Error: {type(e).__name__}: {e}"}
-            ],
+            "content": [{"type": "text", "text": f"Error: {type(e).__name__}: {e}"}],
             "isError": True,
         }
 
@@ -501,6 +520,7 @@ def handle_request(msg: Dict) -> Optional[Dict]:
 # ════════════════════════════════════════════════════════════
 # Main Loop
 # ════════════════════════════════════════════════════════════
+
 
 def main():
     """MCP Server main loop — reads JSON-RPC from stdin, writes to stdout."""

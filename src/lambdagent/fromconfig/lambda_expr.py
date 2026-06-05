@@ -1,4 +1,5 @@
 """fromconfig.lambda_expr — Export Lambda calculus notation"""
+
 from __future__ import annotations
 from typing import Any, Dict
 import yaml
@@ -39,11 +40,13 @@ def _cfg_to_lambda(cfg: Dict[str, Any]) -> str:
             f"({t}, lambda x.x)" if t == "terminate" else f"({t}, Tool_MCP)"
             for t in tools
         )
-        expr = (f"Y_{max_s}(lambda self. lambda state.\n"
-                f"  let t = think(state) in\n"
-                f"  CASE t [{tool_cases}] >>\n"
-                f"  IF is_terminate THEN t ELSE self(state + obs)\n"
-                f")")
+        expr = (
+            f"Y_{max_s}(lambda self. lambda state.\n"
+            f"  let t = think(state) in\n"
+            f"  CASE t [{tool_cases}] >>\n"
+            f"  IF is_terminate THEN t ELSE self(state + obs)\n"
+            f")"
+        )
         memory_cfg = cfg.get("memory", {})
         if memory_cfg.get("enabled"):
             strategy = memory_cfg.get("strategy", "local")
@@ -56,7 +59,7 @@ def _cfg_to_lambda(cfg: Dict[str, Any]) -> str:
         step_names = [s.get("name", f"step{i}") for i, s in enumerate(steps)]
         composition = " >> ".join(step_names)
         defs = "\n".join(
-            f"  {s.get('name', f'step{i}')} = lambda x. LLM(\"{(s.get('prompt',''))[:30]}...\")(x)"
+            f'  {s.get("name", f"step{i}")} = lambda x. LLM("{(s.get("prompt", ""))[:30]}...")(x)'
             for i, s in enumerate(steps)
         )
         return f"{name} = lambda x. ({composition})(x)\nwhere:\n{defs}"
@@ -123,11 +126,15 @@ def describe_config(path_or_cfg) -> str:
         lines.append(f"#     )")
         if memory_cfg.get("enabled"):
             s = memory_cfg.get("strategy", "local")
-            lines.append(f"#     , {s}(size={memory_cfg.get('size')}, ttl={memory_cfg.get('ttl')})")
+            lines.append(
+                f"#     , {s}(size={memory_cfg.get('size')}, ttl={memory_cfg.get('ttl')})"
+            )
             lines.append(f"#   )")
         lines.append(f"#")
-        lines.append(f"# Constructs: Lam, Loop, Route, Tool(x{len(tool_names)})" +
-                     (", Memory" if memory_cfg.get("enabled") else ""))
+        lines.append(
+            f"# Constructs: Lam, Loop, Route, Tool(x{len(tool_names)})"
+            + (", Memory" if memory_cfg.get("enabled") else "")
+        )
         lines.append(f"# beta-reduction bound: max {max_s} steps")
         if "terminate" in tool_names:
             lines.append(f"# Base case: terminate = lambda x.x")
@@ -135,7 +142,9 @@ def describe_config(path_or_cfg) -> str:
         steps = cfg.get("chain", {}).get("steps", [])
         step_names = [s.get("name", f"step{i}") for i, s in enumerate(steps)]
         lines.append(f"# {name} = {' >> '.join(step_names)}")
-        lines.append(f"# = lambda x. {step_names[-1]}(...{step_names[0]}(x)...)") if step_names else None
+        lines.append(
+            f"# = lambda x. {step_names[-1]}(...{step_names[0]}(x)...)"
+        ) if step_names else None
         lines.append(f"# Constructs: Compose({len(steps)} stages)")
     elif agent_type == "router":
         routes = list(cfg.get("router", {}).get("routes", {}).keys())
@@ -147,7 +156,9 @@ def describe_config(path_or_cfg) -> str:
         lines.append(f"# {name} = Par({', '.join(names)})")
         lines.append(f"# Constructs: Par({len(agents)} agents)")
     else:
-        lines.append(f"# {name} = Lam(\"{prompt[:50]}...\", model={model_cfg.get('name', 'default')})")
+        lines.append(
+            f'# {name} = Lam("{prompt[:50]}...", model={model_cfg.get("name", "default")})'
+        )
         lines.append(f"# = lambda x. LLM(x)")
 
     return "\n".join(lines)

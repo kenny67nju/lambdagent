@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Exceptions
 # ============================================================
 
+
 class IsolationError(LambdagentError):
     """Raised when workspace creation or management fails."""
 
@@ -42,15 +43,17 @@ class UncommittedChangesError(IsolationError):
 # IsolationLevel
 # ============================================================
 
+
 class IsolationLevel(Enum):
-    NONE = "none"            # Shared CWD (single agent only)
+    NONE = "none"  # Shared CWD (single agent only)
     DIRECTORY = "directory"  # Temp directory isolation (no Git)
-    WORKTREE = "worktree"    # Git Worktree isolation (recommended)
+    WORKTREE = "worktree"  # Git Worktree isolation (recommended)
 
 
 # ============================================================
 # IsolatedWorkspace
 # ============================================================
+
 
 @dataclass
 class IsolatedWorkspace:
@@ -68,7 +71,9 @@ class IsolatedWorkspace:
     # helpers
     # ----------------------------------------------------------
 
-    def _run_git(self, *args: str, cwd: Optional[str] = None) -> subprocess.CompletedProcess[str]:
+    def _run_git(
+        self, *args: str, cwd: Optional[str] = None
+    ) -> subprocess.CompletedProcess[str]:
         """Run a git command inside the workspace."""
         return subprocess.run(
             ["git", *args],
@@ -123,7 +128,12 @@ class IsolatedWorkspace:
         self._run_git("commit", "-m", message)
         result = self._run_git("rev-parse", "HEAD")
         commit_hash = result.stdout.strip()
-        logger.info("Agent %s committed %s on branch %s", self.agent_id, commit_hash, self.branch_name)
+        logger.info(
+            "Agent %s committed %s on branch %s",
+            self.agent_id,
+            commit_hash,
+            self.branch_name,
+        )
         return commit_hash
 
     def merge_back(self, target_branch: str = "main") -> bool:
@@ -145,7 +155,9 @@ class IsolatedWorkspace:
 
         try:
             self._run_git("checkout", target_branch, cwd=self.git_root)
-            self._run_git("merge", self.branch_name or "", "--no-edit", cwd=self.git_root)
+            self._run_git(
+                "merge", self.branch_name or "", "--no-edit", cwd=self.git_root
+            )
             logger.info("Merged branch %s into %s", self.branch_name, target_branch)
             return True
         except subprocess.CalledProcessError as exc:
@@ -161,6 +173,7 @@ class IsolatedWorkspace:
 # ============================================================
 # WorkspaceManager
 # ============================================================
+
 
 class WorkspaceManager:
     """Create, track, and tear-down isolated workspaces for agents."""

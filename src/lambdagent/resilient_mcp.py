@@ -3,6 +3,7 @@ lambdagent.resilient_mcp — Resilient MCP client with connection pooling
 
 Wraps MCP calls with circuit breaker, retry, and tool discovery caching.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,6 +20,7 @@ from .retry import RetryPolicy, CircuitBreaker, with_retry_sync
 @dataclass
 class MCPToolSchema:
     """Cached tool schema from MCP discovery."""
+
     name: str
     description: str = ""
     input_schema: Dict = field(default_factory=dict)
@@ -34,16 +36,25 @@ class ResilientMCPClient:
       - Connection reuse via urllib keep-alive
     """
 
-    def __init__(self, url: str, endpoint: str = "", headers: Dict[str, str] = None,
-                 timeout: int = 30, retry_policy: RetryPolicy = None,
-                 circuit_breaker: CircuitBreaker = None, name: str = ""):
+    def __init__(
+        self,
+        url: str,
+        endpoint: str = "",
+        headers: Dict[str, str] = None,
+        timeout: int = 30,
+        retry_policy: RetryPolicy = None,
+        circuit_breaker: CircuitBreaker = None,
+        name: str = "",
+    ):
         self.url = url.rstrip("/")
         self.endpoint = endpoint
         self.headers = headers or {}
         self.timeout = timeout
         self.name = name or url
         self.retry_policy = retry_policy or RetryPolicy(
-            max_attempts=2, base_delay=1.0, retryable_errors=(TimeoutError, ConnectionError, OSError)
+            max_attempts=2,
+            base_delay=1.0,
+            retryable_errors=(TimeoutError, ConnectionError, OSError),
         )
         self.circuit = circuit_breaker or CircuitBreaker(
             failure_threshold=3, reset_timeout=30.0, name=f"mcp:{name or url}"
@@ -83,16 +94,16 @@ class ResilientMCPClient:
                 return self._tool_cache
 
         try:
-            body = json.dumps({
-                "jsonrpc": "2.0", "id": 1,
-                "method": "tools/list", "params": {}
-            }).encode("utf-8")
+            body = json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
+            ).encode("utf-8")
 
             req_headers = {"Content-Type": "application/json"}
             req_headers.update(self.headers)
 
-            req = urllib.request.Request(self.full_url, data=body,
-                                        headers=req_headers, method="POST")
+            req = urllib.request.Request(
+                self.full_url, data=body, headers=req_headers, method="POST"
+            )
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
@@ -118,17 +129,21 @@ class ResilientMCPClient:
             except (json.JSONDecodeError, ValueError):
                 arguments = {"input": arguments}
 
-        body = json.dumps({
-            "jsonrpc": "2.0", "id": 1,
-            "method": "tools/call",
-            "params": {"name": tool_name, "arguments": arguments},
-        }).encode("utf-8")
+        body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+            }
+        ).encode("utf-8")
 
         req_headers = {"Content-Type": "application/json"}
         req_headers.update(self.headers)
 
-        req = urllib.request.Request(self.full_url, data=body,
-                                    headers=req_headers, method="POST")
+        req = urllib.request.Request(
+            self.full_url, data=body, headers=req_headers, method="POST"
+        )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
 

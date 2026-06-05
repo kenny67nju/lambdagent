@@ -4,6 +4,7 @@ lambdagent.rate_limiter — Token bucket rate limiter for LLM API calls
 Prevents API rate limit errors by throttling requests.
 Supports both sync and async usage.
 """
+
 from __future__ import annotations
 
 import asyncio

@@ -12,8 +12,13 @@ Tests cover:
 
 import pytest
 from lambdagent.handlers import (
-    EffectHandler, ProductionHandler, TestHandler, TraceHandler,
-    get_current_handler, set_current_handler, with_handler,
+    EffectHandler,
+    ProductionHandler,
+    TestHandler,
+    TraceHandler,
+    get_current_handler,
+    set_current_handler,
+    with_handler,
 )
 from lambdagent.primitives import Lam, Compose, Tool, Pair
 from lambdagent.extensions import Guard, Memory
@@ -24,8 +29,8 @@ from lambdagent.core import Context
 # 1. TestHandler — Mock LLM + Mock Tools
 # ============================================================
 
-class TestTestHandler:
 
+class TestTestHandler:
     def test_default_llm_mock(self):
         """Default mock returns generic response"""
         handler = TestHandler()
@@ -89,8 +94,8 @@ class TestTestHandler:
 # 2. TraceHandler
 # ============================================================
 
-class TestTraceHandler:
 
+class TestTraceHandler:
     def test_tool_tracing(self):
         """TraceHandler records tool calls"""
         handler = TraceHandler()
@@ -132,8 +137,8 @@ class TestTraceHandler:
 # 3. with_handler Context Manager
 # ============================================================
 
-class TestWithHandler:
 
+class TestWithHandler:
     def test_handler_activation(self):
         """with_handler sets current handler"""
         handler = TestHandler()
@@ -169,8 +174,8 @@ class TestWithHandler:
 # 4. Lam Integration with Handler
 # ============================================================
 
-class TestLamWithHandler:
 
+class TestLamWithHandler:
     def test_lam_uses_test_handler(self):
         """Lam delegates to TestHandler.handle_llm()"""
         handler = TestHandler()
@@ -196,8 +201,8 @@ class TestLamWithHandler:
 # 5. Tool Integration with Handler
 # ============================================================
 
-class TestToolWithHandler:
 
+class TestToolWithHandler:
     def test_tool_uses_test_handler(self):
         """Tool delegates to TestHandler.handle_tool()"""
         handler = TestHandler()
@@ -229,8 +234,8 @@ class TestToolWithHandler:
 # 6. Composed Agents with Handlers
 # ============================================================
 
-class TestComposedAgentsWithHandler:
 
+class TestComposedAgentsWithHandler:
     def test_compose_with_test_handler(self):
         """Compose(Lam, Tool) works with TestHandler"""
         handler = TestHandler()
@@ -272,6 +277,7 @@ class TestComposedAgentsWithHandler:
         """Handler switching preserves type annotations (Paper III Theorem)"""
         lam = Lam("typed", "Process input")
         from lambdagent.lam_types import T_STR, T_JSON
+
         lam.input_type = T_STR
         lam.output_type = T_JSON({"type": "object"})
 

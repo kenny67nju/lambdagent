@@ -18,7 +18,10 @@ from lambdagent.core import Term, Context, TraceEntry
 from lambdagent.cek_machine import CostVector, ZERO_COST
 
 from .engine import (
-    Engine, EngineMode, EngineResult, UnifiedTraceRecord,
+    Engine,
+    EngineMode,
+    EngineResult,
+    UnifiedTraceRecord,
 )
 from .config import RuntimeConfig
 from .executor import Executor
@@ -59,8 +62,7 @@ class RecursiveEngine(Engine):
     def __init__(self, config: RuntimeConfig | None = None):
         self._config = config
 
-    def execute(self, term: Term, input_val: Any, ctx: Context,
-                **opts) -> EngineResult:
+    def execute(self, term: Term, input_val: Any, ctx: Context, **opts) -> EngineResult:
         """Synchronous execution via Executor.reduce()."""
         t0 = time.time()
 
@@ -87,8 +89,9 @@ class RecursiveEngine(Engine):
             transitions=None,
         )
 
-    async def execute_async(self, term: Term, input_val: Any, ctx: Context,
-                            **opts) -> EngineResult:
+    async def execute_async(
+        self, term: Term, input_val: Any, ctx: Context, **opts
+    ) -> EngineResult:
         """Asynchronous execution via term.aapply()."""
         t0 = time.time()
 
@@ -115,6 +118,7 @@ class RecursiveEngine(Engine):
 # Trace Conversion (E04 — RecursiveEngine side)
 # ============================================================
 
+
 def _convert_trace(entries: List[TraceEntry]) -> List[UnifiedTraceRecord]:
     """Convert ctx.trace (List[TraceEntry]) to unified format."""
     records = []
@@ -126,18 +130,20 @@ def _convert_trace(entries: List[TraceEntry]) -> List[UnifiedTraceRecord]:
             money=_estimate_money(e.model, e.tokens_used),
         )
         cumulative = cumulative + step_cost
-        records.append(UnifiedTraceRecord(
-            step=i,
-            term_name=e.term_name,
-            action="llm_call" if e.model else "tool_call",
-            input_summary=str(e.input)[:200],
-            output_summary=str(e.output)[:200],
-            duration_ms=e.duration_ms,
-            cost=step_cost,
-            cumulative_cost=cumulative,
-            continuation=None,     # recursive engine has no K stack
-            yield_type=None,
-        ))
+        records.append(
+            UnifiedTraceRecord(
+                step=i,
+                term_name=e.term_name,
+                action="llm_call" if e.model else "tool_call",
+                input_summary=str(e.input)[:200],
+                output_summary=str(e.output)[:200],
+                duration_ms=e.duration_ms,
+                cost=step_cost,
+                cumulative_cost=cumulative,
+                continuation=None,  # recursive engine has no K stack
+                yield_type=None,
+            )
+        )
     return records
 
 

@@ -49,7 +49,9 @@ Examples:
     sub = parser.add_subparsers(dest="command", help="Command")
 
     # ── compile ──
-    p_compile = sub.add_parser("compile", help="Compile YAML → Lambda term (no execution)")
+    p_compile = sub.add_parser(
+        "compile", help="Compile YAML → Lambda term (no execution)"
+    )
     p_compile.add_argument("config", help="YAML config file path")
     p_compile.add_argument("--format", choices=["text", "json"], default="text")
     p_compile.add_argument("--validate", action="store_true", help="Also run lint")
@@ -57,18 +59,26 @@ Examples:
     # ── run ──
     p_run = sub.add_parser("run", help="Compile + execute agent")
     p_run.add_argument("config", help="YAML config file path")
-    p_run.add_argument("input", nargs="?", default=None, help="Input text (use - for stdin)")
+    p_run.add_argument(
+        "input", nargs="?", default=None, help="Input text (use - for stdin)"
+    )
     p_run.add_argument("--input-file", help="Read input from file")
     p_run.add_argument("--trace", action="store_true", help="Print β-reduction trace")
     p_run.add_argument("--trace-file", help="Save trace to JSON file")
     p_run.add_argument("--max-steps", type=int, help="Override maxSteps")
     p_run.add_argument("--temperature", type=float, help="Override temperature")
     p_run.add_argument("--model", help="Override model")
-    p_run.add_argument("--tool", action="append", default=[], help="Inject CLI tool: NAME=COMMAND")
-    p_run.add_argument("--timeout", type=int, default=300, help="Total timeout (seconds)")
+    p_run.add_argument(
+        "--tool", action="append", default=[], help="Inject CLI tool: NAME=COMMAND"
+    )
+    p_run.add_argument(
+        "--timeout", type=int, default=300, help="Total timeout (seconds)"
+    )
     p_run.add_argument("--format", choices=["text", "json"], default="text")
     p_run.add_argument("--quiet", action="store_true", help="Only output final result")
-    p_run.add_argument("--verbose", action="store_true", help="Print all intermediate steps")
+    p_run.add_argument(
+        "--verbose", action="store_true", help="Print all intermediate steps"
+    )
 
     # ── repl ──
     p_repl = sub.add_parser("repl", help="Interactive REPL (persistent session)")
@@ -92,12 +102,16 @@ Examples:
     # ── lambda ──
     p_lambda = sub.add_parser("lambda", help="Export pure Lambda expression")
     p_lambda.add_argument("config", help="YAML config file path")
-    p_lambda.add_argument("--format", choices=["human", "formal", "json"], default="human")
+    p_lambda.add_argument(
+        "--format", choices=["human", "formal", "json"], default="human"
+    )
 
     # ── tools ──
     p_tools = sub.add_parser("tools", help="List and test tools")
     p_tools.add_argument("config", help="YAML config file path")
-    p_tools.add_argument("--test", nargs=2, metavar=("TOOL", "INPUT"), help="Test a tool")
+    p_tools.add_argument(
+        "--test", nargs=2, metavar=("TOOL", "INPUT"), help="Test a tool"
+    )
     p_tools.add_argument("--discover", metavar="SERVER", help="Discover MCP tools")
 
     # ── version ──
@@ -138,6 +152,7 @@ Examples:
 # compile
 # ════════════════════════════════════════════════════════════
 
+
 def cmd_compile(args) -> int:
     """编译 YAML → Lambda 项，打印结构"""
     if not os.path.exists(args.config):
@@ -148,12 +163,19 @@ def cmd_compile(args) -> int:
 
     if args.format == "json":
         import yaml
+
         with open(args.config) as f:
             cfg = yaml.safe_load(f)
-        print(json.dumps({
-            "lambda_structure": desc,
-            "config": cfg,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "lambda_structure": desc,
+                    "config": cfg,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         print(desc)
 
@@ -168,6 +190,7 @@ def cmd_compile(args) -> int:
 # run
 # ════════════════════════════════════════════════════════════
 
+
 def cmd_run(args) -> int:
     """编译 + 执行 Agent"""
     if not os.path.exists(args.config):
@@ -177,7 +200,10 @@ def cmd_run(args) -> int:
     # 获取输入
     input_text = _resolve_input(args)
     if input_text is None:
-        print("[ERROR] No input provided. Use positional arg, --input-file, or stdin (-)", file=sys.stderr)
+        print(
+            "[ERROR] No input provided. Use positional arg, --input-file, or stdin (-)",
+            file=sys.stderr,
+        )
         return 1
 
     # 解析注入工具
@@ -189,6 +215,7 @@ def cmd_run(args) -> int:
 
     # 编译
     import yaml
+
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
@@ -215,7 +242,7 @@ def cmd_run(args) -> int:
     ctx = Context()
     if not args.quiet:
         print(f"[Compiling {args.config}...]")
-        print(f"[Executing: ({_term_name(agent)} \"{input_text[:50]}...\")]")
+        print(f'[Executing: ({_term_name(agent)} "{input_text[:50]}...")]')
 
     t0 = time.time()
     result = agent(input_text, ctx)
@@ -244,10 +271,10 @@ def cmd_run(args) -> int:
         print(json.dumps(output, indent=2, ensure_ascii=False))
     else:
         if args.trace or args.verbose:
-            print(f"\n{'─'*60}")
+            print(f"\n{'─' * 60}")
             print("β-reduction trace:")
             ctx.print_trace()
-            print(f"{'─'*60}")
+            print(f"{'─' * 60}")
 
         if not args.quiet:
             print(f"\nResult ({len(ctx.trace)} β-reductions, {elapsed:.1f}s):")
@@ -281,6 +308,7 @@ def cmd_run(args) -> int:
 # repl
 # ════════════════════════════════════════════════════════════
 
+
 def cmd_repl(args) -> int:
     """交互式 REPL"""
     if not os.path.exists(args.config):
@@ -288,6 +316,7 @@ def cmd_repl(args) -> int:
         return 4
 
     import yaml
+
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
@@ -329,7 +358,7 @@ def cmd_repl(args) -> int:
         # REPL 内置命令
         if user_input.startswith(":"):
             cmd = user_input.split()[0].lower()
-            cmd_args_str = user_input[len(cmd):].strip()
+            cmd_args_str = user_input[len(cmd) :].strip()
 
             if cmd in (":quit", ":q", ":exit"):
                 break
@@ -445,6 +474,7 @@ REPL Commands:
 # lint
 # ════════════════════════════════════════════════════════════
 
+
 def cmd_lint(args) -> int:
     """Lint 配置文件"""
     return cmd_lint_inner(args.config, args.level, args.format)
@@ -459,8 +489,10 @@ def cmd_lint_inner(config_path: str, level: str, fmt: str) -> int:
     # 如果是目录，递归处理
     if os.path.isdir(config_path):
         import glob
-        files = glob.glob(os.path.join(config_path, "*.yml")) + \
-                glob.glob(os.path.join(config_path, "*.yaml"))
+
+        files = glob.glob(os.path.join(config_path, "*.yml")) + glob.glob(
+            os.path.join(config_path, "*.yaml")
+        )
         total_errors = 0
         for f in files:
             print(f"\n--- {f} ---")
@@ -476,7 +508,12 @@ def cmd_lint_inner(config_path: str, level: str, fmt: str) -> int:
 
     if fmt == "json":
         data = [
-            {"level": i.level, "field": i.field, "message": i.message, "lambda": i.lambda_meaning}
+            {
+                "level": i.level,
+                "field": i.field,
+                "message": i.message,
+                "lambda": i.lambda_meaning,
+            }
             for i in filtered
         ]
         print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -488,8 +525,10 @@ def cmd_lint_inner(config_path: str, level: str, fmt: str) -> int:
         errors = [i for i in issues if i.level == "ERROR"]
         warns = [i for i in issues if i.level == "WARN"]
         infos = [i for i in issues if i.level == "INFO"]
-        print(f"\n{'─'*60}")
-        print(f"  {len(errors)} error(s), {len(warns)} warning(s), {len(infos)} info(s)")
+        print(f"\n{'─' * 60}")
+        print(
+            f"  {len(errors)} error(s), {len(warns)} warning(s), {len(infos)} info(s)"
+        )
 
     errors = [i for i in issues if i.level == "ERROR"]
     return 3 if errors else 0
@@ -498,6 +537,7 @@ def cmd_lint_inner(config_path: str, level: str, fmt: str) -> int:
 # ════════════════════════════════════════════════════════════
 # trace
 # ════════════════════════════════════════════════════════════
+
 
 def _trace_get(e, key, default=None):
     """兼容两种 trace 格式（v1: term/duration_ms, v2: term_type+name/elapsed_ms）。"""
@@ -539,9 +579,11 @@ def cmd_trace(args) -> int:
         for e in trace:
             ms = _trace_get(e, "duration_ms")
             bar = "█" * max(1, int(ms / 100))
-            print(f"  {cumulative/1000:6.1f}s ├{bar} {_trace_get(e, 'term')} ({ms:.0f}ms)")
+            print(
+                f"  {cumulative / 1000:6.1f}s ├{bar} {_trace_get(e, 'term')} ({ms:.0f}ms)"
+            )
             cumulative += ms
-        print(f"  {cumulative/1000:6.1f}s ┤ END")
+        print(f"  {cumulative / 1000:6.1f}s ┤ END")
         return 0
 
     # 默认：打印全部
@@ -549,16 +591,19 @@ def cmd_trace(args) -> int:
         inp = str(e.get("input", ""))[:60]
         out = str(e.get("output", ""))[:60]
         ms = _trace_get(e, "duration_ms")
-        print(f"  β[{e.get('step', '?')}] {_trace_get(e, 'term')} ({ms:.0f}ms): {inp} → {out}")
+        print(
+            f"  β[{e.get('step', '?')}] {_trace_get(e, 'term')} ({ms:.0f}ms): {inp} → {out}"
+        )
 
     total_ms = sum(_trace_get(e, "duration_ms") for e in trace)
-    print(f"\nTotal: {len(trace)} β-reductions, {total_ms/1000:.1f}s")
+    print(f"\nTotal: {len(trace)} β-reductions, {total_ms / 1000:.1f}s")
     return 0
 
 
 # ════════════════════════════════════════════════════════════
 # lambda
 # ════════════════════════════════════════════════════════════
+
 
 def cmd_lambda(args) -> int:
     """导出 Lambda 表达式"""
@@ -567,6 +612,7 @@ def cmd_lambda(args) -> int:
         return 4
 
     import yaml
+
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
@@ -578,7 +624,9 @@ def cmd_lambda(args) -> int:
     memory = cfg.get("memory", {})
     mcp = cfg.get("mcp", {})
 
-    model_name = f"{model_cfg.get('provider', 'anthropic')}/{model_cfg.get('name', '?')}"
+    model_name = (
+        f"{model_cfg.get('provider', 'anthropic')}/{model_cfg.get('name', '?')}"
+    )
     temp = model_cfg.get("temperature", 0)
 
     # 收集工具
@@ -615,12 +663,14 @@ def cmd_lambda(args) -> int:
         max_s = react.get("maxSteps", 10)
         print(f"    Y_{max_s}(λself. λstate.")
         short_prompt = prompt.strip().replace("\n", " ")[:40]
-        print(f"      let t = (λx. LLM_{{{model_name}, ⊕_{temp}}}(\"{short_prompt}...\"))(state) in")
+        print(
+            f'      let t = (λx. LLM_{{{model_name}, ⊕_{temp}}}("{short_prompt}..."))(state) in'
+        )
         if tools:
             print(f"      CASE (classify t) [")
             for tname, tlam in tools:
                 marker = "  ← base case" if tname == "terminate" else ""
-                print(f"        (\"{tname}\", λx. {tlam}){marker}")
+                print(f'        ("{tname}", λx. {tlam}){marker}')
             print(f"      ] >> λobs.")
         print(f"      IF (obs = t) THEN t ELSE self(state ⊕ format(t, obs))")
         print(f"    )")
@@ -628,13 +678,17 @@ def cmd_lambda(args) -> int:
         steps = cfg.get("chain", {}).get("steps", [])
         for i, step in enumerate(steps):
             op = ">>" if i > 0 else "  "
-            print(f"    {op} Lam(\"{step.get('name', f'step_{i}')}\", \"{step.get('prompt', '?')[:40]}...\")")
+            print(
+                f'    {op} Lam("{step.get("name", f"step_{i}")}", "{step.get("prompt", "?")[:40]}...")'
+            )
     else:
         short_prompt = prompt.strip().replace("\n", " ")[:50]
-        print(f"    λx. LLM_{{{model_name}, ⊕_{temp}}}(\"{short_prompt}...\")(x)")
+        print(f'    λx. LLM_{{{model_name}, ⊕_{temp}}}("{short_prompt}...")(x)')
 
     if memory.get("enabled"):
-        print(f"    , Γ ∪ {memory.get('strategy', 'local')}{{size={memory.get('size', '?')}, ttl={memory.get('ttl', '?')}}}")
+        print(
+            f"    , Γ ∪ {memory.get('strategy', 'local')}{{size={memory.get('size', '?')}, ttl={memory.get('ttl', '?')}}}"
+        )
         print(f"  )")
 
     return 0
@@ -644,6 +698,7 @@ def cmd_lambda(args) -> int:
 # tools
 # ════════════════════════════════════════════════════════════
 
+
 def cmd_tools(args) -> int:
     """列出和测试工具"""
     if not os.path.exists(args.config):
@@ -651,6 +706,7 @@ def cmd_tools(args) -> int:
         return 4
 
     import yaml
+
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
@@ -659,7 +715,7 @@ def cmd_tools(args) -> int:
     app = cfg.get("app", {}).get("mcp", {}).get("custom", {}).get("nodes", {})
 
     print(f"\nTools for {name}:")
-    print(f"{'─'*60}")
+    print(f"{'─' * 60}")
 
     # 在线工具
     for server, tools in mcp.get("onlineTool", {}).items():
@@ -686,6 +742,7 @@ def cmd_tools(args) -> int:
         # 尝试 ping
         try:
             import urllib.request
+
             req = urllib.request.Request(url, method="HEAD")
             t0 = time.time()
             urllib.request.urlopen(req, timeout=5)
@@ -702,7 +759,9 @@ def cmd_tools(args) -> int:
         # 简化：构建并调用工具
         agent = build_agent(cfg)
         # 这里需要更精细的实现来单独调用工具
-        print(f"  (Tool testing requires full react agent; use `lambdagent run` instead)")
+        print(
+            f"  (Tool testing requires full react agent; use `lambdagent run` instead)"
+        )
 
     return 0
 
@@ -710,6 +769,7 @@ def cmd_tools(args) -> int:
 # ════════════════════════════════════════════════════════════
 # version
 # ════════════════════════════════════════════════════════════
+
 
 def cmd_version(args) -> int:
     print("lambdagent v2.0.0")
@@ -721,6 +781,7 @@ def cmd_version(args) -> int:
 # ════════════════════════════════════════════════════════════
 # 工具函数
 # ════════════════════════════════════════════════════════════
+
 
 def _resolve_input(args) -> "str | None":
     """解析输入来源: 位置参数 > --input-file > stdin"""

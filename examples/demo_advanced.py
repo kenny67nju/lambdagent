@@ -19,11 +19,22 @@ Demo 4: 自学函数 (Dataset + Loop + Guard)
 """
 
 import sys, os, time
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lambdagent import (
-    Lam, Tool, Compose, If, Loop, Pair, Fst, Snd,
-    Route, Guard, Context, Dataset,
+    Lam,
+    Tool,
+    Compose,
+    If,
+    Loop,
+    Pair,
+    Fst,
+    Snd,
+    Route,
+    Guard,
+    Context,
+    Dataset,
 )
 from lambdagent.extensions import Memory, Par
 
@@ -43,6 +54,7 @@ from lambdagent.extensions import Memory, Par
 #
 # 展示: Loop (Y) + Guard + Compose + Pair + Tool
 # ════════════════════════════════════════════════════════════
+
 
 def demo_self_correcting_translator():
     print("╔══════════════════════════════════════════════════════╗")
@@ -140,6 +152,7 @@ def demo_self_correcting_translator():
 # 展示: Par (并行) + Compose + Lam
 # ════════════════════════════════════════════════════════════
 
+
 def demo_multi_perspective():
     print("\n╔══════════════════════════════════════════════════════╗")
     print("║  Demo 2: 多视角分析 (Par + Synthesize)              ║")
@@ -222,6 +235,7 @@ def demo_multi_perspective():
 # 展示: Compose + Tool (MAP) + Loop (Y) + Pair + If
 # ════════════════════════════════════════════════════════════
 
+
 def demo_recursive_document():
     print("\n╔══════════════════════════════════════════════════════╗")
     print("║  Demo 3: 递归文档生成器                               ║")
@@ -287,7 +301,7 @@ def demo_recursive_document():
     # ── Phase 2: MAP(expand) (N 次 β-规约) ──
     print("  ── Phase 2: Expand sections ──")
     draft = map_expand(outline, ctx)
-    print(f"  (Expanded {outline.count(chr(10))+1} sections)\n")
+    print(f"  (Expanded {outline.count(chr(10)) + 1} sections)\n")
 
     # ── Phase 3: Loop(review >> fix) — Y 组合子 ──
     print("  ── Phase 3: Review-Fix loop (Y combinator) ──")
@@ -336,6 +350,7 @@ def demo_recursive_document():
 # 核心洞察: LDS 可以从数据中"学出"函数，然后自我验证
 # ════════════════════════════════════════════════════════════
 
+
 def demo_self_learning():
     print("\n╔══════════════════════════════════════════════════════╗")
     print("║  Demo 4: 自学函数 (Dataset → Learn → Test → Refine) ║")
@@ -351,9 +366,9 @@ def demo_self_learning():
 
     # 初始训练集 (故意给很少)
     examples = [
-        (0, 1),    # 0² + 1 = 1
-        (1, 2),    # 1² + 1 = 2
-        (3, 10),   # 3² + 1 = 10
+        (0, 1),  # 0² + 1 = 1
+        (1, 2),  # 1² + 1 = 2
+        (3, 10),  # 3² + 1 = 10
     ]
 
     # 测试集 (LDS 从未见过)
@@ -412,6 +427,7 @@ def demo_self_learning():
 
 
 # ════════════════════════════════════════════════════════════
+
 
 def main():
     demos = {

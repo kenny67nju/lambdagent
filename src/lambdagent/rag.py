@@ -36,9 +36,11 @@ from .core import Term, Context, LambdagentError
 # 文档数据结构
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class Document:
     """一个可检索的文档"""
+
     content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
     doc_id: str = ""
@@ -51,6 +53,7 @@ class Document:
 @dataclass
 class SearchResult:
     """检索结果"""
+
     document: Document
     score: float
     rank: int = 0
@@ -59,6 +62,7 @@ class SearchResult:
 # ════════════════════════════════════════════════════════════
 # SimpleVectorStore: 零依赖的 TF-IDF 检索
 # ════════════════════════════════════════════════════════════
+
 
 class SimpleVectorStore:
     """
@@ -79,7 +83,9 @@ class SimpleVectorStore:
         self._tfidf_cache = None  # 清除缓存
         return doc.doc_id
 
-    def add_many(self, texts: List[str], metadatas: Optional[List[Dict]] = None) -> List[str]:
+    def add_many(
+        self, texts: List[str], metadatas: Optional[List[Dict]] = None
+    ) -> List[str]:
         """批量添加"""
         ids = []
         for i, text in enumerate(texts):
@@ -114,11 +120,40 @@ class SimpleVectorStore:
         """简单分词（英文空格 + 中文字符）"""
         # 英文: 小写 + 按非字母分割
         text = text.lower()
-        tokens = re.findall(r'[a-z]+|[\u4e00-\u9fff]', text)
+        tokens = re.findall(r"[a-z]+|[\u4e00-\u9fff]", text)
         # 过滤停用词
-        stops = {"the", "a", "an", "is", "are", "was", "were", "in", "on", "at",
-                 "to", "for", "of", "and", "or", "but", "not", "it", "this", "that",
-                 "with", "from", "by", "as", "be", "has", "have", "had", "do", "does"}
+        stops = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "and",
+            "or",
+            "but",
+            "not",
+            "it",
+            "this",
+            "that",
+            "with",
+            "from",
+            "by",
+            "as",
+            "be",
+            "has",
+            "have",
+            "had",
+            "do",
+            "does",
+        }
         return [t for t in tokens if t not in stops and len(t) > 1]
 
     def _build_tfidf(self):
@@ -181,6 +216,7 @@ class SimpleVectorStore:
 # ChromaStore: ChromaDB 后端（可选）
 # ════════════════════════════════════════════════════════════
 
+
 class ChromaStore:
     """
     ChromaDB 向量存储后端。
@@ -193,8 +229,9 @@ class ChromaStore:
         results = store.search("查询", top_k=3)
     """
 
-    def __init__(self, collection_name: str = "default",
-                 persist_directory: Optional[str] = None):
+    def __init__(
+        self, collection_name: str = "default", persist_directory: Optional[str] = None
+    ):
         try:
             import chromadb
         except ImportError:
@@ -208,9 +245,7 @@ class ChromaStore:
         else:
             self._client = chromadb.Client()
 
-        self._collection = self._client.get_or_create_collection(
-            name=collection_name
-        )
+        self._collection = self._client.get_or_create_collection(name=collection_name)
 
     def add(self, content: str, metadata: Optional[Dict] = None) -> str:
         doc_id = hashlib.md5(content.encode()).hexdigest()[:12]
@@ -221,7 +256,9 @@ class ChromaStore:
         )
         return doc_id
 
-    def add_many(self, texts: List[str], metadatas: Optional[List[Dict]] = None) -> List[str]:
+    def add_many(
+        self, texts: List[str], metadatas: Optional[List[Dict]] = None
+    ) -> List[str]:
         ids = [hashlib.md5(t.encode()).hexdigest()[:12] for t in texts]
         self._collection.add(
             documents=texts,
@@ -244,11 +281,13 @@ class ChromaStore:
         for i, (doc_text, dist, meta, doc_id) in enumerate(
             zip(docs, distances, metadatas, ids)
         ):
-            search_results.append(SearchResult(
-                document=Document(content=doc_text, metadata=meta, doc_id=doc_id),
-                score=1.0 / (1.0 + dist),  # 距离转相似度
-                rank=i + 1,
-            ))
+            search_results.append(
+                SearchResult(
+                    document=Document(content=doc_text, metadata=meta, doc_id=doc_id),
+                    score=1.0 / (1.0 + dist),  # 距离转相似度
+                    rank=i + 1,
+                )
+            )
         return search_results
 
     def __len__(self):
@@ -261,6 +300,7 @@ class ChromaStore:
 # ════════════════════════════════════════════════════════════
 # RAGTool: 检索工具 (lambdagent Term)
 # ════════════════════════════════════════════════════════════
+
 
 class RAGTool(Term):
     """
@@ -282,8 +322,9 @@ class RAGTool(Term):
         # → "[Source 1] Lambda 演算是..."
     """
 
-    def __init__(self, store, top_k: int = 3, min_score: float = 0.0,
-                 format: str = "numbered"):
+    def __init__(
+        self, store, top_k: int = 3, min_score: float = 0.0, format: str = "numbered"
+    ):
         """
         Args:
             store: 向量存储（SimpleVectorStore 或 ChromaStore）
@@ -301,6 +342,7 @@ class RAGTool(Term):
         """检索 = β-规约"""
         ctx = ctx or Context()
         import time
+
         t0 = time.time()
 
         results = self.store.search(str(input), top_k=self.top_k)
@@ -308,8 +350,9 @@ class RAGTool(Term):
 
         output = self._format_results(results)
         elapsed = (time.time() - t0) * 1000
-        ctx.log("RAG", self._trace_id, str(input)[:100],
-                f"{len(results)} results", elapsed)
+        ctx.log(
+            "RAG", self._trace_id, str(input)[:100], f"{len(results)} results", elapsed
+        )
         return output
 
     def _format_results(self, results: List[SearchResult]) -> str:
@@ -320,24 +363,36 @@ class RAGTool(Term):
             return "\n\n".join(r.document.content for r in results)
         elif self.format == "json":
             import json
-            return json.dumps([
-                {"rank": r.rank, "score": round(r.score, 4),
-                 "content": r.document.content, "metadata": r.document.metadata}
-                for r in results
-            ], ensure_ascii=False, indent=2)
+
+            return json.dumps(
+                [
+                    {
+                        "rank": r.rank,
+                        "score": round(r.score, 4),
+                        "content": r.document.content,
+                        "metadata": r.document.metadata,
+                    }
+                    for r in results
+                ],
+                ensure_ascii=False,
+                indent=2,
+            )
         else:  # numbered
             parts = []
             for r in results:
                 meta = ""
                 if r.document.metadata:
-                    meta = f" ({', '.join(f'{k}={v}' for k,v in r.document.metadata.items())})"
-                parts.append(f"[Source {r.rank}, score={r.score:.3f}{meta}]\n{r.document.content}")
+                    meta = f" ({', '.join(f'{k}={v}' for k, v in r.document.metadata.items())})"
+                parts.append(
+                    f"[Source {r.rank}, score={r.score:.3f}{meta}]\n{r.document.content}"
+                )
             return "\n\n".join(parts)
 
 
 # ════════════════════════════════════════════════════════════
 # AgenticRAG: Agent 自行决定何时检索
 # ════════════════════════════════════════════════════════════
+
 
 class AgenticRAG(Term):
     """
@@ -362,8 +417,9 @@ class AgenticRAG(Term):
         )
     """
 
-    def __init__(self, agent: Term, rag: RAGTool,
-                 decider=None, always_retrieve: bool = False):
+    def __init__(
+        self, agent: Term, rag: RAGTool, decider=None, always_retrieve: bool = False
+    ):
         """
         Args:
             agent: 主 Agent
@@ -380,6 +436,7 @@ class AgenticRAG(Term):
     def apply(self, input: Any, ctx: Context | None = None) -> Any:
         ctx = ctx or Context()
         import time
+
         t0 = time.time()
 
         input_str = str(input)
@@ -388,8 +445,14 @@ class AgenticRAG(Term):
         if not need_rag and self.decider is not None:
             if isinstance(self.decider, Term):
                 decision = self.decider.apply(input_str, ctx)
-                need_rag = bool(decision) if not isinstance(decision, str) else \
-                           any(w in str(decision).lower() for w in ["yes", "true", "retrieve", "search"])
+                need_rag = (
+                    bool(decision)
+                    if not isinstance(decision, str)
+                    else any(
+                        w in str(decision).lower()
+                        for w in ["yes", "true", "retrieve", "search"]
+                    )
+                )
             elif callable(self.decider):
                 need_rag = bool(self.decider(input_str))
         elif self.decider is None:
@@ -404,8 +467,13 @@ class AgenticRAG(Term):
             result = self.agent.apply(input_str, ctx)
 
         elapsed = (time.time() - t0) * 1000
-        ctx.log(f"AgenticRAG({'with_rag' if need_rag else 'no_rag'})",
-                self._trace_id, input_str[:100], str(result)[:100], elapsed)
+        ctx.log(
+            f"AgenticRAG({'with_rag' if need_rag else 'no_rag'})",
+            self._trace_id,
+            input_str[:100],
+            str(result)[:100],
+            elapsed,
+        )
         return result
 
 
@@ -413,9 +481,14 @@ class AgenticRAG(Term):
 # 便利函数
 # ════════════════════════════════════════════════════════════
 
-def create_rag(documents: List[str], metadatas: Optional[List[Dict]] = None,
-               top_k: int = 3, backend: str = "simple",
-               **kwargs) -> RAGTool:
+
+def create_rag(
+    documents: List[str],
+    metadatas: Optional[List[Dict]] = None,
+    top_k: int = 3,
+    backend: str = "simple",
+    **kwargs,
+) -> RAGTool:
     """
     一行创建 RAG 工具。
 

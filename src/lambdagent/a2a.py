@@ -44,6 +44,7 @@ from .core import Term, Context, LambdagentError
 # A2A 数据结构 (基于 A2A v0.3 规范)
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class AgentCard:
     """
@@ -61,6 +62,7 @@ class AgentCard:
         output_modes:  支持的输出模式 (text, file, data)
         auth:          认证方式
     """
+
     name: str
     description: str = ""
     url: str = ""
@@ -126,8 +128,12 @@ class AgentCard:
             description=data.get("description", ""),
             url=data.get("url", ""),
             version=data.get("version", "1.0.0"),
-            provider=provider.get("organization", "") if isinstance(provider, dict) else str(provider),
-            documentation_url=provider.get("url", "") if isinstance(provider, dict) else "",
+            provider=provider.get("organization", "")
+            if isinstance(provider, dict)
+            else str(provider),
+            documentation_url=provider.get("url", "")
+            if isinstance(provider, dict)
+            else "",
             skills=data.get("skills", []),
             input_modes=data.get("defaultInputModes", ["text"]),
             output_modes=data.get("defaultOutputModes", ["text"]),
@@ -153,6 +159,7 @@ class AgentCard:
 # Skill → AgentCard 转换
 # ════════════════════════════════════════════════════════════
 
+
 def skill_to_agent_card(skill, url: str = "", port: int = 8000) -> AgentCard:
     """
     将 lambdagent Skill 转换为 A2A Agent Card。
@@ -176,18 +183,19 @@ def skill_to_agent_card(skill, url: str = "", port: int = 8000) -> AgentCard:
         )
 
     # Skill 的完整转换
-    a2a_skills = [{
-        "id": skill.skill_id,
-        "name": skill._name,
-        "description": skill.description,
-        "tags": skill.tags,
-        "examples": [
-            {"input": inp, "output": out}
-            for inp, out in skill.examples
-        ] if skill.examples else [],
-        "inputModes": ["text"],
-        "outputModes": ["text"],
-    }]
+    a2a_skills = [
+        {
+            "id": skill.skill_id,
+            "name": skill._name,
+            "description": skill.description,
+            "tags": skill.tags,
+            "examples": [{"input": inp, "output": out} for inp, out in skill.examples]
+            if skill.examples
+            else [],
+            "inputModes": ["text"],
+            "outputModes": ["text"],
+        }
+    ]
 
     return AgentCard(
         name=skill._name,
@@ -215,14 +223,16 @@ def registry_to_agent_card(registry, url: str = "", port: int = 8000) -> AgentCa
     for name in registry.list_all():
         s = registry.get(name)
         if s and isinstance(s, Skill):
-            all_skills.append({
-                "id": s.skill_id,
-                "name": s._name,
-                "description": s.description,
-                "tags": s.tags,
-                "inputModes": ["text"],
-                "outputModes": ["text"],
-            })
+            all_skills.append(
+                {
+                    "id": s.skill_id,
+                    "name": s._name,
+                    "description": s.description,
+                    "tags": s.tags,
+                    "inputModes": ["text"],
+                    "outputModes": ["text"],
+                }
+            )
             all_tags.update(s.tags)
 
     return AgentCard(
@@ -238,6 +248,7 @@ def registry_to_agent_card(registry, url: str = "", port: int = 8000) -> AgentCa
 # A2A Task 数据结构
 # ════════════════════════════════════════════════════════════
 
+
 @dataclass
 class A2ATask:
     """
@@ -245,6 +256,7 @@ class A2ATask:
 
     生命周期: submitted → working → completed | failed | canceled
     """
+
     id: str = ""
     status: str = "submitted"  # submitted | working | completed | failed | canceled
     input_text: str = ""
@@ -268,15 +280,19 @@ class A2ATask:
             "history": [],
         }
         if self.input_text:
-            result["history"].append({
-                "role": "user",
-                "parts": [{"type": "text", "text": self.input_text}],
-            })
+            result["history"].append(
+                {
+                    "role": "user",
+                    "parts": [{"type": "text", "text": self.input_text}],
+                }
+            )
         if self.output_text:
-            result["history"].append({
-                "role": "agent",
-                "parts": [{"type": "text", "text": self.output_text}],
-            })
+            result["history"].append(
+                {
+                    "role": "agent",
+                    "parts": [{"type": "text", "text": self.output_text}],
+                }
+            )
         if self.error:
             result["status"]["message"] = self.error
         return result
@@ -285,6 +301,7 @@ class A2ATask:
 # ════════════════════════════════════════════════════════════
 # A2AServer: 将 lambdagent Agent 发布为 A2A 服务
 # ════════════════════════════════════════════════════════════
+
 
 class A2AServer:
     """
@@ -304,8 +321,13 @@ class A2AServer:
         server.start()  # 启动 HTTP 服务器
     """
 
-    def __init__(self, agent: Term, card: Optional[AgentCard] = None,
-                 port: int = 8000, host: str = "0.0.0.0"):
+    def __init__(
+        self,
+        agent: Term,
+        card: Optional[AgentCard] = None,
+        port: int = 8000,
+        host: str = "0.0.0.0",
+    ):
         self.agent = agent
         self.port = port
         self.host = host
@@ -353,10 +375,14 @@ class A2AServer:
         self._server = HTTPServer((self.host, self.port), Handler)
 
         if background:
-            self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+            self._thread = threading.Thread(
+                target=self._server.serve_forever, daemon=True
+            )
             self._thread.start()
             print(f"  A2A Server started at http://{self.host}:{self.port}")
-            print(f"  Agent Card: http://{self.host}:{self.port}/.well-known/agent.json")
+            print(
+                f"  Agent Card: http://{self.host}:{self.port}/.well-known/agent.json"
+            )
         else:
             print(f"  A2A Server starting at http://{self.host}:{self.port}")
             self._server.serve_forever()
@@ -440,6 +466,7 @@ class A2AServer:
 # A2AClient: 调用远程 A2A Agent
 # ════════════════════════════════════════════════════════════
 
+
 class A2AClient(Term):
     """
     A2A Client — 调用远程 A2A Agent 的 lambdagent Term。
@@ -456,8 +483,7 @@ class A2AClient(Term):
         pipeline = local_agent >> remote >> another_local
     """
 
-    def __init__(self, url: str, name: Optional[str] = None,
-                 timeout: float = 60.0):
+    def __init__(self, url: str, name: Optional[str] = None, timeout: float = 60.0):
         self.url = url.rstrip("/")
         self._card: Optional[AgentCard] = None
         self.timeout = timeout
@@ -504,7 +530,8 @@ class A2AClient(Term):
 
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            self.url, data=body,
+            self.url,
+            data=body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
@@ -534,8 +561,9 @@ class A2AClient(Term):
                 break
 
         elapsed = (time.time() - t0) * 1000
-        ctx.log(self._name, self._trace_id, str(input)[:100],
-                output_text[:100], elapsed)
+        ctx.log(
+            self._name, self._trace_id, str(input)[:100], output_text[:100], elapsed
+        )
         return output_text
 
     def __repr__(self):

@@ -27,17 +27,20 @@ from typing import Any, FrozenSet, List, Optional, Set, Tuple
 # 效果种类 (Paper III Definition 6)
 # ============================================================
 
+
 class EffectKind(Enum):
     """基本效果种类"""
-    PURE = "pure"           # 纯函数 — 无副作用
-    LLM = "llm"             # LLM 调用 — 自回归解码
-    IO = "io"               # I/O — 工具调用、外部 API
-    STATE = "state"         # 状态 — 读写 Memory/SharedMemory
+
+    PURE = "pure"  # 纯函数 — 无副作用
+    LLM = "llm"  # LLM 调用 — 自回归解码
+    IO = "io"  # I/O — 工具调用、外部 API
+    STATE = "state"  # 状态 — 读写 Memory/SharedMemory
 
 
 # ============================================================
 # Effect: 效果类型 (Paper III Definition 7)
 # ============================================================
+
 
 @dataclass(frozen=True)
 class Effect:
@@ -49,6 +52,7 @@ class Effect:
 
     每个 Effect 是基本效果的组合。
     """
+
     kind: EffectKind
     # llm(m): 模型名称 (when kind == LLM)
     model: Optional[str] = None
@@ -94,6 +98,7 @@ def STATE(*keys: str) -> Effect:
 # 组合效果 (Paper III Definition 7 continued)
 # ============================================================
 
+
 @dataclass(frozen=True)
 class ComposedEffect:
     """
@@ -103,6 +108,7 @@ class ComposedEffect:
     并行 (∥): Pair(f, g) 的效果 = ε_f ∥ ε_g
     迭代 (εⁿ): Loop(body, n) 的效果 = ε_body^n
     """
+
     effects: Tuple[Effect, ...]
     mode: str = "serial"  # "serial" (·), "parallel" (∥), "iterate" (εⁿ)
     iterations: Optional[int] = None  # only for iterate
@@ -163,6 +169,7 @@ class ComposedEffect:
 # ============================================================
 # 效果组合运算 (Paper III Definitions 6-7)
 # ============================================================
+
 
 def serial(*effects: Effect | ComposedEffect) -> ComposedEffect:
     """
@@ -256,6 +263,7 @@ def max_effect(*effects: Effect) -> Effect:
 # 效果推断辅助
 # ============================================================
 
+
 def parse_effect_annotation(annotation: Any) -> Effect | ComposedEffect:
     """
     从 YAML 配置中的效果标注解析为 Effect。
@@ -275,7 +283,9 @@ def parse_effect_annotation(annotation: Any) -> Effect | ComposedEffect:
 
         # 组合效果: "ε1 · ε2"
         if " · " in annotation:
-            parts = [parse_effect_annotation(p.strip()) for p in annotation.split(" · ")]
+            parts = [
+                parse_effect_annotation(p.strip()) for p in annotation.split(" · ")
+            ]
             return serial(*parts)
 
         # 组合效果: "ε1 ∥ ε2"
@@ -305,6 +315,7 @@ def parse_effect_annotation(annotation: Any) -> Effect | ComposedEffect:
 # ============================================================
 # Term 效果推断 (Paper III §4)
 # ============================================================
+
 
 def infer_effect_for_term(term: Any) -> Effect | ComposedEffect:
     """
@@ -347,15 +358,29 @@ def infer_effect_for_term(term: Any) -> Effect | ComposedEffect:
         return parallel(*agent_effects)
 
     elif isinstance(term, If):
-        cond_eff = infer_effect_for_term(term.cond) if isinstance(term.cond, type) and hasattr(term.cond, 'apply') else PURE
+        cond_eff = (
+            infer_effect_for_term(term.cond)
+            if isinstance(term.cond, type) and hasattr(term.cond, "apply")
+            else PURE
+        )
         then_eff = infer_effect_for_term(term.then_)
         else_eff = infer_effect_for_term(term.else_)
         # If 的效果 = ε_cond · max(ε_then, ε_else)
         branch_max = max_effect(
-            then_eff if isinstance(then_eff, Effect) else then_eff.effects[0] if then_eff.effects else PURE,
-            else_eff if isinstance(else_eff, Effect) else else_eff.effects[0] if else_eff.effects else PURE,
+            then_eff
+            if isinstance(then_eff, Effect)
+            else then_eff.effects[0]
+            if then_eff.effects
+            else PURE,
+            else_eff
+            if isinstance(else_eff, Effect)
+            else else_eff.effects[0]
+            if else_eff.effects
+            else PURE,
         )
-        return serial(cond_eff if isinstance(cond_eff, Effect) else cond_eff, branch_max)
+        return serial(
+            cond_eff if isinstance(cond_eff, Effect) else cond_eff, branch_max
+        )
 
     elif isinstance(term, Loop):
         body_eff = infer_effect_for_term(term.body)
@@ -377,7 +402,9 @@ def infer_effect_for_term(term: Any) -> Effect | ComposedEffect:
             for re in route_effects[1:]:
                 if isinstance(re, Effect):
                     route_max = re
-                elif isinstance(route_max, ComposedEffect) and isinstance(re, ComposedEffect):
+                elif isinstance(route_max, ComposedEffect) and isinstance(
+                    re, ComposedEffect
+                ):
                     if len(re.effects) > len(route_max.effects):
                         route_max = re
             return serial(cls_eff, route_max)
@@ -391,12 +418,12 @@ def infer_effect_for_term(term: Any) -> Effect | ComposedEffect:
 
     if GroupChat and isinstance(term, GroupChat):
         # GroupChat = Y_n(agents) -> iterated parallel effects
-        agents = getattr(term, 'agent_list', None) or list(term.agents.values())
+        agents = getattr(term, "agent_list", None) or list(term.agents.values())
         agent_effects = [infer_effect_for_term(a) for a in agents]
         combined = agent_effects[0] if agent_effects else PURE
         for e in agent_effects[1:]:
             combined = parallel(combined, e)
-        max_rounds = getattr(term, 'max_rounds', 10)
+        max_rounds = getattr(term, "max_rounds", 10)
         return iterate(combined, max_rounds)
 
     if AsyncPar and isinstance(term, AsyncPar):
@@ -410,18 +437,27 @@ def infer_effect_for_term(term: Any) -> Effect | ComposedEffect:
     if Handoff and isinstance(term, Handoff):
         # Handoff = Route with dynamic registry -> union of all agent effects
         from .core import Term as _Term
-        registry_effects = [infer_effect_for_term(a) for a in term.registry.values() if isinstance(a, _Term)]
+
+        registry_effects = [
+            infer_effect_for_term(a)
+            for a in term.registry.values()
+            if isinstance(a, _Term)
+        ]
         combined = PURE
         for e in registry_effects:
             combined = serial(combined, e)  # worst case: any agent could be called
         return combined
 
     if Send and isinstance(term, Send):
-        inner = infer_effect_for_term(term.agent) if hasattr(term, 'agent') else PURE
+        inner = infer_effect_for_term(term.agent) if hasattr(term, "agent") else PURE
         return serial(inner, Effect(EffectKind.STATE))  # writes to channel
 
     if Receive and isinstance(term, Receive):
-        handler_effect = infer_effect_for_term(term.handler) if hasattr(term, 'handler') and term.handler else PURE
+        handler_effect = (
+            infer_effect_for_term(term.handler)
+            if hasattr(term, "handler") and term.handler
+            else PURE
+        )
         return serial(Effect(EffectKind.STATE), handler_effect)  # reads from channel
 
     return PURE

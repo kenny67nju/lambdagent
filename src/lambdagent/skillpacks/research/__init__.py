@@ -28,6 +28,7 @@ research skill pack — 科研流程技能包
   # 方式 3: 在 agent67v2 中通过协调者调用
   # 协调者会自动发现 research-pipeline skill
 """
+
 from .skills import register_all, SKILL_PACK_NAME
 
 __all__ = ["register_all", "SKILL_PACK_NAME"]

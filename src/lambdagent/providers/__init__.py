@@ -6,8 +6,18 @@ All providers implement LLMProvider.chat(messages) -> str.
 L02: Added ChatMessage, ChatResponse exports and create_provider() factory
 for unified multi-provider instantiation.
 """
-from .base import LLMProvider, ProviderConfig, ProviderError, Message, ChatMessage, ChatResponse
-from .claude_code import ClaudeLam  # deprecated, removed in 0.3.0 — use ClaudeCodeProvider
+
+from .base import (
+    LLMProvider,
+    ProviderConfig,
+    ProviderError,
+    Message,
+    ChatMessage,
+    ChatResponse,
+)
+from .claude_code import (
+    ClaudeLam,
+)  # deprecated, removed in 0.3.0 — use ClaudeCodeProvider
 from .claude_code_provider import ClaudeCodeProvider
 from .anthropic_provider import AnthropicProvider
 from .openai_compat_provider import OpenAICompatProvider
@@ -46,7 +56,14 @@ def create_provider(provider_name: str, **kwargs) -> LLMProvider:
         )
         return ClaudeCodeProvider(config)
 
-    if provider_name in ("openai", "dashscope", "deepseek", "moonshot", "ollama", "zhipu"):
+    if provider_name in (
+        "openai",
+        "dashscope",
+        "deepseek",
+        "moonshot",
+        "ollama",
+        "zhipu",
+    ):
         preset = OpenAICompatProvider.PRESETS.get(provider_name, ("", "gpt-4o", ""))
         config = ProviderConfig(
             model=kwargs.pop("model", preset[1]),
@@ -66,8 +83,12 @@ def create_provider(provider_name: str, **kwargs) -> LLMProvider:
 
 
 __all__ = [
-    "LLMProvider", "ProviderConfig", "ProviderError", "Message",
-    "ChatMessage", "ChatResponse",
+    "LLMProvider",
+    "ProviderConfig",
+    "ProviderError",
+    "Message",
+    "ChatMessage",
+    "ChatResponse",
     "ClaudeLam",  # deprecated, removed in 0.3.0
     "ClaudeCodeProvider",
     "AnthropicProvider",

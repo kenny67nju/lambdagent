@@ -5,6 +5,7 @@ CodeSearch    λx. semantic_search(query, language)
 ProjectMap    λx. directory_tree(path, depth)
 RunTests      λx. test_framework(target)
 """
+
 from __future__ import annotations
 
 import json
@@ -59,14 +60,24 @@ _LANG_PATTERNS = {
 }
 
 _LANG_EXTENSIONS = {
-    "python": "*.py", "typescript": "*.{ts,tsx}", "javascript": "*.{js,jsx}",
-    "go": "*.go", "java": "*.java", "rust": "*.rs",
+    "python": "*.py",
+    "typescript": "*.{ts,tsx}",
+    "javascript": "*.{js,jsx}",
+    "go": "*.go",
+    "java": "*.java",
+    "rust": "*.rs",
 }
 
 
 class CodeSearchSchema:
-    def __init__(self, query: str, language: str = "", search_type: str = "",
-                 path: str = ".", max_results: int = 20):
+    def __init__(
+        self,
+        query: str,
+        language: str = "",
+        search_type: str = "",
+        path: str = ".",
+        max_results: int = 20,
+    ):
         if not query:
             raise ValueError("query is required")
         self.query = query
@@ -76,9 +87,13 @@ class CodeSearchSchema:
         self.max_results = min(max(1, max_results), 100)
 
     def dict(self):
-        return {"query": self.query, "language": self.language,
-                "search_type": self.search_type, "path": self.path,
-                "max_results": self.max_results}
+        return {
+            "query": self.query,
+            "language": self.language,
+            "search_type": self.search_type,
+            "path": self.path,
+            "max_results": self.max_results,
+        }
 
 
 def code_search(input_val: Any) -> str:
@@ -122,6 +137,7 @@ def code_search(input_val: Any) -> str:
 def _escape_regex(s: str) -> str:
     """Escape special regex chars but keep it usable."""
     import re
+
     return re.escape(s).replace(r"\ ", " ")
 
 
@@ -144,6 +160,7 @@ def _do_search(pattern: str, path: str, language: str, max_results: int) -> list
     # Python fallback
     import re
     import glob as glob_mod
+
     try:
         regex = re.compile(pattern)
     except re.error:
@@ -177,16 +194,17 @@ def _find_rg() -> Optional[str]:
     callers fall back to a slower Python regex walk.
     """
     import shutil
+
     found = shutil.which("rg")
     if found:
         return found
     # Per-platform fallback locations (Brew, MacPorts, Chocolatey, scoop)
     candidates = [
-        "/usr/local/bin/rg",            # Linux / Intel-mac Brew
-        "/opt/homebrew/bin/rg",         # Apple-silicon Brew
-        "/opt/local/bin/rg",            # MacPorts
-        "C:/ProgramData/chocolatey/bin/rg.exe",   # Chocolatey
-        "C:/tools/ripgrep/rg.exe",                # scoop default
+        "/usr/local/bin/rg",  # Linux / Intel-mac Brew
+        "/opt/homebrew/bin/rg",  # Apple-silicon Brew
+        "/opt/local/bin/rg",  # MacPorts
+        "C:/ProgramData/chocolatey/bin/rg.exe",  # Chocolatey
+        "C:/tools/ripgrep/rg.exe",  # scoop default
     ]
     for cmd in candidates:
         try:
@@ -201,13 +219,40 @@ def _find_rg() -> Optional[str]:
 # A12: ProjectMap — project structure overview
 # ════════════════════════════════════════════════════════════
 
-_KEY_FILES = {"README.md", "README.rst", "readme.md", "package.json", "pyproject.toml",
-              "setup.py", "Cargo.toml", "go.mod", "Makefile", "Dockerfile",
-              "docker-compose.yml", ".github", "tsconfig.json", "requirements.txt"}
+_KEY_FILES = {
+    "README.md",
+    "README.rst",
+    "readme.md",
+    "package.json",
+    "pyproject.toml",
+    "setup.py",
+    "Cargo.toml",
+    "go.mod",
+    "Makefile",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".github",
+    "tsconfig.json",
+    "requirements.txt",
+}
 
-_IGNORE_DIRS_MAP = {".git", "node_modules", "__pycache__", ".venv", "venv",
-                    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build",
-                    ".eggs", ".cache", "coverage", ".next", ".nuxt"}
+_IGNORE_DIRS_MAP = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "dist",
+    "build",
+    ".eggs",
+    ".cache",
+    "coverage",
+    ".next",
+    ".nuxt",
+}
 
 
 class ProjectMapSchema:
@@ -217,7 +262,11 @@ class ProjectMapSchema:
         self.include_summary = include_summary
 
     def dict(self):
-        return {"path": self.path, "depth": self.depth, "include_summary": self.include_summary}
+        return {
+            "path": self.path,
+            "depth": self.depth,
+            "include_summary": self.include_summary,
+        }
 
 
 def project_map(input_val: Any) -> str:
@@ -273,7 +322,13 @@ def _tree(path: str, prefix: str, max_depth: int, current_depth: int, lines: lis
     except PermissionError:
         return
 
-    dirs = [e for e in entries if os.path.isdir(os.path.join(path, e)) and e not in _IGNORE_DIRS_MAP and not e.startswith(".")]
+    dirs = [
+        e
+        for e in entries
+        if os.path.isdir(os.path.join(path, e))
+        and e not in _IGNORE_DIRS_MAP
+        and not e.startswith(".")
+    ]
     files = [e for e in entries if os.path.isfile(os.path.join(path, e))]
 
     # Show files (limit to 10 per directory)
@@ -288,7 +343,13 @@ def _tree(path: str, prefix: str, max_depth: int, current_depth: int, lines: lis
         connector = "└── " if is_last else "├── "
         child_prefix = "    " if is_last else "│   "
         lines.append(f"{prefix}{connector}{d}/")
-        _tree(os.path.join(path, d), prefix + child_prefix, max_depth, current_depth + 1, lines)
+        _tree(
+            os.path.join(path, d),
+            prefix + child_prefix,
+            max_depth,
+            current_depth + 1,
+            lines,
+        )
 
 
 def _count_files(path: str) -> dict:
@@ -306,7 +367,11 @@ def _count_files(path: str) -> dict:
 # ════════════════════════════════════════════════════════════
 
 _FRAMEWORK_DETECTORS = [
-    ("pytest", ["pyproject.toml", "setup.cfg", "pytest.ini", "conftest.py"], "python -m pytest"),
+    (
+        "pytest",
+        ["pyproject.toml", "setup.cfg", "pytest.ini", "conftest.py"],
+        "python -m pytest",
+    ),
     ("jest", ["jest.config.js", "jest.config.ts", "package.json"], "npx jest"),
     ("go", ["go.mod"], "go test ./..."),
     ("cargo", ["Cargo.toml"], "cargo test"),
@@ -314,16 +379,25 @@ _FRAMEWORK_DETECTORS = [
 
 
 class RunTestsSchema:
-    def __init__(self, target: str = "", framework: str = "", verbose: bool = False,
-                 working_dir: str = ""):
+    def __init__(
+        self,
+        target: str = "",
+        framework: str = "",
+        verbose: bool = False,
+        working_dir: str = "",
+    ):
         self.target = target
         self.framework = framework
         self.verbose = verbose
         self.working_dir = os.path.abspath(working_dir) if working_dir else os.getcwd()
 
     def dict(self):
-        return {"target": self.target, "framework": self.framework,
-                "verbose": self.verbose, "working_dir": self.working_dir}
+        return {
+            "target": self.target,
+            "framework": self.framework,
+            "verbose": self.verbose,
+            "working_dir": self.working_dir,
+        }
 
 
 def run_tests(input_val: Any) -> str:
@@ -346,7 +420,11 @@ def run_tests(input_val: Any) -> str:
     # Execute
     try:
         result = _run_shell(
-            cmd, cwd=cwd, capture_output=True, text=True, timeout=300,
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         output = result.stdout
         if result.stderr:
@@ -379,8 +457,12 @@ def _detect_framework(cwd: str) -> str:
 
 
 def _build_test_command(framework: str, target: str, verbose: bool) -> str:
-    base = {"pytest": "python -m pytest", "jest": "npx jest", "go": "go test",
-            "cargo": "cargo test"}.get(framework, framework)
+    base = {
+        "pytest": "python -m pytest",
+        "jest": "npx jest",
+        "go": "go test",
+        "cargo": "cargo test",
+    }.get(framework, framework)
     parts = [base]
     if verbose:
         if framework == "pytest":
@@ -419,6 +501,7 @@ def _parse_test_output(output: str, framework: str, returncode: int) -> str:
 # Shared
 # ════════════════════════════════════════════════════════════
 
+
 def _parse_input(input_val: Any, schema_cls) -> dict:
     if isinstance(input_val, dict):
         data = input_val
@@ -426,7 +509,11 @@ def _parse_input(input_val: Any, schema_cls) -> dict:
         try:
             data = json.loads(input_val)
         except (json.JSONDecodeError, ValueError):
-            data = {"query": input_val} if "Search" in schema_cls.__name__ else {"path": input_val}
+            data = (
+                {"query": input_val}
+                if "Search" in schema_cls.__name__
+                else {"path": input_val}
+            )
     else:
         data = {}
     try:

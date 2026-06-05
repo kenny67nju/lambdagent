@@ -17,6 +17,7 @@ Formal basis (Paper10 §4):
   Guard-hook = Guard(agent, validator, k)         [C-Guard*]
   Event-hook = CEK transition observer            [all rules]
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -31,6 +32,7 @@ from ._shell_compat import run_shell as _run_shell
 # ════════════════════════════════════════════════════════════
 # Layer 3: HookRegistry — Machine-level event system
 # ════════════════════════════════════════════════════════════
+
 
 @dataclass
 class HookRegistry:
@@ -49,21 +51,24 @@ class HookRegistry:
 
     post_llm and post_tool can modify output via output["value"] dict pattern.
     """
-    pre_llm:        List[Callable] = field(default_factory=list)
-    post_llm:       List[Callable] = field(default_factory=list)
-    pre_tool:       List[Callable] = field(default_factory=list)
-    post_tool:      List[Callable] = field(default_factory=list)
-    on_guard_fail:  List[Callable] = field(default_factory=list)
-    on_error:       List[Callable] = field(default_factory=list)
-    on_step:        List[Callable] = field(default_factory=list)
-    on_cancel:      List[Callable] = field(default_factory=list)
+
+    pre_llm: List[Callable] = field(default_factory=list)
+    post_llm: List[Callable] = field(default_factory=list)
+    pre_tool: List[Callable] = field(default_factory=list)
+    post_tool: List[Callable] = field(default_factory=list)
+    on_guard_fail: List[Callable] = field(default_factory=list)
+    on_error: List[Callable] = field(default_factory=list)
+    on_step: List[Callable] = field(default_factory=list)
+    on_cancel: List[Callable] = field(default_factory=list)
 
     def register(self, event: str, fn: Callable):
         """Register a hook callback for an event."""
         hooks = getattr(self, event, None)
         if hooks is None:
-            raise ValueError(f"Unknown hook event: {event}. "
-                             f"Available: {', '.join(self._event_names())}")
+            raise ValueError(
+                f"Unknown hook event: {event}. "
+                f"Available: {', '.join(self._event_names())}"
+            )
         hooks.append(fn)
 
     def unregister(self, event: str, fn: Callable):
@@ -81,6 +86,7 @@ class HookRegistry:
             except Exception as e:
                 # Hook errors should not break agent execution
                 import sys
+
                 print(f"[HookError] {event}: {e}", file=sys.stderr)
 
     async def afire(self, event: str, **kwargs) -> None:
@@ -94,6 +100,7 @@ class HookRegistry:
                     fn(**kwargs)
             except Exception as e:
                 import sys
+
                 print(f"[HookError] {event}: {e}", file=sys.stderr)
 
     def _event_names(self) -> list:
@@ -126,6 +133,7 @@ def get_default_registry() -> HookRegistry:
 # ════════════════════════════════════════════════════════════
 # Layer 2: HookTerm — First-class Lambda term
 # ════════════════════════════════════════════════════════════
+
 
 class HookTerm(Term):
     """
@@ -186,10 +194,10 @@ class HookTerm(Term):
         ctx.log(self._name, self._trace_id, input, result, duration)
         return result
 
-    async def aapply(self, input: Any, ctx: Context | None = None,
-                     cancel=None) -> Any:
+    async def aapply(self, input: Any, ctx: Context | None = None, cancel=None) -> Any:
         """Async β-reduction with pre/post hooks."""
         from .cancellation import NullCancellationToken
+
         cancel = cancel or NullCancellationToken()
         ctx = ctx or Context()
         t0 = time.time()
@@ -229,16 +237,20 @@ class HookTerm(Term):
 # Layer 1: Decorators — Syntactic sugar over Compose/Tool/Guard
 # ════════════════════════════════════════════════════════════
 
+
 def pre_hook(fn: Callable) -> Callable:
     """
     Decorator: run fn before agent execution (pass-through).
 
     Lambda: pre_hook(fn)(agent) = Compose(Tool(fn_passthrough), agent)
     """
+
     def wrapper(agent: Term) -> Term:
         from .primitives import Compose, Tool
+
         passthrough = Tool(f"pre_hook:{fn.__name__}", lambda x: (fn(x), x)[1])
         return Compose(passthrough, agent)
+
     return wrapper
 
 
@@ -248,28 +260,37 @@ def post_hook(fn: Callable) -> Callable:
 
     Lambda: post_hook(fn)(agent) = Compose(agent, Tool(fn))
     """
+
     def wrapper(agent: Term) -> Term:
         from .primitives import Compose, Tool
+
         transformer = Tool(f"post_hook:{fn.__name__}", fn)
         return Compose(agent, transformer)
+
     return wrapper
 
 
-def guard_hook(predicate: Callable, retry: int = 0, on_fail: Callable = None) -> Callable:
+def guard_hook(
+    predicate: Callable, retry: int = 0, on_fail: Callable = None
+) -> Callable:
     """
     Decorator: validate output, retry on failure.
 
     Lambda: guard_hook(P, k)(agent) = Guard(agent, P, k)
     """
+
     def wrapper(agent: Term) -> Term:
         from .extensions import Guard
+
         return Guard(agent, predicate, retry=retry, on_fail=on_fail)
+
     return wrapper
 
 
 # ════════════════════════════════════════════════════════════
 # YAML Hook compilation helper
 # ════════════════════════════════════════════════════════════
+
 
 def compile_shell_hook(command: str, event: str) -> Callable:
     """
@@ -294,20 +315,27 @@ def compile_shell_hook(command: str, event: str) -> Callable:
                 env["HOOK_OUTPUT"] = str(val)[:500]
 
         import os
+
         full_env = {**os.environ, **env}
         try:
             result = _run_shell(
-                command, env=full_env,
-                capture_output=True, text=True, timeout=10,
+                command,
+                env=full_env,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode != 0 and result.stderr:
                 import sys
+
                 print(f"[ShellHook:{event}] {result.stderr.strip()}", file=sys.stderr)
         except subprocess.TimeoutExpired:
             import sys
+
             print(f"[ShellHook:{event}] timeout after 10s", file=sys.stderr)
         except Exception as e:
             import sys
+
             print(f"[ShellHook:{event}] error: {e}", file=sys.stderr)
 
     return hook_fn

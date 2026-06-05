@@ -12,11 +12,20 @@ Tests cover:
 
 import pytest
 from lambdagent.effects import (
-    Effect, EffectKind, ComposedEffect,
-    PURE, IO, LLM, STATE,
-    serial, parallel, iterate,
-    effect_leq, max_effect,
-    parse_effect_annotation, infer_effect_for_term,
+    Effect,
+    EffectKind,
+    ComposedEffect,
+    PURE,
+    IO,
+    LLM,
+    STATE,
+    serial,
+    parallel,
+    iterate,
+    effect_leq,
+    max_effect,
+    parse_effect_annotation,
+    infer_effect_for_term,
 )
 from lambdagent.primitives import Lam, Compose, If, Loop, Pair, Tool
 from lambdagent.extensions import Par, Route, Memory, Guard
@@ -26,8 +35,8 @@ from lambdagent.extensions import Par, Route, Memory, Guard
 # 1. Basic Effect Construction
 # ============================================================
 
-class TestEffectConstruction:
 
+class TestEffectConstruction:
     def test_pure(self):
         assert PURE.kind == EffectKind.PURE
         assert repr(PURE) == "pure"
@@ -57,8 +66,8 @@ class TestEffectConstruction:
 # 2. Effect Composition
 # ============================================================
 
-class TestEffectComposition:
 
+class TestEffectComposition:
     def test_serial_composition(self):
         """ε1 · ε2"""
         result = serial(LLM("claude"), IO)
@@ -105,8 +114,8 @@ class TestEffectComposition:
 # 3. Effect Subtype Lattice (Paper III Definition 9)
 # ============================================================
 
-class TestEffectLattice:
 
+class TestEffectLattice:
     def test_pure_bottom(self):
         """pure ≤ ε for all ε"""
         assert effect_leq(PURE, PURE)
@@ -135,8 +144,8 @@ class TestEffectLattice:
 # 4. Effect Inference for All 11 Constructs
 # ============================================================
 
-class TestEffectInference:
 
+class TestEffectInference:
     def test_lam_effect(self):
         """Lam → llm(model)"""
         lam = Lam("test", "prompt", model="claude-sonnet")
@@ -225,8 +234,8 @@ class TestEffectInference:
 # 5. Effect Annotation Parsing
 # ============================================================
 
-class TestEffectParsing:
 
+class TestEffectParsing:
     def test_parse_pure(self):
         result = parse_effect_annotation("pure")
         assert result == PURE
@@ -266,8 +275,8 @@ class TestEffectParsing:
 # 6. Term.effect Property Integration
 # ============================================================
 
-class TestTermEffectProperty:
 
+class TestTermEffectProperty:
     def test_lam_effect_property(self):
         """Term.effect should auto-infer for Lam"""
         lam = Lam("test", "prompt", model="claude")

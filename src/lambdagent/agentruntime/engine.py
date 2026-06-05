@@ -31,16 +31,19 @@ from lambdagent.cek_machine import CostVector, ZERO_COST
 # Engine Mode
 # ============================================================
 
+
 class EngineMode(Enum):
     """Execution engine selection."""
-    RECURSIVE = "recursive"   # Python call stack (Executor.reduce)
-    CEK = "cek"               # Agent CEK Machine (step-by-step)
-    ADAPTIVE = "adaptive"     # Auto-select based on term complexity
+
+    RECURSIVE = "recursive"  # Python call stack (Executor.reduce)
+    CEK = "cek"  # Agent CEK Machine (step-by-step)
+    ADAPTIVE = "adaptive"  # Auto-select based on term complexity
 
 
 # ============================================================
 # Unified Trace Record
 # ============================================================
+
 
 @dataclass
 class UnifiedTraceRecord:
@@ -51,23 +54,25 @@ class UnifiedTraceRecord:
     Recursive engine: maps from TraceEntry fields.
     CEK engine: maps from Transition fields, skipping silent (τ) steps.
     """
+
     step: int
     term_name: str
-    action: str                    # "llm_call" | "tool_call" | "compose" | "route" | ...
-    input_summary: str             # truncated input (≤200 chars)
-    output_summary: str            # truncated output (≤200 chars)
+    action: str  # "llm_call" | "tool_call" | "compose" | "route" | ...
+    input_summary: str  # truncated input (≤200 chars)
+    output_summary: str  # truncated output (≤200 chars)
     duration_ms: float
-    cost: CostVector               # cost of this step
-    cumulative_cost: CostVector    # total cost so far
+    cost: CostVector  # cost of this step
+    cumulative_cost: CostVector  # total cost so far
 
     # CEK-only fields (None for recursive engine)
-    continuation: Optional[str] = None     # human-readable K stack
-    yield_type: Optional[str] = None       # "llm" | "tool" | None
+    continuation: Optional[str] = None  # human-readable K stack
+    yield_type: Optional[str] = None  # "llm" | "tool" | None
 
 
 # ============================================================
 # Engine Result
 # ============================================================
+
 
 @dataclass
 class EngineResult:
@@ -77,25 +82,27 @@ class EngineResult:
     Both RecursiveEngine and CEKEngine produce this.
     The `engine_mode` field indicates which engine was used.
     """
-    value: Any                                # final output value
-    trace: List[UnifiedTraceRecord]           # unified trace records
-    cost: CostVector                          # total cost
-    steps: int                                # number of meaningful steps
-    engine_mode: EngineMode                   # which engine ran
+
+    value: Any  # final output value
+    trace: List[UnifiedTraceRecord]  # unified trace records
+    cost: CostVector  # total cost
+    steps: int  # number of meaningful steps
+    engine_mode: EngineMode  # which engine ran
 
     # CEK-only fields (None for recursive engine)
-    final_state: Optional[Any] = None         # CEKState — serializable
-    transitions: Optional[List[Any]] = None   # List[Transition] — full small-step log
+    final_state: Optional[Any] = None  # CEKState — serializable
+    transitions: Optional[List[Any]] = None  # List[Transition] — full small-step log
 
 
 # ============================================================
 # Engine Exceptions
 # ============================================================
 
+
 class CostBudgetExceeded(RuntimeError):
     """Raised when execution cost exceeds the configured budget ceiling."""
-    def __init__(self, cost: CostVector, budget: float,
-                 state: Optional[Any] = None):
+
+    def __init__(self, cost: CostVector, budget: float, state: Optional[Any] = None):
         self.cost = cost
         self.budget = budget
         self.state = state  # CEKState if available, for resume
@@ -107,6 +114,7 @@ class CostBudgetExceeded(RuntimeError):
 
 class InfiniteLoopDetected(RuntimeError):
     """Raised when repeated identical states suggest no progress."""
+
     def __init__(self, message: str, state: Optional[Any] = None):
         self.state = state
         super().__init__(message)
@@ -114,6 +122,7 @@ class InfiniteLoopDetected(RuntimeError):
 
 class MaxStepsExceeded(RuntimeError):
     """Raised when CEK machine exceeds maximum step count."""
+
     def __init__(self, max_steps: int, state: Optional[Any] = None):
         self.state = state
         super().__init__(f"Exceeded {max_steps} CEK steps")
@@ -122,6 +131,7 @@ class MaxStepsExceeded(RuntimeError):
 # ============================================================
 # Engine ABC
 # ============================================================
+
 
 class Engine(ABC):
     """
@@ -138,13 +148,13 @@ class Engine(ABC):
     """
 
     @abstractmethod
-    def execute(self, term: Term, input_val: Any, ctx: Context,
-                **opts) -> EngineResult:
+    def execute(self, term: Term, input_val: Any, ctx: Context, **opts) -> EngineResult:
         """Synchronous execution."""
         ...
 
     @abstractmethod
-    async def execute_async(self, term: Term, input_val: Any, ctx: Context,
-                            **opts) -> EngineResult:
+    async def execute_async(
+        self, term: Term, input_val: Any, ctx: Context, **opts
+    ) -> EngineResult:
         """Asynchronous execution (non-blocking LLM/Tool calls)."""
         ...

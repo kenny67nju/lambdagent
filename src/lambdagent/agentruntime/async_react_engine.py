@@ -4,6 +4,7 @@ agentruntime.async_react_engine — Async ReAct loop engine
 Async version of ReActEngine with streaming support,
 cancellation tokens, and tool call timeouts.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,6 +27,7 @@ from .llm_adapter import LLMAdapter
 @dataclass
 class AsyncStepResult:
     """Result of one async Y combinator unfolding."""
+
     terminated: bool
     answer: Optional[str]
     next_state: Optional[str]
@@ -131,22 +133,32 @@ class AsyncReActEngine:
             else:
                 # Fall back to non-streaming
                 loop = asyncio.get_event_loop()
-                thought_raw = await loop.run_in_executor(
-                    None, self.think, prompt, ctx
-                )
+                thought_raw = await loop.run_in_executor(None, self.think, prompt, ctx)
                 thought_tokens.append(str(thought_raw))
                 yield TokenEvent(str(thought_raw), f"think[{step}]")
 
             thought = "".join(thought_tokens)
             think_ms = (time.time() - t0) * 1000
-            ctx.log(f"think[{step}]", self.think._trace_id,
-                    state[:100], thought[:100], think_ms, self.think.model)
+            ctx.log(
+                f"think[{step}]",
+                self.think._trace_id,
+                state[:100],
+                thought[:100],
+                think_ms,
+                self.think.model,
+            )
 
             # PARSE + ROUTE + INVOKE (non-streaming)
             result = await self._process_thought(state, thought, step, ctx, cancel)
             yield StepEvent(
-                {"thought": thought, "action": result.action, "observation": result.observation},
-                f"step[{step}]", step, result.duration_ms,
+                {
+                    "thought": thought,
+                    "action": result.action,
+                    "observation": result.observation,
+                },
+                f"step[{step}]",
+                step,
+                result.duration_ms,
             )
 
             if result.terminated:
@@ -157,8 +169,9 @@ class AsyncReActEngine:
         answer = await self._force_terminate(state, ctx, cancel)
         yield StepEvent(answer, "force_terminate")
 
-    async def _step(self, state: str, step: int, ctx: Context,
-                    cancel: CancellationToken) -> AsyncStepResult:
+    async def _step(
+        self, state: str, step: int, ctx: Context, cancel: CancellationToken
+    ) -> AsyncStepResult:
         """One async ReAct step = 7 phases."""
         t0_step = time.time()
 
@@ -175,17 +188,29 @@ class AsyncReActEngine:
         think_ms = (time.time() - t0) * 1000
         cancel.check()
 
-        self.trace.append(TraceRecord(
-            step=step, term_name="think", term_type="Lam",
-            duration_ms=think_ms, input=state[:200], output=thought[:200],
-        ))
+        self.trace.append(
+            TraceRecord(
+                step=step,
+                term_name="think",
+                term_type="Lam",
+                duration_ms=think_ms,
+                input=state[:200],
+                output=thought[:200],
+            )
+        )
 
         result = await self._process_thought(state, thought, step, ctx, cancel)
         result.duration_ms = (time.time() - t0_step) * 1000
         return result
 
-    async def _process_thought(self, state: str, thought: str, step: int,
-                               ctx: Context, cancel: CancellationToken) -> AsyncStepResult:
+    async def _process_thought(
+        self,
+        state: str,
+        thought: str,
+        step: int,
+        ctx: Context,
+        cancel: CancellationToken,
+    ) -> AsyncStepResult:
         """Phases 2-7: parse, route, invoke, observe, update, check."""
 
         # Phase 2: PARSE
@@ -195,8 +220,13 @@ class AsyncReActEngine:
             observation = f"[FORMAT_ERROR] {e}. Please output a valid action."
             next_state = self._append_observation(state, thought, observation)
             return AsyncStepResult(
-                terminated=False, answer=None, next_state=next_state,
-                thought=thought, action=None, observation=observation, step=step,
+                terminated=False,
+                answer=None,
+                next_state=next_state,
+                thought=thought,
+                action=None,
+                observation=observation,
+                step=step,
             )
 
         # Phase 3: ROUTE
@@ -204,8 +234,13 @@ class AsyncReActEngine:
             observation = f"[ROUTE_ERROR] Unknown tool: {action.tool}. Available: {list(self.tools.keys())}"
             next_state = self._append_observation(state, thought, observation)
             return AsyncStepResult(
-                terminated=False, answer=None, next_state=next_state,
-                thought=thought, action=action, observation=observation, step=step,
+                terminated=False,
+                answer=None,
+                next_state=next_state,
+                thought=thought,
+                action=action,
+                observation=observation,
+                step=step,
             )
 
         tool = self.tools[action.tool]
@@ -213,18 +248,32 @@ class AsyncReActEngine:
         # Phase 4: INVOKE
         if action.tool == "terminate":
             answer = self._extract_final_answer(thought, action)
-            self.trace.append(TraceRecord(
-                step=step, term_name="terminate", term_type="Tool",
-                input=thought[:200], output=answer[:200], terminated=True, action="terminate",
-            ))
+            self.trace.append(
+                TraceRecord(
+                    step=step,
+                    term_name="terminate",
+                    term_type="Tool",
+                    input=thought[:200],
+                    output=answer[:200],
+                    terminated=True,
+                    action="terminate",
+                )
+            )
             return AsyncStepResult(
-                terminated=True, answer=answer, next_state=None,
-                thought=thought, action=action, observation=None, step=step,
+                terminated=True,
+                answer=answer,
+                next_state=None,
+                thought=thought,
+                action=action,
+                observation=None,
+                step=step,
             )
 
         t0 = time.time()
         try:
-            tool_input = action.input if isinstance(action.input, str) else str(action.input)
+            tool_input = (
+                action.input if isinstance(action.input, str) else str(action.input)
+            )
             loop = asyncio.get_event_loop()
             tool_result = await asyncio.wait_for(
                 loop.run_in_executor(None, tool, tool_input),
@@ -232,47 +281,80 @@ class AsyncReActEngine:
             )
             cancel.check()
             tool_ms = (time.time() - t0) * 1000
-            self.trace.append(TraceRecord(
-                step=step, term_name=f"Tool:{action.tool}", term_type="Tool",
-                duration_ms=tool_ms, input=tool_input[:200], output=str(tool_result)[:200],
-                action=action.tool, action_input=action.input,
-            ))
+            self.trace.append(
+                TraceRecord(
+                    step=step,
+                    term_name=f"Tool:{action.tool}",
+                    term_type="Tool",
+                    duration_ms=tool_ms,
+                    input=tool_input[:200],
+                    output=str(tool_result)[:200],
+                    action=action.tool,
+                    action_input=action.input,
+                )
+            )
         except asyncio.TimeoutError:
-            tool_result = f"[TOOL_TIMEOUT] {action.tool} timed out after {self.tool_timeout}s"
-            self.trace.append(TraceRecord(
-                step=step, term_name=f"Tool:{action.tool}", term_type="Tool",
-                input=str(action.input)[:200], output=tool_result, error="timeout",
-                action=action.tool,
-            ))
+            tool_result = (
+                f"[TOOL_TIMEOUT] {action.tool} timed out after {self.tool_timeout}s"
+            )
+            self.trace.append(
+                TraceRecord(
+                    step=step,
+                    term_name=f"Tool:{action.tool}",
+                    term_type="Tool",
+                    input=str(action.input)[:200],
+                    output=tool_result,
+                    error="timeout",
+                    action=action.tool,
+                )
+            )
         except Exception as e:
             tool_result = f"[TOOL_ERROR] {e}"
-            self.trace.append(TraceRecord(
-                step=step, term_name=f"Tool:{action.tool}", term_type="Tool",
-                input=str(action.input)[:200], output=tool_result, error=str(e),
-                action=action.tool,
-            ))
+            self.trace.append(
+                TraceRecord(
+                    step=step,
+                    term_name=f"Tool:{action.tool}",
+                    term_type="Tool",
+                    input=str(action.input)[:200],
+                    output=tool_result,
+                    error=str(e),
+                    action=action.tool,
+                )
+            )
 
         # Phase 5: OBSERVE
         observation = self._format_observation(action.tool, str(tool_result))
 
         # Phase 6: UPDATE
         self.memory.auto_save(
-            key=f"step_{step}", thought=thought,
-            action=action.tool, observation=observation,
+            key=f"step_{step}",
+            thought=thought,
+            action=action.tool,
+            observation=observation,
         )
 
         # Phase 7: CHECK
         if self.termination.should_stop(thought, observation, step):
             answer = self._extract_final_answer(thought, action)
             return AsyncStepResult(
-                terminated=True, answer=answer, next_state=None,
-                thought=thought, action=action, observation=observation, step=step,
+                terminated=True,
+                answer=answer,
+                next_state=None,
+                thought=thought,
+                action=action,
+                observation=observation,
+                step=step,
             )
 
         next_state = self._append_observation(state, thought, observation)
         return AsyncStepResult(
-            terminated=False, answer=None, next_state=next_state,
-            thought=thought, action=action, observation=observation, step=step,
+            terminated=False,
+            answer=None,
+            next_state=next_state,
+            thought=thought,
+            action=action,
+            observation=observation,
+            step=step,
         )
 
     # ── Prompt building (shared with sync version) ──
@@ -287,8 +369,12 @@ class AsyncReActEngine:
             parts.append("")
 
         parts.append("[Available Tools]")
-        parts.append('Call a tool by outputting JSON: {"action": "tool_name", "input": {...}}')
-        parts.append('To finish, call: {"action": "terminate", "answer": "your final answer"}')
+        parts.append(
+            'Call a tool by outputting JSON: {"action": "tool_name", "input": {...}}'
+        )
+        parts.append(
+            'To finish, call: {"action": "terminate", "answer": "your final answer"}'
+        )
         parts.append("")
         for name in self.tools:
             if name == "terminate":
@@ -327,8 +413,9 @@ class AsyncReActEngine:
             result = result[:max_len] + f"\n... [truncated, {len(result)} chars total]"
         return f"[{tool_name}] {result}"
 
-    async def _force_terminate(self, state: str, ctx: Context,
-                               cancel: CancellationToken) -> str:
+    async def _force_terminate(
+        self, state: str, ctx: Context, cancel: CancellationToken
+    ) -> str:
         lines = state.split("\n")
         for line in reversed(lines):
             if line.startswith("Thought:"):

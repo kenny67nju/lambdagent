@@ -25,6 +25,7 @@ Usage::
     from .._shell_compat import run_shell
     result = run_shell("echo hello", capture_output=True, text=True)
 """
+
 from __future__ import annotations
 
 import os
@@ -34,7 +35,7 @@ import subprocess
 from typing import Any, Optional
 
 _IS_WINDOWS = platform.system() == "Windows"
-_CACHED_BASH: Optional[str] = None    # "" sentinel = searched, not found
+_CACHED_BASH: Optional[str] = None  # "" sentinel = searched, not found
 
 
 def resolve_bash() -> Optional[str]:

@@ -29,17 +29,19 @@ from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple, Union
 # 基础类型 (Paper III Definition 1)
 # ============================================================
 
+
 class TypeTag(Enum):
     """类型标签枚举"""
-    ANY = auto()      # ⊤ — 顶类型，所有类型的超类型
-    NONE = auto()     # ⊥ — 底类型，所有类型的子类型
-    STR = auto()      # 字符串
-    INT = auto()      # 整数
-    FLOAT = auto()    # 浮点数
-    BOOL = auto()     # 布尔
-    JSON = auto()     # Json(S) — JSON Schema 结构化类型
-    TUPLE = auto()    # 元组类型 (Pair 的输出)
-    UNION = auto()    # 联合类型 (Route/If 的输出)
+
+    ANY = auto()  # ⊤ — 顶类型，所有类型的超类型
+    NONE = auto()  # ⊥ — 底类型，所有类型的子类型
+    STR = auto()  # 字符串
+    INT = auto()  # 整数
+    FLOAT = auto()  # 浮点数
+    BOOL = auto()  # 布尔
+    JSON = auto()  # Json(S) — JSON Schema 结构化类型
+    TUPLE = auto()  # 元组类型 (Pair 的输出)
+    UNION = auto()  # 联合类型 (Route/If 的输出)
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,7 @@ class LamType:
     其中 S 是 JSON Schema（Definition 2），
     复用 JSON Schema 作为结构化类型语言。
     """
+
     tag: TypeTag
     # Json(S): JSON Schema dict (when tag == JSON)
     schema: Optional[Dict[str, Any]] = field(default=None, hash=False)
@@ -80,7 +83,10 @@ class LamType:
                 if t == "object":
                     props = self.schema.get("properties", {})
                     if props:
-                        fields = ", ".join(f"{k}: {v.get('type', '?')}" for k, v in list(props.items())[:3])
+                        fields = ", ".join(
+                            f"{k}: {v.get('type', '?')}"
+                            for k, v in list(props.items())[:3]
+                        )
                         if len(props) > 3:
                             fields += ", ..."
                         return f"Json({{{fields}}})"
@@ -133,6 +139,7 @@ def T_UNION(*members: LamType) -> LamType:
 # AgentType: Agent 函数类型 (Paper III Definition 3)
 # ============================================================
 
+
 @dataclass(frozen=True)
 class AgentType:
     """
@@ -143,6 +150,7 @@ class AgentType:
 
     effect 在 effects.py 中定义，此处暂用字符串占位。
     """
+
     input_type: LamType
     output_type: LamType
     effect: str = "pure"  # 暂用字符串；P0-2 后替换为 Effect 类型
@@ -155,6 +163,7 @@ class AgentType:
 # ============================================================
 # 子类型关系 <: (Paper III Definition 5)
 # ============================================================
+
 
 def is_subtype(sub: LamType, sup: LamType) -> bool:
     """
@@ -233,9 +242,7 @@ def is_subtype(sub: LamType, sup: LamType) -> bool:
         if sub.elements and sup.elements:
             if len(sub.elements) != len(sup.elements):
                 return False
-            return all(
-                is_subtype(s, t) for s, t in zip(sub.elements, sup.elements)
-            )
+            return all(is_subtype(s, t) for s, t in zip(sub.elements, sup.elements))
 
     return False
 
@@ -311,11 +318,17 @@ def _json_schema_subtype(
 # 类型检查错误
 # ============================================================
 
+
 class AgentTypeError(Exception):
     """Agent 类型检查错误 — T-Compose 规则违反"""
 
-    def __init__(self, message: str, source_type: Optional[LamType] = None,
-                 target_type: Optional[LamType] = None, position: int = -1):
+    def __init__(
+        self,
+        message: str,
+        source_type: Optional[LamType] = None,
+        target_type: Optional[LamType] = None,
+        position: int = -1,
+    ):
         self.source_type = source_type
         self.target_type = target_type
         self.position = position
@@ -324,13 +337,16 @@ class AgentTypeError(Exception):
             detail = f"\n  Output type: {source_type}\n  Input type:  {target_type}"
             if position >= 0:
                 detail += f"\n  At composition boundary: step {position} >> step {position + 1}"
-        detail += "\n  Rule: Paper III T-Compose: f: A →^ε1 B, g: B' →^ε2 C requires B <: B'"
+        detail += (
+            "\n  Rule: Paper III T-Compose: f: A →^ε1 B, g: B' →^ε2 C requires B <: B'"
+        )
         super().__init__(f"{message}{detail}")
 
 
 # ============================================================
 # 类型检查：T-Compose 规则 (Paper III §3.3.3)
 # ============================================================
+
 
 def check_compose_types(agent_types: List[AgentType]) -> AgentType:
     """
@@ -380,6 +396,7 @@ def check_compose_types(agent_types: List[AgentType]) -> AgentType:
 # 类型推断辅助
 # ============================================================
 
+
 def parse_type_annotation(annotation: Any) -> LamType:
     """
     从 YAML 配置中的类型标注解析为 LamType。
@@ -399,10 +416,14 @@ def parse_type_annotation(annotation: Any) -> LamType:
 
     if isinstance(annotation, str):
         _name_map = {
-            "str": T_STR, "string": T_STR,
-            "int": T_INT, "integer": T_INT,
-            "float": T_FLOAT, "number": T_FLOAT,
-            "bool": T_BOOL, "boolean": T_BOOL,
+            "str": T_STR,
+            "string": T_STR,
+            "int": T_INT,
+            "integer": T_INT,
+            "float": T_FLOAT,
+            "number": T_FLOAT,
+            "bool": T_BOOL,
+            "boolean": T_BOOL,
             "any": T_ANY,
             "json": T_JSON(),
         }

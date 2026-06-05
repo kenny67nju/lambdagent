@@ -5,9 +5,11 @@ The runtime is the machine that performs beta-reduction.
 Compiler (from_config) builds the Lambda term.
 Runtime (this module) executes it.
 """
+
 from .runtime import Runtime, RuntimeResult
 from .executor import Executor
 from .react_engine import ReActEngine, StepResult
+
 # Phase 6.5: Dual engine abstraction
 from .engine import Engine, EngineMode, EngineResult, UnifiedTraceRecord
 from .recursive_engine import RecursiveEngine
@@ -22,17 +24,37 @@ from .trace_store import TraceStore, TraceRecord, TraceStats
 from .config import RuntimeConfig, LLMConfig, MemoryConfig, ReActConfig, MCPNodeConfig
 
 __all__ = [
-    "Runtime", "RuntimeResult",
+    "Runtime",
+    "RuntimeResult",
     "Executor",
-    "ReActEngine", "StepResult",
-    "ActionParser", "Action", "ParseError",
+    "ReActEngine",
+    "StepResult",
+    "ActionParser",
+    "Action",
+    "ParseError",
     "TerminationOracle",
-    "LLMAdapter", "LLMResponse", "TokenUsage",
-    "MCPClient", "ToolSchema",
-    "MemoryBackend", "LocalMemory", "SQLiteMemory",
-    "TraceStore", "TraceRecord", "TraceStats",
-    "RuntimeConfig", "LLMConfig", "MemoryConfig", "ReActConfig", "MCPNodeConfig",
+    "LLMAdapter",
+    "LLMResponse",
+    "TokenUsage",
+    "MCPClient",
+    "ToolSchema",
+    "MemoryBackend",
+    "LocalMemory",
+    "SQLiteMemory",
+    "TraceStore",
+    "TraceRecord",
+    "TraceStats",
+    "RuntimeConfig",
+    "LLMConfig",
+    "MemoryConfig",
+    "ReActConfig",
+    "MCPNodeConfig",
     # Phase 6.5: Dual engine
-    "Engine", "EngineMode", "EngineResult", "UnifiedTraceRecord",
-    "RecursiveEngine", "CEKEngine", "AdaptiveEngine",
+    "Engine",
+    "EngineMode",
+    "EngineResult",
+    "UnifiedTraceRecord",
+    "RecursiveEngine",
+    "CEKEngine",
+    "AdaptiveEngine",
 ]

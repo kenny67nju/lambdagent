@@ -12,6 +12,7 @@
 import sys
 import os
 import math
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lambdagent import Dataset, Tool, Loop, Context
@@ -31,7 +32,14 @@ def main():
     print("    数据集: {(0,1),(1,2),(2,3),(5,6),(9,10),(99,100)}")
 
     succ = Dataset(
-        examples=[("0","1"),("1","2"),("2","3"),("5","6"),("9","10"),("99","100")],
+        examples=[
+            ("0", "1"),
+            ("1", "2"),
+            ("2", "3"),
+            ("5", "6"),
+            ("9", "10"),
+            ("99", "100"),
+        ],
         description="Given a number n, output n+1.",
     ).to_lam("SUCC")
 
@@ -53,8 +61,14 @@ def main():
         examples=[
             ("0", "0! = 1\nResult: 1"),
             ("1", "1! = 1 × 0! = 1 × 1 = 1\nResult: 1"),
-            ("3", "3! = 3 × 2!\n2! = 2 × 1!\n1! = 1 × 0!\n0! = 1\nSo: 1 × 1 × 2 × 3 = 6\nResult: 6"),
-            ("5", "5! = 5 × 4!\n4! = 4 × 3!\n3! = 3 × 2!\n2! = 2 × 1!\n1! = 1 × 0!\n0! = 1\nSo: 1 × 1 × 2 × 3 × 4 × 5 = 120\nResult: 120"),
+            (
+                "3",
+                "3! = 3 × 2!\n2! = 2 × 1!\n1! = 1 × 0!\n0! = 1\nSo: 1 × 1 × 2 × 3 = 6\nResult: 6",
+            ),
+            (
+                "5",
+                "5! = 5 × 4!\n4! = 4 × 3!\n3! = 3 × 2!\n2! = 2 × 1!\n1! = 1 × 0!\n0! = 1\nSo: 1 × 1 × 2 × 3 × 4 × 5 = 120\nResult: 120",
+            ),
         ],
         description="Compute n! step by step. Show recursive expansion. End with 'Result: <number>'.",
     ).to_lam("FACTORIAL", max_tokens=2048)
@@ -105,8 +119,11 @@ def main():
 
     noisy_succ = Dataset(
         examples=[
-            ("0", "1"), ("1", "2"), ("2", "3"),
-            ("5", "6"), ("7", "77"),  # ← 错误！
+            ("0", "1"),
+            ("1", "2"),
+            ("2", "3"),
+            ("5", "6"),
+            ("7", "77"),  # ← 错误！
             ("9", "10"),
         ],
         description="Given a number n, output n+1.",
@@ -126,7 +143,14 @@ def main():
     print("\n[E] 最小数据集测试：SUCC 需要几个示例？")
 
     for num_examples in [6, 4, 3, 2, 1]:
-        all_examples = [("0","1"),("1","2"),("2","3"),("5","6"),("9","10"),("99","100")]
+        all_examples = [
+            ("0", "1"),
+            ("1", "2"),
+            ("2", "3"),
+            ("5", "6"),
+            ("9", "10"),
+            ("99", "100"),
+        ]
         examples = all_examples[:num_examples]
         mini_succ = Dataset(
             examples=examples,
@@ -137,17 +161,19 @@ def main():
         correct = 0
         for n in test_inputs:
             actual = mini_succ(str(n), ctx)
-            if normalize(actual) == str(n+1):
+            if normalize(actual) == str(n + 1):
                 correct += 1
         rate = correct / len(test_inputs) * 100
-        print(f"  {num_examples} 个示例 → {correct}/{len(test_inputs)} 通过 ({rate:.0f}%)")
+        print(
+            f"  {num_examples} 个示例 → {correct}/{len(test_inputs)} 通过 ({rate:.0f}%)"
+        )
 
     # ════════════════════════════════════════════
     # 汇总
     # ════════════════════════════════════════════
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print("实验 6 完成。结果用于分析 LDS 的失败边界。")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
 
 if __name__ == "__main__":
